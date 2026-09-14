@@ -257,13 +257,17 @@ void drawRetarget(AppState& state, AnimationLibrary& library, AnimationPlayer& p
     }
     if (ImGui::BeginCombo("Source", entries[srcIdx].prompt.c_str())) {
         for (size_t i = 0; i < entries.size(); ++i) {
+            ImGui::PushID(static_cast<int>(i));
             const bool sel = (static_cast<int>(i) == srcIdx);
-            if (ImGui::Selectable(entries[i].prompt.c_str(), sel)) {
+            const std::string label =
+                entries[i].prompt + "  [" + entries[i].createdAt + "]";
+            if (ImGui::Selectable(label.c_str(), sel)) {
                 state.retargetSource = entries[i].id;
             }
             if (sel) {
                 ImGui::SetItemDefaultFocus();
             }
+            ImGui::PopID();
         }
         ImGui::EndCombo();
     }
