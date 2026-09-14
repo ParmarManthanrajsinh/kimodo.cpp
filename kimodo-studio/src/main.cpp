@@ -1,6 +1,8 @@
 #include "animation/Animation.h"
 #include "animation/AnimationPlayer.h"
+#include "animation/Skeleton.h"
 #include "app/Application.h"
+#include "export/GLBExporter.h"
 #include "huggingface/HFAuthenticator.h"
 #include "huggingface/HuggingFaceClient.h"
 #include "kimodo/KimodoAdapter.h"
@@ -170,6 +172,101 @@ int selftestHf() {
     return 0;
 }
 
+int selftestExport(const char* keepPath = nullptr) {
+    // Synthetic SOMA animation: no model needed.
+    studio::Animation anim;
+    anim.frames = 5;
+    anim.joints = studio::kSomaJoints;
+    anim.fps = 30.0f;
+    anim.skeletonName = "soma30";
+    anim.jointNames.assign(studio::Soma30Spec::names.begin(),
+                           studio::Soma30Spec::names.end());
+    anim.parents.assign(studio::Soma30Spec::parents.begin(),
+                        studio::Soma30Spec::parents.end());
+    anim.offsets.assign(studio::Soma30Spec::offsets.begin(),
+                        studio::Soma30Spec::offsets.end());
+    anim.localRotationsXyzw.resize(5 * 30 * 4);
+    anim.rootPositions.resize(5 * 3);
+    for (int f = 0; f < 5; ++f) {
+        for (int j = 0; j < 30; ++j) {
+            float* q = anim.localRotationsXyzw.data() + (f * 30 + j) * 4;
+            q[0] = 0.01f * j;
+            q[1] = 0.02f * f;
+            q[2] = 0.0f;
+            q[3] = 1.0f;
+            const float n = std::sqrt(q[0] * q[0] + q[1] * q[1] + q[3] * q[3]);
+            q[0] /= n;
+            q[1] /= n;
+            q[3] /= n;
+        }
+        float* p = anim.rootPositions.data() + f * 3;
+        p[0] = 0.1f * f;
+        p[1] = 0.97f;
+        p[2] = 0.0f;
+    }
+    const std::string tmp =
+        std::string(std::getenv("TEMP") ? std::getenv("TEMP") : ".") + "/glb-selftest.glb";
+    studio::GLBExporter exporter;
+    studio::ExportOptions opts;
+    opts.path = tmp;
+    std::string error;
+    if (!exporter.exportAnimation(anim, opts, error)) {
+        std::printf("selftest-glb: EXPORT FAILED: %s\n", error.c_str());
+        return 1;
+    }
+    // Parse back: header, chunks, JSON markers, numeric payload.
+    std::ifstream in(tmp, std::ios::binary);
+    std::vector<char> data{std::istreambuf_iterator<char>(in), {}};
+    auto u32 = [&data](size_t o) {
+        return static_cast<uint32_t>(static_cast<unsigned char>(data[o])) |
+               (static_cast<uint32_t>(static_cast<unsigned char>(data[o + 1])) << 8) |
+               (static_cast<uint32_t>(static_cast<unsigned char>(data[o + 2])) << 16) |
+               (static_cast<uint32_t>(static_cast<unsigned char>(data[o + 3])) << 24);
+    };
+    bool ok = data.size() > 20 && u32(0) == 0x46546C67 && u32(4) == 2;
+    ok = ok && u32(8) == data.size(); // total length matches file size
+    const uint32_t jsonLen = u32(12);
+    const std::string json(data.data() + 20, jsonLen);
+    size_t rotChannels = 0, pos = 0;
+    while ((pos = json.find("\"path\":\"rotation\"", pos)) != std::string::npos) {
+        ++rotChannels;
+        ++pos;
+    }
+    ok = ok && rotChannels == 30;
+    ok = ok && json.find("\"path\":\"translation\"") != std::string::npos;
+    ok = ok && json.find("\"name\":\"LeftFoot\"") != std::string::npos;
+    ok = ok && json.find("\"name\":\"KimodoClip\"") != std::string::npos;
+    // BIN payload: times + joint0 quats + root.
+    const size_t binStart = 20 + jsonLen + 8;
+    auto f32 = [&data](size_t o) {
+        float v = 0;
+        std::memcpy(&v, data.data() + o, 4);
+        return v;
+    };
+    ok = ok && f32(binStart) == 0.0f && f32(binStart + 4) == 1.0f / 30.0f;
+    const size_t j0 = binStart + 5 * 4;
+    const float* q0 = anim.localRotationsXyzw.data();
+    ok = ok && f32(j0) == q0[0] && f32(j0 + 4) == q0[1] && f32(j0 + 12) == q0[3];
+    const size_t rp = j0 + 30 * 5 * 16;
+    ok = ok && f32(rp) == 0.0f && f32(rp + 4) == 0.97f;
+    std::printf("selftest-glb: bytes=%llu rotChannels=%llu ok=%d\n",
+                static_cast<unsigned long long>(data.size()),
+                static_cast<unsigned long long>(rotChannels), ok ? 1 : 0);
+    if (keepPath) {
+        std::ifstream src(tmp, std::ios::binary);
+        std::ofstream dst(keepPath, std::ios::binary | std::ios::trunc);
+        dst << src.rdbuf();
+        std::printf("selftest-glb: kept %s\n", keepPath);
+    }
+    std::remove(tmp.c_str());
+    if (!ok) {
+        std::printf("selftest-glb: FAILED: round-trip mismatch\n");
+        return 1;
+    }
+    std::printf("selftest-glb: OK\n");
+    return 0;
+}
+
 int main(int argc, char** argv) {
     if (argc >= 2 && std::string(argv[1]) == "--selftest") {
         const char* frames = argc >= 3 ? argv[2] : nullptr;
@@ -178,6 +275,9 @@ int main(int argc, char** argv) {
     }
     if (argc >= 2 && std::string(argv[1]) == "--selftest-hf") {
         return selftestHf();
+    }
+    if (argc >= 2 && std::string(argv[1]) == "--selftest-export") {
+        return selftestExport(argc >= 3 ? argv[2] : nullptr);
     }
     studio::Application app;
     if (!app.init()) {

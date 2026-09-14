@@ -5,6 +5,7 @@
 #include "imgui.h"
 #include "kimodo/KimodoEngine.h"
 #include "library/AnimationLibrary.h"
+#include "export/GLBExporter.h"
 #include "models/ModelManager.h"
 #include "raylib.h"
 #include "retarget/Retargeter.h"
@@ -416,7 +417,22 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
         }
         ImGui::SameLine();
         if (ImGui::SmallButton("Export")) {
-            toasts.push("Export arrives in Phase 10 (GLB first)", ToastKind::Warning);
+            Animation anim;
+            if (!library.loadAnimation(e, anim)) {
+                toasts.push("Export failed: cannot load animation", ToastKind::Error);
+            } else {
+                GLBExporter exporter;
+                ExportOptions opts;
+                opts.path = (std::filesystem::path(GLBExporter::defaultExportDir()) /
+                             (e.id + ".glb"))
+                                .string();
+                std::string error;
+                if (exporter.exportAnimation(anim, opts, error)) {
+                    toasts.push("Exported " + opts.path, ToastKind::Success);
+                } else {
+                    toasts.push("Export failed: " + error, ToastKind::Error);
+                }
+            }
         }
         ImGui::SameLine();
         if (capture && ImGui::SmallButton("Thumbnail")) {

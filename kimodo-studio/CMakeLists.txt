@@ -69,6 +69,7 @@ add_executable(kimodo_studio
     src/models/ModelManager.cpp
     src/retarget/SkeletonProfile.cpp
     src/retarget/Retargeter.cpp
+    src/export/GLBExporter.cpp
     src/huggingface/HuggingFaceClient.cpp
     src/huggingface/HFAuthenticator.cpp
     src/rendering/Viewport.cpp
