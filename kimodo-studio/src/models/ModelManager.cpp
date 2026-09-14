@@ -289,9 +289,11 @@ void ModelManager::runDownload(std::string id) {
     } else if (e.repo.empty() || e.remotePath.empty()) {
         fail = "no Hugging Face source in registry";
     } else {
+        // Downloads land in the user model dir, never in the repo checkout.
+        const auto userDir = appDataDir() / "models";
         std::error_code ec;
-        std::filesystem::create_directories(modelDir_, ec);
-        const auto dest = std::filesystem::path(modelDir_) / e.motionFile;
+        std::filesystem::create_directories(userDir, ec);
+        const auto dest = userDir / e.motionFile;
         const std::string tmp = dest.string() + ".download";
         std::string token;
         HFAuthenticator::loadToken(token); // may be empty for public repos
@@ -376,9 +378,11 @@ void ModelManager::runImport(std::string sourcePath, std::string id) {
     if (!findCopy(id, e)) {
         fail = "unknown model id";
     } else {
+        // Imports land in the user model dir, never in the repo checkout.
+        const auto userDir = appDataDir() / "models";
         std::error_code ec;
-        std::filesystem::create_directories(modelDir_, ec);
-        const auto dest = std::filesystem::path(modelDir_) / e.motionFile;
+        std::filesystem::create_directories(userDir, ec);
+        const auto dest = userDir / e.motionFile;
         const auto tmp = dest.string() + ".download";
         std::ifstream src(sourcePath, std::ios::binary);
         std::ofstream dst(tmp, std::ios::binary | std::ios::trunc);

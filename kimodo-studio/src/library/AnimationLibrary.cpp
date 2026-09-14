@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
+#include <random>
 #include <sstream>
 
 namespace studio {
@@ -181,8 +182,16 @@ bool readU32(std::ifstream& bin, uint32_t& v) {
 
 bool AnimationLibrary::saveAnimation(const std::string& prompt, const std::string& model,
                                      const Animation& anim, LibraryEntry& out) {
-    static int counter = 0;
-    out.id = "anim-" + nowStamp() + "-" + std::to_string(++counter);
+    // Unique across restarts: timestamp + ms + random (no shared counter).
+    static thread_local std::mt19937 rng{std::random_device{}()};
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::system_clock::now().time_since_epoch())
+                        .count() %
+                    1000;
+    std::ostringstream idss;
+    idss << "anim-" << nowStamp() << "-" << std::setfill('0') << std::setw(3) << ms << "-"
+         << std::setfill('0') << std::setw(4) << (rng() % 10000);
+    out.id = idss.str();
     out.prompt = prompt;
     out.model = model;
     out.createdAt = nowStamp();

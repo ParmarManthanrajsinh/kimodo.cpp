@@ -142,6 +142,7 @@ void Application::run() {
 void Application::shutdown() {
     engine_.shutdown();
     models_.shutdown();
+    ui_.shutdown();
     rlImGuiShutdown();
     if (IsWindowReady()) {
         CloseWindow();

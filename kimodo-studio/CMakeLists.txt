@@ -29,11 +29,11 @@ else()
     set(_raylib_target raylib)
 endif()
 
-# --- Dear ImGui (docking branch: matches rlImGui main API) ---
+# --- Dear ImGui (pinned; matches rlImGui API) ---
 FetchContent_Declare(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG docking
+    GIT_TAG 367b2c24f399988ddafc0bb4628da0106bcc09be # docking, 2026-06
 )
 FetchContent_MakeAvailable(imgui)
 set(_imgui_src "${imgui_SOURCE_DIR}")
@@ -42,7 +42,7 @@ set(_imgui_src "${imgui_SOURCE_DIR}")
 FetchContent_Declare(
     rlimGui
     GIT_REPOSITORY https://github.com/raylib-extras/rlImGui.git
-    GIT_TAG main
+    GIT_TAG 1550009359ad975927f7f0e4a3f47e3f27123ea9 # main, 2026
 )
 FetchContent_MakeAvailable(rlimGui)
 set(_rlimgui_src "${rlimgui_SOURCE_DIR}")

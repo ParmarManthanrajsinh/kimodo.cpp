@@ -22,6 +22,7 @@ public:
               AnimationPlayer& player, AnimationLibrary& library, ModelManager& models,
               Toasts& toasts, CaptureFn capture = {});
     void drawThumb(const LibraryEntry& e);
+    void shutdown(); // joins background auth worker
 
 private:
     std::map<std::string, Texture2D> thumbs_;

@@ -14,11 +14,58 @@
 #include "rlImGui.h"
 #include "ui/Toast.h"
 
+#include <atomic>
 #include <cstring>
 #include <filesystem>
+#include <mutex>
+#include <thread>
 
 namespace studio {
 namespace {
+
+// Hugging Face auth runs on a worker: WinHTTP validates on the UI thread
+// would freeze the window for the full timeout when offline.
+struct AuthWorker {
+    std::thread thread;
+    std::atomic<bool> busy{false};
+    std::mutex mutex;
+    bool done = false;
+    bool ok = false;
+    std::string user;
+    std::string error;
+};
+
+AuthWorker gHfAuth;
+
+void requestAuth(AuthWorker& w, std::string token, bool save) {
+    if (w.busy.load()) {
+        return;
+    }
+    if (w.thread.joinable()) {
+        w.thread.join();
+    }
+    w.busy.store(true);
+    {
+        std::lock_guard<std::mutex> lock(w.mutex);
+        w.done = false;
+    }
+    w.thread = std::thread([token = std::move(token), save, &w] {
+        std::string error;
+        std::string user = HFAuthenticator::validate(token, error);
+        bool ok = !user.empty();
+        if (ok && save) {
+            ok = HFAuthenticator::saveToken(token, error);
+        }
+        {
+            std::lock_guard<std::mutex> lock(w.mutex);
+            w.user = user;
+            w.error = error;
+            w.ok = ok;
+            w.done = true;
+        }
+        w.busy.store(false);
+    });
+}
 
 const char* screenLabel(Screen s) {
     switch (s) {
@@ -638,18 +685,29 @@ void drawSettings(AppState& state, KimodoEngine& engine, Toasts& toasts) {
             hasSaved = HFAuthenticator::loadToken(probe);
             savedChecked = true;
         }
-        if (hasSaved) {
+        AuthWorker& auth = gHfAuth;
+        // Poll completed worker (UI thread only touches results here).
+        {
+            std::lock_guard<std::mutex> lock(auth.mutex);
+            if (auth.done) {
+                auth.done = false;
+                if (auth.ok) {
+                    state.hfUser = auth.user;
+                    hasSaved = true;
+                    toasts.push("Connected as " + auth.user, ToastKind::Success);
+                } else {
+                    toasts.push("Connect failed: " + auth.error, ToastKind::Error);
+                }
+            }
+        }
+        if (auth.busy.load()) {
+            ImGui::TextDisabled("Verifying with huggingface.co...");
+        } else if (hasSaved) {
             ImGui::TextDisabled("Saved token present (not verified).");
             if (ImGui::Button("Verify")) {
-                std::string saved, error;
+                std::string saved;
                 if (HFAuthenticator::loadToken(saved)) {
-                    const std::string user = HFAuthenticator::validate(saved, error);
-                    if (!user.empty()) {
-                        state.hfUser = user;
-                        toasts.push("Connected as " + user, ToastKind::Success);
-                    } else {
-                        toasts.push("Token invalid: " + error, ToastKind::Error);
-                    }
+                    requestAuth(auth, saved, false);
                 }
             }
             ImGui::SameLine();
@@ -663,17 +721,8 @@ void drawSettings(AppState& state, KimodoEngine& engine, Toasts& toasts) {
                              ImGuiInputTextFlags_Password);
             ImGui::SameLine();
             if (ImGui::Button("Connect") && tokenBuf[0]) {
-                std::string error;
-                const std::string user =
-                    HFAuthenticator::validate(tokenBuf, error);
-                if (!user.empty() && HFAuthenticator::saveToken(tokenBuf, error)) {
-                    state.hfUser = user;
-                    hasSaved = true;
-                    tokenBuf[0] = '\0';
-                    toasts.push("Connected as " + user, ToastKind::Success);
-                } else {
-                    toasts.push("Connect failed: " + error, ToastKind::Error);
-                }
+                requestAuth(auth, std::string(tokenBuf), true);
+                std::memset(tokenBuf, 0, sizeof(tokenBuf));
             }
         }
     }
@@ -684,6 +733,12 @@ void drawSettings(AppState& state, KimodoEngine& engine, Toasts& toasts) {
 }
 
 } // namespace
+
+void UIManager::shutdown() {
+    if (gHfAuth.thread.joinable()) {
+        gHfAuth.thread.join();
+    }
+}
 
 void UIManager::drawThumb(const LibraryEntry& e) {
     if (thumbs_.size() != thumbCount_) {
