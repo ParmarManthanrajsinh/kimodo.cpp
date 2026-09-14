@@ -390,6 +390,11 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
     }
     static std::string renameId;
     static char renameBuf[1024];
+    static std::string exportEntryId;
+    static std::string exportPresetId = "blender";
+    static float exportFps = 30.0f;
+    static float exportScale = 1.0f;
+    static int exportRootMotion = 0; // 0 preserve, 1 in place, 2 extract
     for (size_t i = entries.size(); i-- > 0;) {
         const LibraryEntry& e = entries[i];
         ImGui::PushID(static_cast<int>(i));
@@ -417,22 +422,13 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
         }
         ImGui::SameLine();
         if (ImGui::SmallButton("Export")) {
-            Animation anim;
-            if (!library.loadAnimation(e, anim)) {
-                toasts.push("Export failed: cannot load animation", ToastKind::Error);
-            } else {
-                GLBExporter exporter;
-                ExportOptions opts;
-                opts.path = (std::filesystem::path(GLBExporter::defaultExportDir()) /
-                             (e.id + ".glb"))
-                                .string();
-                std::string error;
-                if (exporter.exportAnimation(anim, opts, error)) {
-                    toasts.push("Exported " + opts.path, ToastKind::Success);
-                } else {
-                    toasts.push("Export failed: " + error, ToastKind::Error);
-                }
-            }
+            exportEntryId = e.id;
+            const ExportPreset* def = findPreset("blender");
+            exportPresetId = def ? def->id : "generic";
+            exportFps = def ? def->fps : 30.0f;
+            exportScale = def ? def->scale : 1.0f;
+            exportRootMotion = 0;
+            ImGui::OpenPopup("Export animation");
         }
         ImGui::SameLine();
         if (capture && ImGui::SmallButton("Thumbnail")) {
@@ -467,6 +463,123 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
         }
         ImGui::Separator();
         ImGui::PopID();
+    }
+
+    // Export modal: preset + fps + scale + root motion (+ auto-retarget).
+    if (ImGui::BeginPopupModal("Export animation", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        const LibraryEntry* target = nullptr;
+        for (const LibraryEntry& e : entries) {
+            if (e.id == exportEntryId) {
+                target = &e;
+            }
+        }
+        if (!target) {
+            ImGui::TextDisabled("Entry no longer exists.");
+            if (ImGui::Button("Close")) {
+                ImGui::CloseCurrentPopup();
+            }
+        } else {
+            ImGui::TextWrapped("%s", target->prompt.c_str());
+            ImGui::TextDisabled("skeleton: %s", target->skeleton.c_str());
+            const std::vector<ExportPreset>& presets = exportPresets();
+            int presetIdx = 0;
+            for (size_t i = 0; i < presets.size(); ++i) {
+                if (presets[i].id == exportPresetId) {
+                    presetIdx = static_cast<int>(i);
+                }
+            }
+            if (ImGui::BeginCombo("Preset", presets[presetIdx].name.c_str())) {
+                for (size_t i = 0; i < presets.size(); ++i) {
+                    const bool sel = (static_cast<int>(i) == presetIdx);
+                    if (ImGui::Selectable(presets[i].name.c_str(), sel)) {
+                        exportPresetId = presets[i].id;
+                        exportFps = presets[i].fps;
+                        exportScale = presets[i].scale;
+                    }
+                    if (sel) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            const ExportPreset* preset = findPreset(exportPresetId);
+            ImGui::InputFloat("FPS", &exportFps, 1.0f, 5.0f);
+            ImGui::InputFloat("Scale", &exportScale, 1.0f, 10.0f);
+            const char* rmItems[] = {"Preserve root motion", "In place", "Extract root motion"};
+            ImGui::Combo("Root motion", &exportRootMotion, rmItems, 3);
+            if (preset && !preset->profile.empty() && preset->profile != target->skeleton) {
+                ImGui::TextDisabled("Auto-retargets to %s on export.", preset->profile.c_str());
+            }
+            if (exportFps < 1) {
+                exportFps = 1;
+            }
+            if (exportScale <= 0) {
+                exportScale = 1;
+            }
+            if (ImGui::Button("Export")) {
+                Animation anim;
+                std::string error;
+                bool ok = library.loadAnimation(*target, anim);
+                if (ok && preset && !preset->profile.empty() &&
+                    preset->profile != anim.skeletonName) {
+                    const SkeletonProfile* prof = findProfile(preset->profile);
+                    if (!prof) {
+                        ok = false;
+                        error = "unknown profile " + preset->profile;
+                    } else {
+                        Animation out;
+                        BoneMap map = Retargeter::autoMap(*prof);
+                        const auto missing = Retargeter::unmapped(*prof, map);
+                        Retargeter::Options ropts;
+                        ok = Retargeter::retarget(anim, *prof, map, ropts, out, error);
+                        if (ok) {
+                            anim = std::move(out);
+                            if (!missing.empty()) {
+                                toasts.push(
+                                    std::to_string(missing.size()) +
+                                        " joints use identity bind",
+                                    ToastKind::Warning);
+                            }
+                        }
+                    }
+                }
+                if (ok) {
+                    GLBExporter exporter;
+                    ExportOptions opts;
+                    opts.path =
+                        (std::filesystem::path(GLBExporter::defaultExportDir()) /
+                         (target->id + "-" + exportPresetId + ".glb"))
+                            .string();
+                    opts.fps = exportFps;
+                    opts.rootScale = 1.0f; // preset scale applied below
+                    opts.basis = preset ? preset->basis
+                                        : Mat3{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
+                    opts.rootMotion = exportRootMotion == 1 ? RootMotion::InPlace
+                                      : exportRootMotion == 2 ? RootMotion::Extract
+                                                              : RootMotion::Preserve;
+                    // Preset unit scale composes with user scale.
+                    opts.rootScale = exportScale * (preset ? preset->scale : 1.0f);
+                    ok = exporter.exportAnimation(anim, opts, error);
+                    if (ok) {
+                        std::string msg = "Exported " + opts.path;
+                        const std::string rep = exporter.lastReport();
+                        if (!rep.empty()) {
+                            msg += " (" + rep + ")";
+                        }
+                        toasts.push(msg, ToastKind::Success);
+                    }
+                }
+                if (!ok) {
+                    toasts.push("Export failed: " + error, ToastKind::Error);
+                }
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::EndPopup();
     }
 }
 

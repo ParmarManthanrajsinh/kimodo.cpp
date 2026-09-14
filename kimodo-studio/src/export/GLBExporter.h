@@ -12,8 +12,12 @@ class GLBExporter : public AnimationExporter {
 public:
     bool exportAnimation(const Animation& animation, const ExportOptions& options,
                          std::string& error) override;
+    std::string lastReport() const override { return report_; }
 
     static std::string defaultExportDir();
+
+private:
+    std::string report_;
 };
 
 } // namespace studio

@@ -2,6 +2,7 @@
 #include "animation/AnimationPlayer.h"
 #include "animation/Skeleton.h"
 #include "app/Application.h"
+#include "export/ExportPreset.h"
 #include "export/GLBExporter.h"
 #include "huggingface/HFAuthenticator.h"
 #include "huggingface/HuggingFaceClient.h"
@@ -257,11 +258,77 @@ int selftestExport(const char* keepPath = nullptr) {
         std::ofstream dst(keepPath, std::ios::binary | std::ios::trunc);
         dst << src.rdbuf();
         std::printf("selftest-glb: kept %s\n", keepPath);
+        // Same clip through the Unreal preset (basis + cm scale).
+        const studio::ExportPreset* unreal = studio::findPreset("unreal");
+        studio::ExportOptions uo;
+        uo.path = std::string(keepPath) + ".unreal.glb";
+        uo.fps = 30.0f;
+        uo.rootScale = unreal->scale;
+        uo.basis = unreal->basis;
+        std::string uerr;
+        if (!exporter.exportAnimation(anim, uo, uerr)) {
+            std::printf("selftest-glb: FAILED: unreal preset %s\n", uerr.c_str());
+            return 1;
+        }
+        std::printf("selftest-glb: kept %s\n", uo.path.c_str());
     }
     std::remove(tmp.c_str());
     if (!ok) {
         std::printf("selftest-glb: FAILED: round-trip mismatch\n");
         return 1;
+    }
+    // Phase 11: preset basis math + resample.
+    {
+        const studio::ExportPreset* unreal = studio::findPreset("unreal");
+        const studio::ExportPreset* unity = studio::findPreset("unity");
+        if (!unreal || !unity) {
+            std::printf("selftest-glb: FAILED: presets missing\n");
+            return 1;
+        }
+        // Y-up (0,1,0) -> Unreal Z-up (0,0,1).
+        const float ux = unreal->basis.m[0][1];
+        const float uy = unreal->basis.m[1][1];
+        const float uz = unreal->basis.m[2][1];
+        // glTF +Z -> Unity -Z.
+        const float nz = unity->basis.m[2][2];
+        // Identity rotation survives basis round-trip.
+        studio::Quat q{0.1f, 0.2f, 0.3f, 0.9f};
+        q = studio::quatNormalize(q);
+        studio::Mat3 r = studio::mat3FromQuat(q);
+        studio::Quat back = studio::quatFromMat3(r);
+        const float dq = std::abs(q.x - back.x) + std::abs(q.y - back.y) +
+                         std::abs(q.z - back.z) + std::abs(q.w - back.w);
+        std::printf("selftest-glb: unrealUp=(%.1f %.1f %.1f) unityZ=%.1f roundtrip=%.6f\n",
+                    ux, uy, uz, nz, dq);
+        if (ux != 0 || uy != 0 || uz != 1 || nz != -1 || dq > 1e-5f) {
+            std::printf("selftest-glb: FAILED: preset math\n");
+            return 1;
+        }
+        // Resample 5f@30 -> 10f@60 (duration preserved).
+        anim.fps = 30.0f;
+        studio::ExportOptions o60;
+        o60.path = tmp;
+        o60.fps = 60.0f;
+        std::string e60;
+        if (!exporter.exportAnimation(anim, o60, e60)) {
+            std::printf("selftest-glb: FAILED: resample export %s\n", e60.c_str());
+            return 1;
+        }
+        std::ifstream in60(tmp, std::ios::binary);
+        std::vector<char> d60{std::istreambuf_iterator<char>(in60), {}};
+        const uint32_t jlen60 = static_cast<uint32_t>(static_cast<unsigned char>(d60[12])) |
+                                (static_cast<uint32_t>(static_cast<unsigned char>(d60[13])) << 8) |
+                                (static_cast<uint32_t>(static_cast<unsigned char>(d60[14])) << 16) |
+                                (static_cast<uint32_t>(static_cast<unsigned char>(d60[15])) << 24);
+        const std::string j60(d60.data() + 20, jlen60);
+        const size_t cp = j60.find("\"count\":"); // first accessor = times
+        const int timesCount = cp == std::string::npos ? -1 : std::atoi(j60.c_str() + cp + 8);
+        std::printf("selftest-glb: resampled times=%d\n", timesCount);
+        std::remove(tmp.c_str());
+        if (timesCount != 10) {
+            std::printf("selftest-glb: FAILED: resample count\n");
+            return 1;
+        }
     }
     std::printf("selftest-glb: OK\n");
     return 0;
