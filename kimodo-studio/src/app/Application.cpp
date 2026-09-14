@@ -1,5 +1,6 @@
 #include "app/Application.h"
 
+#include "imgui.h"
 #include "raylib.h"
 #include "rlImGui.h"
 #include "ui/Theme.h"
@@ -86,10 +87,11 @@ void Application::run() {
         if (player_.hasAnimation()) {
             viewport_.setPose(player_.worldPositions(), player_.poseParents());
         }
-        viewport_.update();
 
         BeginDrawing();
         ClearBackground(Color{18, 18, 22, 255});
+        rlImGuiBegin(); // fresh IO: WantCaptureMouse valid below
+        viewport_.update(ImGui::GetIO().WantCaptureMouse);
         // Manager task completion surfaces as a toast (edge-triggered).
         {
             const bool busyNow = models_.busy();
@@ -121,8 +123,7 @@ void Application::run() {
         }
         if (!pendingThumb_.empty() && player_.hasAnimation()) {
             // Clean 3D-only frame for the library thumbnail (no UI overlay).
-            BeginDrawing();
-            ClearBackground(Color{18, 18, 22, 255});
+            rlImGuiEnd();
             viewport_.draw3D();
             EndDrawing();
             TakeScreenshot(pendingThumb_.c_str());
@@ -130,7 +131,6 @@ void Application::run() {
             continue;
         }
         viewport_.draw3D();
-        rlImGuiBegin();
         ui_.draw(state_, viewport_, engine_, player_, library_, models_, toasts_,
                  [this](const LibraryEntry& e) { captureThumbFile(e); });
         toasts_.draw();

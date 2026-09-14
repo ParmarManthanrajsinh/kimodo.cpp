@@ -21,15 +21,11 @@ void Viewport::frame() {
     recomputeCamera();
 }
 
-void Viewport::update() {
+void Viewport::update(bool mouseOverUi) {
     const Vector2 delta = GetMouseDelta();
 
-    // Skip camera drags that start over ImGui panels (left 480px top region
-    // handled by UI). Viewport owns the remaining area; cheap hit test: only
-    // orbit when mouse is right of the side panels.
-    const Vector2 m = GetMousePosition();
-    const bool overUi = (m.x < 480.0f && m.y > 30.0f);
-    if (!overUi) {
+    // Camera owns the pointer only when ImGui does not capture it.
+    if (!mouseOverUi) {
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             yaw_ -= delta.x * 0.005f;
             pitch_ -= delta.y * 0.005f;
@@ -46,7 +42,7 @@ void Viewport::update() {
         }
     }
 
-    const float wheel = GetMouseWheelMove();
+    const float wheel = mouseOverUi ? 0.0f : GetMouseWheelMove();
     if (wheel != 0.0f) {
         dist_ *= (wheel > 0) ? 0.9f : 1.1f;
         if (dist_ < 2.0f) dist_ = 2.0f;

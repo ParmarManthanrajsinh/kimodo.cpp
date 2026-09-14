@@ -16,6 +16,7 @@
 #include "ui/Toast.h"
 
 #include <atomic>
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <mutex>
@@ -773,12 +774,20 @@ void UIManager::drawThumb(const LibraryEntry& e) {
     rlImGuiImageSize(&it->second, 120, 75);
 }
 
+std::string fmtTime(float seconds) {
+    const int total = static_cast<int>(seconds);
+    char buf[16];
+    std::snprintf(buf, sizeof(buf), "%d:%02d", total / 60, total % 60);
+    return buf;
+}
+
 void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
                      AnimationPlayer& player, AnimationLibrary& library,
                      ModelManager& models, Toasts& toasts, CaptureFn capture) {
-    const float topH = 36.0f;
-    const float sideW = 180.0f;
-    const float statusH = 26.0f;
+    const float topH = 40.0f;
+    const float sideW = 150.0f;
+    const float panelW = 300.0f;
+    const float bottomH = 64.0f;
     const int sw = GetScreenWidth();
     const int sh = GetScreenHeight();
 
@@ -788,16 +797,21 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
     ImGui::Begin("TopBar", nullptr,
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                      ImGuiWindowFlags_NoBringToFrontOnFocus);
-    ImGui::TextUnformatted("Kimodo Studio");
-    ImGui::SameLine(sw - 220.0f);
+    ImGui::TextUnformatted("KIMODO STUDIO");
+    const float gpuX = (float)sw - 250.0f;
+    ImGui::SameLine(gpuX);
     ImGui::TextDisabled("GPU");
     ImGui::SameLine();
-    ImGui::TextUnformatted("ON");
+    ImGui::TextColored(ImVec4(0.30f, 0.85f, 0.45f, 1.0f), "%s", "\xE2\x97\x8F"); // ●
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Settings")) {
+        state.screen = Screen::Settings;
+    }
     ImGui::End();
 
     // Sidebar
     ImGui::SetNextWindowPos(ImVec2(0, topH));
-    ImGui::SetNextWindowSize(ImVec2(sideW, (float)sh - topH - statusH));
+    ImGui::SetNextWindowSize(ImVec2(sideW, (float)sh - topH - bottomH));
     ImGui::Begin("Sidebar", nullptr,
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
     const Screen items[] = {Screen::Home,       Screen::Generate, Screen::Models,
@@ -815,10 +829,10 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
     }
     ImGui::End();
 
-    // Content panel per screen
-    ImGui::SetNextWindowPos(ImVec2(sideW, topH));
-    ImGui::SetNextWindowSize(ImVec2(300.0f, (float)sh - topH - statusH));
-    ImGui::Begin("Panel", nullptr,
+    // Right control panel per screen
+    ImGui::SetNextWindowPos(ImVec2((float)sw - panelW, topH));
+    ImGui::SetNextWindowSize(ImVec2(panelW, (float)sh - topH - bottomH));
+    ImGui::Begin("SidePanel", nullptr,
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
     ImGui::Text("%s", screenLabel(state.screen));
     ImGui::Separator();
@@ -833,53 +847,44 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         case Screen::Settings: drawSettings(state, engine, toasts); break;
     }
     ImGui::Spacing();
+    ImGui::Separator();
     ImGui::Text("Camera dist: %.1f", viewport.distance());
     if (ImGui::Button("Frame (F)")) {
         viewport.frame();
     }
     ImGui::End();
 
-    // Timeline (visible once an animation is loaded)
-    const float timelineH = 64.0f;
+    // Bottom transport bar (full width)
+    ImGui::SetNextWindowPos(ImVec2(0, (float)sh - bottomH));
+    ImGui::SetNextWindowSize(ImVec2((float)sw, bottomH));
+    ImGui::Begin("Transport", nullptr,
+                 ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+                     ImGuiWindowFlags_NoBringToFrontOnFocus);
     if (player.hasAnimation()) {
-        ImGui::SetNextWindowPos(ImVec2(sideW, (float)sh - statusH - timelineH));
-        ImGui::SetNextWindowSize(ImVec2((float)sw - sideW, timelineH));
-        ImGui::Begin("Timeline", nullptr,
-                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
         if (ImGui::Button(player.playing() ? "Pause" : "Play")) {
             player.toggle();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Restart")) {
-            player.restart();
+        ImGui::Text("%s", fmtTime(player.time()).c_str());
+        ImGui::SameLine();
+        const float avail = ImGui::GetContentRegionAvail().x - 220.0f;
+        ImGui::SetNextItemWidth(avail > 80.0f ? avail : 80.0f);
+        float t = player.time();
+        if (ImGui::SliderFloat("##scrub", &t, 0.0f, player.duration(), "")) {
+            player.scrub(t);
         }
+        ImGui::SameLine();
+        ImGui::Text("%s", fmtTime(player.duration()).c_str());
         ImGui::SameLine();
         bool loop = player.loop();
         if (ImGui::Checkbox("Loop", &loop)) {
             player.setLoop(loop);
         }
         ImGui::SameLine();
-        float t = player.time();
-        if (ImGui::SliderFloat("##scrub", &t, 0.0f, player.duration(), "%.2fs")) {
-            player.scrub(t);
-        }
-        ImGui::SameLine();
-        ImGui::Text("f %d / %.0f fps", player.frame(), player.fps());
-        ImGui::End();
-    }
-
-    // Status bar
-    ImGui::SetNextWindowPos(ImVec2(0, (float)sh - statusH));
-    ImGui::SetNextWindowSize(ImVec2((float)sw, statusH));
-    ImGui::Begin("Status", nullptr,
-                 ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
-                     ImGuiWindowFlags_NoBringToFrontOnFocus);
-    if (player.hasAnimation()) {
-        ImGui::Text("FPS %d | frame %d | %s", state.fps, player.frame(),
-                    engine.message().c_str());
+        ImGui::TextDisabled("%d FPS | f %d", state.fps, player.frame());
     } else {
-        ImGui::Text("FPS %d | %s | %s", state.fps, state.gpuName.c_str(),
-                    engine.message().c_str());
+        ImGui::TextDisabled("%d FPS | %s | %s", state.fps, state.gpuName.c_str(),
+                            engine.message().c_str());
     }
     ImGui::End();
 }

@@ -5,6 +5,8 @@
 #include "export/BVHExporter.h"
 #include "export/ExportPreset.h"
 #include "export/GLBExporter.h"
+#include "retarget/Retargeter.h"
+#include "retarget/SkeletonProfile.h"
 #include "huggingface/HFAuthenticator.h"
 #include "huggingface/HuggingFaceClient.h"
 #include "kimodo/KimodoAdapter.h"
@@ -67,6 +69,29 @@ int selftest(const char* framesArg, const char* stepsArg) {
                 result.joints,
                 static_cast<unsigned long long>(result.localRotationsXyzw.size()),
                 static_cast<unsigned long long>(result.rootPositions.size()));
+    {
+        size_t bad = 0;
+        float nmin = 1e9f, nmax = 0.0f;
+        for (size_t k = 0; k < result.localRotationsXyzw.size() / 4; ++k) {
+            const float* q = result.localRotationsXyzw.data() + k * 4;
+            for (int c = 0; c < 4; ++c) {
+                if (!std::isfinite(q[c])) {
+                    ++bad;
+                }
+            }
+            const float n = std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] +
+                                      q[3] * q[3]);
+            nmin = std::min(nmin, n);
+            nmax = std::max(nmax, n);
+        }
+        for (float v : result.rootPositions) {
+            if (!std::isfinite(v)) {
+                ++bad;
+            }
+        }
+        std::printf("selftest: data nonfinite=%llu quatNormMin=%.6f quatNormMax=%.6f\n",
+                    static_cast<unsigned long long>(bad), nmin, nmax);
+    }
     if (!result.rootPositions.empty()) {
         std::printf("selftest: root0=%.4f %.4f %.4f\n", result.rootPositions[0],
                     result.rootPositions[1], result.rootPositions[2]);
@@ -123,6 +148,22 @@ int selftest(const char* framesArg, const char* stepsArg) {
     if (q[0] != s[0] || q[1] != s[1] || q[2] != s[2] || q[3] != s[3]) {
         std::printf("selftest: RETARGET FAILED: pelvis quat != Hips quat\n");
         return 1;
+    }
+    // Export the Manny retarget through the Unreal preset (user's exact path).
+    {
+        const studio::ExportPreset* unreal = studio::findPreset("unreal");
+        studio::ExportOptions uo;
+        uo.path = std::string(std::getenv("TEMP") ? std::getenv("TEMP") : ".") +
+                  "/manny-selftest.glb";
+        uo.fps = unreal->fps;
+        uo.rootScale = unreal->scale;
+        uo.basis = unreal->basis;
+        std::string uerr;
+        if (!studio::GLBExporter().exportAnimation(out, uo, uerr)) {
+            std::printf("selftest: EXPORT FAILED: %s\n", uerr.c_str());
+            return 1;
+        }
+        std::printf("selftest: exported %s\n", uo.path.c_str());
     }
     return 0;
 }

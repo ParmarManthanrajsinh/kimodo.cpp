@@ -11,7 +11,7 @@ class Viewport {
 public:
     void reset();
     void frame();
-    void update();
+    void update(bool mouseOverUi);
     void draw3D() const;
     float distance() const { return dist_; }
 
