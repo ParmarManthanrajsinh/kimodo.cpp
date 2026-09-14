@@ -25,6 +25,7 @@ public:
     void scrub(float timeSec);
 
     bool hasAnimation() const { return !anim_.empty(); }
+    const std::vector<int>& poseParents() const { return anim_.parents; }
     bool playing() const { return playing_; }
     bool loop() const { return loop_; }
     float time() const { return time_; }

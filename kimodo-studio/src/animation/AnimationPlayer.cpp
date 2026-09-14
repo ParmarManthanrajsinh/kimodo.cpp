@@ -55,7 +55,9 @@ int AnimationPlayer::frame() const {
 }
 
 void AnimationPlayer::sample() {
-    if (!hasAnimation() || anim_.joints != kSomaJoints) {
+    if (!hasAnimation() ||
+        static_cast<int>(anim_.parents.size()) != anim_.joints ||
+        static_cast<int>(anim_.offsets.size()) != anim_.joints) {
         world_.clear();
         return;
     }
@@ -86,7 +88,8 @@ void AnimationPlayer::sample() {
         p0[1] + (p1[1] - p0[1]) * a,
         p0[2] + (p1[2] - p0[2]) * a,
     };
-    Skeleton::forwardKinematics(quats.data(), root, world_);
+    Skeleton::forwardKinematicsGeneral(quats.data(), root, anim_.parents,
+                                       anim_.offsets, world_);
 }
 
 } // namespace studio

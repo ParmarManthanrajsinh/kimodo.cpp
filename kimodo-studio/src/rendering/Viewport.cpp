@@ -78,16 +78,16 @@ void Viewport::recomputeCamera() const {
 void Viewport::draw3D() const {
     BeginMode3D(camera_);
     grid_.draw();
-    if (pose_.size() == static_cast<size_t>(kSomaJoints)) {
-        const auto& parents = Skeleton::parents();
-        for (int j = 0; j < kSomaJoints; ++j) {
-            const int p = parents[j];
-            if (p >= 0) {
+    const int J = static_cast<int>(pose_.size());
+    if (J > 0 && poseParents_.size() == pose_.size()) {
+        for (int j = 0; j < J; ++j) {
+            const int p = poseParents_[j];
+            if (p >= 0 && p < J) {
                 DrawCapsule(pose_[p], pose_[j], 0.035f, 6, 6,
                             Color{120, 170, 255, 255});
             }
         }
-        for (int j = 0; j < kSomaJoints; ++j) {
+        for (int j = 0; j < J; ++j) {
             DrawSphere(pose_[j], j == 0 ? 0.09f : 0.055f,
                        j == 0 ? YELLOW : SKYBLUE);
         }

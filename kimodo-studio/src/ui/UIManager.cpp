@@ -7,6 +7,8 @@
 #include "library/AnimationLibrary.h"
 #include "models/ModelManager.h"
 #include "raylib.h"
+#include "retarget/Retargeter.h"
+#include "retarget/SkeletonProfile.h"
 #include "rendering/Viewport.h"
 #include "rlImGui.h"
 #include "ui/Toast.h"
@@ -23,6 +25,7 @@ const char* screenLabel(Screen s) {
         case Screen::Generate: return "Generate";
         case Screen::Models: return "Models";
         case Screen::Library: return "Library";
+        case Screen::Retarget: return "Retarget";
         case Screen::Settings: return "Settings";
     }
     return "Home";
@@ -44,13 +47,11 @@ bool fileStatus(const std::string& path, std::string& detail) {
 
 void openEntry(AnimationLibrary& library, const LibraryEntry& e, AnimationPlayer& player,
                Toasts& toasts) {
-    MotionResult m;
-    if (!library.loadMotion(e, m)) {
+    Animation anim;
+    if (!library.loadAnimation(e, anim)) {
         toasts.push("Could not open animation", ToastKind::Error);
         return;
     }
-    Animation anim;
-    anim.fromMotionResult(m, e.fps);
     player.load(anim);
     toasts.push("Animation opened", ToastKind::Success);
 }
@@ -228,9 +229,157 @@ void drawModels(AppState& state, ModelManager& models, KimodoEngine& engine,
     ImGui::TextDisabled("Hugging Face downloads arrive in Phase 6.");
 }
 
+void drawRetarget(AppState& state, AnimationLibrary& library, AnimationPlayer& player,
+                  Toasts& toasts) {
+    const std::vector<LibraryEntry> entries = library.entries();
+    if (entries.empty()) {
+        ImGui::TextDisabled("Library empty. Generate an animation first.");
+        return;
+    }
+    static std::string targetId = "unreal-manny";
+    static BoneMap map;
+    static bool mapInit = false;
+    static float rootScale = 1.0f;
+    static std::string cachedSource;
+    static Animation sourceAnim;
+
+    // Source combo.
+    int srcIdx = 0;
+    for (size_t i = 0; i < entries.size(); ++i) {
+        if (entries[i].id == state.retargetSource) {
+            srcIdx = static_cast<int>(i);
+        }
+    }
+    if (state.retargetSource.empty()) {
+        state.retargetSource = entries.back().id;
+        srcIdx = static_cast<int>(entries.size() - 1);
+    }
+    if (ImGui::BeginCombo("Source", entries[srcIdx].prompt.c_str())) {
+        for (size_t i = 0; i < entries.size(); ++i) {
+            const bool sel = (static_cast<int>(i) == srcIdx);
+            if (ImGui::Selectable(entries[i].prompt.c_str(), sel)) {
+                state.retargetSource = entries[i].id;
+            }
+            if (sel) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+    const LibraryEntry& src = entries[srcIdx];
+
+    // Target combo.
+    const std::vector<SkeletonProfile>& profiles = targetProfiles();
+    int tgtIdx = 0;
+    for (size_t i = 0; i < profiles.size(); ++i) {
+        if (profiles[i].id == targetId) {
+            tgtIdx = static_cast<int>(i);
+        }
+    }
+    if (ImGui::BeginCombo("Target", profiles[tgtIdx].name.c_str())) {
+        for (size_t i = 0; i < profiles.size(); ++i) {
+            const bool sel = (static_cast<int>(i) == tgtIdx);
+            if (ImGui::Selectable(profiles[i].name.c_str(), sel)) {
+                targetId = profiles[i].id;
+                mapInit = false;
+            }
+            if (sel) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+    const SkeletonProfile& profile = profiles[tgtIdx];
+
+    // (Re)load source topology when selection changes.
+    if (!mapInit || cachedSource != src.id) {
+        if (library.loadAnimation(src, sourceAnim)) {
+            map = Retargeter::autoMap(profile);
+            mapInit = true;
+            cachedSource = src.id;
+        } else {
+            ImGui::TextDisabled("Could not load source animation.");
+            return;
+        }
+    }
+
+    const std::vector<std::string> missing = Retargeter::unmapped(profile, map);
+    ImGui::Text("Source skeleton: %s", sourceAnim.skeletonName.c_str());
+    if (!missing.empty()) {
+        ImGui::TextColored(ImVec4(0.95f, 0.75f, 0.25f, 1.0f), "%llu joints need manual mapping",
+                           static_cast<unsigned long long>(missing.size()));
+    } else {
+        ImGui::TextDisabled("All joints mapped.");
+    }
+    if (ImGui::Button("Auto Map")) {
+        map = Retargeter::autoMap(profile);
+    }
+    ImGui::SameLine();
+    ImGui::SliderFloat("Root scale", &rootScale, 0.5f, 1.5f);
+
+    ImGui::Separator();
+    ImGui::Text("Mapping");
+    std::vector<std::string> items = {"(none)"};
+    for (const std::string& n : sourceAnim.jointNames) {
+        items.push_back(n);
+    }
+    std::vector<const char*> itemPtrs;
+    for (const std::string& n : items) {
+        itemPtrs.push_back(n.c_str());
+    }
+    for (const std::string& tgt : profile.joints) {
+        ImGui::PushID(tgt.c_str());
+        int cur = 0;
+        const auto it = map.find(tgt);
+        if (it != map.end()) {
+            for (size_t k = 0; k < items.size(); ++k) {
+                if (items[k] == it->second) {
+                    cur = static_cast<int>(k);
+                }
+            }
+        }
+        if (ImGui::Combo(tgt.c_str(), &cur, itemPtrs.data(),
+                         static_cast<int>(itemPtrs.size()))) {
+            map[tgt] = items[cur];
+        }
+        ImGui::PopID();
+    }
+
+    ImGui::Separator();
+    if (ImGui::Button("Preview")) {
+        Animation out;
+        std::string error;
+        Retargeter::Options opts;
+        opts.rootScale = rootScale;
+        if (Retargeter::retarget(sourceAnim, profile, map, opts, out, error)) {
+            player.load(out);
+            toasts.push("Retarget preview loaded", ToastKind::Success);
+        } else {
+            toasts.push("Retarget failed: " + error, ToastKind::Error);
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Apply (save)")) {
+        Animation out;
+        std::string error;
+        Retargeter::Options opts;
+        opts.rootScale = rootScale;
+        if (Retargeter::retarget(sourceAnim, profile, map, opts, out, error)) {
+            LibraryEntry saved;
+            if (library.saveAnimation(src.prompt + " [" + profile.id + "]", src.model,
+                                      out, saved)) {
+                toasts.push("Retargeted animation saved", ToastKind::Success);
+            } else {
+                toasts.push("Save failed", ToastKind::Error);
+            }
+        } else {
+            toasts.push("Retarget failed: " + error, ToastKind::Error);
+        }
+    }
+}
+
 void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
                  AnimationPlayer& player, Toasts& toasts, UIManager::CaptureFn& capture) {
-    (void)state;
     const std::vector<LibraryEntry> entries = library.entries();
     ImGui::Text("Animations (%llu)", static_cast<unsigned long long>(entries.size()));
     ImGui::Separator();
@@ -272,6 +421,11 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
         ImGui::SameLine();
         if (capture && ImGui::SmallButton("Thumbnail")) {
             capture(e);
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Retarget")) {
+            state.retargetSource = e.id;
+            state.screen = Screen::Retarget;
         }
         ImGui::SameLine();
         if (ImGui::SmallButton("Delete")) {
@@ -449,8 +603,8 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
     ImGui::SetNextWindowSize(ImVec2(sideW, (float)sh - topH - statusH));
     ImGui::Begin("Sidebar", nullptr,
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
-    const Screen items[] = {Screen::Home, Screen::Generate, Screen::Models,
-                            Screen::Library, Screen::Settings};
+    const Screen items[] = {Screen::Home,       Screen::Generate, Screen::Models,
+                            Screen::Library, Screen::Retarget, Screen::Settings};
     for (Screen item : items) {
         if (ImGui::Selectable(screenLabel(item), state.screen == item)) {
             state.screen = item;
@@ -478,6 +632,7 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         case Screen::Library:
             drawLibrary(this, state, library, player, toasts, capture);
             break;
+        case Screen::Retarget: drawRetarget(state, library, player, toasts); break;
         case Screen::Settings: drawSettings(state, engine, toasts); break;
     }
     ImGui::Spacing();

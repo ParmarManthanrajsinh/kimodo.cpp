@@ -27,6 +27,9 @@ public:
     // localXyzw: joints*4 floats, root: 3 floats. out: joints Vector3.
     static void forwardKinematics(const float* localXyzw, const float* root,
                                   std::vector<Vector3>& out);
+    static void forwardKinematicsGeneral(
+        const float* localXyzw, const float* root, const std::vector<int>& parents,
+        const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& out);
     static const std::array<int, kSomaJoints>& parents() {
         return Soma30Spec::parents;
     }

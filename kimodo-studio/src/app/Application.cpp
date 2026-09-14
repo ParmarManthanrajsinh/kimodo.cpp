@@ -51,8 +51,8 @@ void Application::pollEngine() {
             Logger::instance().info("Viewport: animation loaded, " +
                                     std::to_string(anim.frames) + " frames");
             LibraryEntry saved;
-            if (library_.save(engine_.lastPrompt(), "soma-rp-v1.1", anim.fps, result,
-                              saved)) {
+            if (library_.saveAnimation(engine_.lastPrompt(), "soma-rp-v1.1", anim,
+                                       saved)) {
                 toasts_.push("Animation saved to library", ToastKind::Success);
                 pendingThumb_ = AnimationLibrary::thumbPath(saved).string();
             } else {
@@ -68,13 +68,11 @@ void Application::pollEngine() {
 }
 
 void Application::captureThumbFile(const LibraryEntry& entry) {
-    MotionResult result;
-    if (!library_.loadMotion(entry, result)) {
+    Animation anim;
+    if (!library_.loadAnimation(entry, anim)) {
         toasts_.push("Could not open animation", ToastKind::Error);
         return;
     }
-    Animation anim;
-    anim.fromMotionResult(result, entry.fps);
     player_.load(anim);
     pendingThumb_ = AnimationLibrary::thumbPath(entry).string();
     toasts_.push("Thumbnail captured", ToastKind::Success);
@@ -86,7 +84,7 @@ void Application::run() {
         pollEngine();
         player_.update(GetFrameTime());
         if (player_.hasAnimation()) {
-            viewport_.setPose(player_.worldPositions());
+            viewport_.setPose(player_.worldPositions(), player_.poseParents());
         }
         viewport_.update();
 

@@ -4,7 +4,7 @@
 
 namespace studio {
 
-enum class Screen { Home, Generate, Models, Library, Settings };
+enum class Screen { Home, Generate, Models, Library, Retarget, Settings };
 
 struct AppState {
     Screen screen = Screen::Generate;
@@ -20,6 +20,7 @@ struct AppState {
     std::string motionPath = "E:/kimodo.cpp/models/kimodo-soma-rp-v1.1-f32.gguf";
     std::string textBundle = "E:/kimodo.cpp/generated/llm2vec-text-bundle";
     std::string hfUser; // verified Hugging Face account, empty = not connected
+    std::string retargetSource; // library id selected for retargeting
 };
 
 } // namespace studio

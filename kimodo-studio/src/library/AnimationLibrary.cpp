@@ -1,5 +1,7 @@
 #include "library/AnimationLibrary.h"
 
+#include "animation/Skeleton.h"
+
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
@@ -143,45 +145,9 @@ bool AnimationLibrary::readMetadata(const std::filesystem::path& dir, LibraryEnt
     return true;
 }
 
-bool AnimationLibrary::save(const std::string& prompt, const std::string& model, float fps,
-                            const MotionResult& motion, LibraryEntry& out) {
-    static int counter = 0;
-    out.id = "anim-" + nowStamp() + "-" + std::to_string(++counter);
-    out.prompt = prompt;
-    out.model = model;
-    out.createdAt = nowStamp();
-    out.fps = fps;
-    out.frames = motion.frames;
-    out.joints = motion.joints;
-    out.dir = base_ / out.id;
+namespace {
 
-    std::error_code ec;
-    std::filesystem::create_directories(out.dir, ec);
-    std::ofstream bin(out.dir / "motion.bin", std::ios::binary | std::ios::trunc);
-    if (!bin) {
-        return false;
-    }
-    const uint32_t frames = static_cast<uint32_t>(motion.frames);
-    const uint32_t joints = static_cast<uint32_t>(motion.joints);
-    bin.write(reinterpret_cast<const char*>(&frames), sizeof(frames));
-    bin.write(reinterpret_cast<const char*>(&joints), sizeof(joints));
-    bin.write(reinterpret_cast<const char*>(&fps), sizeof(fps));
-    bin.write(reinterpret_cast<const char*>(motion.localRotationsXyzw.data()),
-              static_cast<std::streamsize>(motion.localRotationsXyzw.size() * sizeof(float)));
-    bin.write(reinterpret_cast<const char*>(motion.rootPositions.data()),
-              static_cast<std::streamsize>(motion.rootPositions.size() * sizeof(float)));
-    if (!bin || !writeMetadata(out.dir, out)) {
-        return false;
-    }
-    entries_.push_back(out);
-    return true;
-}
-
-bool AnimationLibrary::loadMotion(const LibraryEntry& entry, MotionResult& out) const {
-    std::ifstream bin(entry.dir / "motion.bin", std::ios::binary);
-    if (!bin) {
-        return false;
-    }
+bool readAnimData(std::ifstream& bin, Animation& out) {
     uint32_t frames = 0, joints = 0;
     float fps = 30.0f;
     bin.read(reinterpret_cast<char*>(&frames), sizeof(frames));
@@ -192,6 +158,7 @@ bool AnimationLibrary::loadMotion(const LibraryEntry& entry, MotionResult& out) 
     }
     out.frames = static_cast<int>(frames);
     out.joints = static_cast<int>(joints);
+    out.fps = fps;
     out.localRotationsXyzw.resize(static_cast<size_t>(frames) * joints * 4);
     out.rootPositions.resize(static_cast<size_t>(frames) * 3);
     bin.read(reinterpret_cast<char*>(out.localRotationsXyzw.data()),
@@ -199,6 +166,146 @@ bool AnimationLibrary::loadMotion(const LibraryEntry& entry, MotionResult& out) 
     bin.read(reinterpret_cast<char*>(out.rootPositions.data()),
              static_cast<std::streamsize>(out.rootPositions.size() * sizeof(float)));
     return static_cast<bool>(bin);
+}
+
+void writeU32(std::ofstream& bin, uint32_t v) {
+    bin.write(reinterpret_cast<const char*>(&v), sizeof(v));
+}
+
+bool readU32(std::ifstream& bin, uint32_t& v) {
+    bin.read(reinterpret_cast<char*>(&v), sizeof(v));
+    return static_cast<bool>(bin);
+}
+
+} // namespace
+
+bool AnimationLibrary::saveAnimation(const std::string& prompt, const std::string& model,
+                                     const Animation& anim, LibraryEntry& out) {
+    static int counter = 0;
+    out.id = "anim-" + nowStamp() + "-" + std::to_string(++counter);
+    out.prompt = prompt;
+    out.model = model;
+    out.createdAt = nowStamp();
+    out.fps = anim.fps;
+    out.frames = anim.frames;
+    out.joints = anim.joints;
+    out.skeleton = anim.skeletonName;
+    out.dir = base_ / out.id;
+
+    std::error_code ec;
+    std::filesystem::create_directories(out.dir, ec);
+    std::ofstream bin(out.dir / "motion.bin", std::ios::binary | std::ios::trunc);
+    if (!bin) {
+        return false;
+    }
+    bin.write("KAMD", 4);
+    writeU32(bin, 2); // version
+    writeU32(bin, static_cast<uint32_t>(anim.frames));
+    writeU32(bin, static_cast<uint32_t>(anim.joints));
+    bin.write(reinterpret_cast<const char*>(&anim.fps), sizeof(anim.fps));
+    writeU32(bin, static_cast<uint32_t>(anim.jointNames.size()));
+    for (const std::string& n : anim.jointNames) {
+        writeU32(bin, static_cast<uint32_t>(n.size()));
+        bin.write(n.data(), static_cast<std::streamsize>(n.size()));
+    }
+    writeU32(bin, static_cast<uint32_t>(anim.parents.size()));
+    for (int p : anim.parents) {
+        const int32_t v = p;
+        bin.write(reinterpret_cast<const char*>(&v), sizeof(v));
+    }
+    writeU32(bin, static_cast<uint32_t>(anim.offsets.size()));
+    for (const auto& o : anim.offsets) {
+        bin.write(reinterpret_cast<const char*>(o.data()),
+                  static_cast<std::streamsize>(3 * sizeof(float)));
+    }
+    bin.write(reinterpret_cast<const char*>(anim.localRotationsXyzw.data()),
+              static_cast<std::streamsize>(anim.localRotationsXyzw.size() * sizeof(float)));
+    bin.write(reinterpret_cast<const char*>(anim.rootPositions.data()),
+              static_cast<std::streamsize>(anim.rootPositions.size() * sizeof(float)));
+    if (!bin || !writeMetadata(out.dir, out)) {
+        return false;
+    }
+    entries_.push_back(out);
+    return true;
+}
+
+bool AnimationLibrary::loadAnimation(const LibraryEntry& entry, Animation& out) const {
+    std::ifstream bin(entry.dir / "motion.bin", std::ios::binary);
+    if (!bin) {
+        return false;
+    }
+    char magic[4] = {};
+    bin.read(magic, 4);
+    if (!bin) {
+        return false;
+    }
+    if (std::string(magic, 4) != "KAMD") {
+        // Legacy v1: rewind, topology defaults to SOMA.
+        bin.clear();
+        bin.seekg(0);
+        if (!readAnimData(bin, out)) {
+            return false;
+        }
+        Animation soma;
+        soma.frames = out.frames;
+        soma.joints = out.joints;
+        soma.fps = out.fps;
+        soma.skeletonName = "soma30";
+        soma.jointNames.assign(Soma30Spec::names.begin(), Soma30Spec::names.end());
+        soma.parents.assign(Soma30Spec::parents.begin(), Soma30Spec::parents.end());
+        soma.offsets.assign(Soma30Spec::offsets.begin(), Soma30Spec::offsets.end());
+        soma.localRotationsXyzw = std::move(out.localRotationsXyzw);
+        soma.rootPositions = std::move(out.rootPositions);
+        out = std::move(soma);
+        return true;
+    }
+    uint32_t version = 0;
+    if (!readU32(bin, version) || version != 2) {
+        return false;
+    }
+    if (!readAnimData(bin, out)) {
+        return false;
+    }
+    uint32_t count = 0;
+    if (!readU32(bin, count) || count > 512) {
+        return false;
+    }
+    out.jointNames.resize(count);
+    for (uint32_t i = 0; i < count; ++i) {
+        uint32_t len = 0;
+        if (!readU32(bin, len) || len > 256) {
+            return false;
+        }
+        out.jointNames[i].resize(len);
+        bin.read(out.jointNames[i].data(), len);
+        if (!bin) {
+            return false;
+        }
+    }
+    if (!readU32(bin, count) || count > 512) {
+        return false;
+    }
+    out.parents.resize(count);
+    for (uint32_t i = 0; i < count; ++i) {
+        int32_t v = 0;
+        bin.read(reinterpret_cast<char*>(&v), sizeof(v));
+        if (!bin) {
+            return false;
+        }
+        out.parents[i] = v;
+    }
+    if (!readU32(bin, count) || count > 512) {
+        return false;
+    }
+    out.offsets.resize(count);
+    for (uint32_t i = 0; i < count; ++i) {
+        bin.read(reinterpret_cast<char*>(out.offsets[i].data()),
+                 static_cast<std::streamsize>(3 * sizeof(float)));
+        if (!bin) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool AnimationLibrary::rename(const std::string& id, const std::string& newPrompt) {
@@ -214,12 +321,12 @@ bool AnimationLibrary::rename(const std::string& id, const std::string& newPromp
 bool AnimationLibrary::duplicate(const std::string& id) {
     for (const LibraryEntry& e : entries_) {
         if (e.id == id) {
-            MotionResult m;
-            if (!loadMotion(e, m)) {
+            Animation anim;
+            if (!loadAnimation(e, anim)) {
                 return false;
             }
             LibraryEntry copy;
-            return save(e.prompt, e.model, e.fps, m, copy);
+            return saveAnimation(e.prompt, e.model, anim, copy);
         }
     }
     return false;

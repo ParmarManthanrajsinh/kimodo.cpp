@@ -15,7 +15,10 @@ public:
     void draw3D() const;
     float distance() const { return dist_; }
 
-    void setPose(std::vector<Vector3> pose) { pose_ = std::move(pose); }
+    void setPose(std::vector<Vector3> pose, std::vector<int> parents) {
+        pose_ = std::move(pose);
+        poseParents_ = std::move(parents);
+    }
     bool hasPose() const { return !pose_.empty(); }
 
 private:
@@ -28,6 +31,7 @@ private:
     mutable Camera3D camera_ = {};
     GridRenderer grid_;
     std::vector<Vector3> pose_;
+    std::vector<int> poseParents_;
 };
 
 } // namespace studio

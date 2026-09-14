@@ -50,19 +50,29 @@ std::array<std::array<float, 3>, kSomaJoints> Soma30Spec::offsets{{
 
 void Skeleton::forwardKinematics(const float* localXyzw, const float* root,
                                  std::vector<Vector3>& out) {
-    out.resize(kSomaJoints);
-    Quaternion worldRot[kSomaJoints];
-    for (int j = 0; j < kSomaJoints; ++j) {
+    std::vector<int> parents(Soma30Spec::parents.begin(), Soma30Spec::parents.end());
+    std::vector<std::array<float, 3>> offsets(Soma30Spec::offsets.begin(),
+                                              Soma30Spec::offsets.end());
+    forwardKinematicsGeneral(localXyzw, root, parents, offsets, out);
+}
+
+void Skeleton::forwardKinematicsGeneral(
+    const float* localXyzw, const float* root, const std::vector<int>& parents,
+    const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& out) {
+    const int J = static_cast<int>(parents.size());
+    out.resize(J);
+    std::vector<Quaternion> worldRot(J);
+    for (int j = 0; j < J; ++j) {
         Quaternion local{localXyzw[j * 4], localXyzw[j * 4 + 1],
                          localXyzw[j * 4 + 2], localXyzw[j * 4 + 3]};
         local = QuaternionNormalize(local);
-        const int p = Soma30Spec::parents[j];
-        if (p < 0) {
+        const int p = parents[j];
+        if (p < 0 || p >= J) {
             worldRot[j] = local;
             out[j] = {root[0], root[1], root[2]};
         } else {
             worldRot[j] = QuaternionMultiply(worldRot[p], local);
-            const auto& o = Soma30Spec::offsets[j];
+            const auto& o = offsets[j];
             Vector3 off = Vector3RotateByQuaternion({o[0], o[1], o[2]}, worldRot[p]);
             out[j] = Vector3Add(out[p], off);
         }

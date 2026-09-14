@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "kimodo/KimodoAdapter.h" // MotionResult
+#include "animation/Animation.h"
 
 namespace studio {
 
@@ -22,7 +22,9 @@ struct LibraryEntry {
 
 // Persisted animation library (plan section 11):
 //   animations/<id>/metadata.json + motion.bin
-// motion.bin: u32 frames, u32 joints, f32 fps, rots[], roots[].
+// motion.bin v1 (legacy): u32 frames, u32 joints, f32 fps, rots[], roots[].
+// motion.bin v2: "KAMD", u32 version=2, frames, joints, f32 fps,
+//   topology (names, parents, offsets), rots[], roots[].
 class AnimationLibrary {
 public:
     bool init(const std::filesystem::path& baseDir);
@@ -30,9 +32,9 @@ public:
 
     const std::vector<LibraryEntry>& entries() const { return entries_; }
 
-    bool save(const std::string& prompt, const std::string& model, float fps,
-              const MotionResult& motion, LibraryEntry& out);
-    bool loadMotion(const LibraryEntry& entry, MotionResult& out) const;
+    bool saveAnimation(const std::string& prompt, const std::string& model,
+                       const Animation& anim, LibraryEntry& out);
+    bool loadAnimation(const LibraryEntry& entry, Animation& out) const;
     bool rename(const std::string& id, const std::string& newPrompt);
     bool duplicate(const std::string& id);
     bool remove(const std::string& id);

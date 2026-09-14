@@ -5,6 +5,8 @@
 #include "huggingface/HuggingFaceClient.h"
 #include "kimodo/KimodoAdapter.h"
 #include "models/ModelManager.h"
+#include "retarget/Retargeter.h"
+#include "retarget/SkeletonProfile.h"
 #include "utils/Logger.h"
 
 #include <cmath>
@@ -90,6 +92,34 @@ int selftest(const char* framesArg, const char* stepsArg) {
     std::printf("selftest: mid scrub frame=%d hips=(%.3f %.3f %.3f)\n", player.frame(),
                 player.worldPositions()[0].x, player.worldPositions()[0].y,
                 player.worldPositions()[0].z);
+    // Phase 9: retarget SOMA -> Manny, verify topology + rotation copy.
+    const studio::SkeletonProfile* manny = studio::findProfile("unreal-manny");
+    if (!manny) {
+        std::printf("selftest: RETARGET FAILED: no manny profile\n");
+        return 1;
+    }
+    studio::BoneMap map = studio::Retargeter::autoMap(*manny);
+    const auto missing = studio::Retargeter::unmapped(*manny, map);
+    studio::Animation out;
+    std::string rerror;
+    studio::Retargeter::Options ropts;
+    if (!studio::Retargeter::retarget(anim, *manny, map, ropts, out, rerror)) {
+        std::printf("selftest: RETARGET FAILED: %s\n", rerror.c_str());
+        return 1;
+    }
+    std::printf("selftest: retarget joints=%d missing=%llu\n", out.joints,
+                static_cast<unsigned long long>(missing.size()));
+    if (out.joints != 22 || out.frames != anim.frames) {
+        std::printf("selftest: RETARGET FAILED: bad dims\n");
+        return 1;
+    }
+    // pelvis (target 0) must equal Hips (source 0) frame 0.
+    const float* q = out.localRotationsXyzw.data();
+    const float* s = anim.localRotationsXyzw.data();
+    if (q[0] != s[0] || q[1] != s[1] || q[2] != s[2] || q[3] != s[3]) {
+        std::printf("selftest: RETARGET FAILED: pelvis quat != Hips quat\n");
+        return 1;
+    }
     return 0;
 }
 } // namespace
