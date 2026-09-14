@@ -4,6 +4,7 @@
 #include "imgui.h"
 #include "kimodo/KimodoEngine.h"
 #include "library/AnimationLibrary.h"
+#include "models/ModelManager.h"
 #include "raylib.h"
 #include "rendering/Viewport.h"
 #include "ui/Toast.h"
@@ -139,27 +140,81 @@ void drawGenerate(AppState& state, KimodoEngine& engine) {
     ImGui::TextWrapped("Status: %s", engine.message().c_str());
 }
 
-void drawModels(AppState& state) {
+void drawModels(AppState& state, ModelManager& models, KimodoEngine& engine,
+                Toasts& toasts) {
+    if (models.busy()) {
+        ImGui::ProgressBar(models.taskProgress(), ImVec2(-1, 0),
+                           models.taskLabel().c_str());
+        ImGui::Spacing();
+    } else if (models.task() == ModelTask::None && !models.taskLabel().empty() &&
+               models.taskLabel() != "idle") {
+        ImGui::TextWrapped("%s", models.taskLabel().c_str());
+        ImGui::Spacing();
+    }
+
     ImGui::Text("Installed");
     ImGui::Separator();
-    std::string detail;
-    const bool motionOk = fileStatus(state.motionPath, detail);
-    ImGui::Text("SOMA RP v1.1");
-    ImGui::TextDisabled("%s", detail.c_str());
-    ImGui::TextDisabled("%s", state.motionPath.c_str());
-    ImGui::Spacing();
+    const std::vector<ModelEntry> entries = models.entries();
+    const std::string activeId = models.activeId();
+    static std::string confirmDelete;
+    static char importBuf[1024] = "";
+    for (size_t i = 0; i < entries.size(); ++i) {
+        const ModelEntry& e = entries[i];
+        ImGui::PushID(static_cast<int>(i));
+        ImGui::Text("%s  %s", e.name.c_str(),
+                    e.id == activeId ? "(active)" : "");
+        ImGui::TextDisabled("%s - v%s - %s", e.skeleton.c_str(), e.version.c_str(),
+                            e.license.c_str());
+        if (e.installed) {
+            ImGui::TextDisabled("%.2f GB - %s",
+                                static_cast<double>(e.localBytes) / 1e9,
+                                e.localPath.c_str());
+            if (e.id != activeId) {
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Select") && !models.busy()) {
+                    if (models.select(e.id)) {
+                        toasts.push("Model selected: " + e.name, ToastKind::Success);
+                    }
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Verify") && !models.busy() && !engine.busy()) {
+                models.verifyAsync(e.id);
+            }
+            ImGui::SameLine();
+            if (confirmDelete == e.id) {
+                if (ImGui::SmallButton("Confirm?")) {
+                    models.deleteAsync(e.id);
+                    confirmDelete.clear();
+                }
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Keep")) {
+                    confirmDelete.clear();
+                }
+            } else if (ImGui::SmallButton("Delete") && !models.busy()) {
+                confirmDelete = e.id;
+            }
+        } else {
+            ImGui::TextDisabled("not installed (%.2f GB)",
+                                static_cast<double>(e.sizeBytes) / 1e9);
+            ImGui::InputText("Local .gguf", importBuf, sizeof(importBuf));
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Import") && !models.busy() && importBuf[0]) {
+                models.importAsync(importBuf, e.id);
+            }
+        }
+        ImGui::Separator();
+        ImGui::PopID();
+    }
+
+    ImGui::Text("Text bundle");
+    ImGui::Separator();
     std::error_code ec;
-    const bool bundleOk =
-        std::filesystem::is_directory(state.textBundle, ec) && !ec;
-    ImGui::Text("LLM2Vec text bundle");
+    const bool bundleOk = std::filesystem::is_directory(state.textBundle, ec) && !ec;
     ImGui::TextDisabled("%s", bundleOk ? "present" : "missing");
     ImGui::TextDisabled("%s", state.textBundle.c_str());
     ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::TextDisabled("GUI install, downloads and verification arrive in Phase 5.");
-    if (!motionOk || !bundleOk) {
-        ImGui::TextDisabled("Point Settings at a local model to generate.");
-    }
+    ImGui::TextDisabled("Hugging Face downloads arrive in Phase 6.");
 }
 
 void drawLibrary(AppState& state, AnimationLibrary& library, AnimationPlayer& player,
@@ -267,7 +322,8 @@ void drawSettings(AppState& state, KimodoEngine& engine, Toasts& toasts) {
 } // namespace
 
 void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
-                     AnimationPlayer& player, AnimationLibrary& library, Toasts& toasts) {
+                     AnimationPlayer& player, AnimationLibrary& library,
+                     ModelManager& models, Toasts& toasts) {
     const float topH = 36.0f;
     const float sideW = 180.0f;
     const float statusH = 26.0f;
@@ -317,7 +373,7 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
     switch (state.screen) {
         case Screen::Home: drawHome(state, library, player, toasts); break;
         case Screen::Generate: drawGenerate(state, engine); break;
-        case Screen::Models: drawModels(state); break;
+        case Screen::Models: drawModels(state, models, engine, toasts); break;
         case Screen::Library: drawLibrary(state, library, player, toasts); break;
         case Screen::Settings: drawSettings(state, engine, toasts); break;
     }

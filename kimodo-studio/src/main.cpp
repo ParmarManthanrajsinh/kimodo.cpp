@@ -2,6 +2,7 @@
 #include "animation/AnimationPlayer.h"
 #include "app/Application.h"
 #include "kimodo/KimodoAdapter.h"
+#include "models/ModelManager.h"
 #include "utils/Logger.h"
 
 #include <cmath>
@@ -11,6 +12,22 @@
 namespace {
 int selftest(const char* framesArg, const char* stepsArg) {
     studio::Logger::instance().init(studio::Logger::defaultLogFile());
+    studio::ModelManager models;
+    models.init(std::string(KIMODO_STUDIO_SOURCE_DIR) + "/config/models.json",
+                "E:/kimodo.cpp/models",
+                "E:/kimodo.cpp/generated/llm2vec-text-bundle");
+    const auto entries = models.entries();
+    std::printf("selftest: registry models=%llu active=%s\n",
+                static_cast<unsigned long long>(entries.size()),
+                models.activeId().c_str());
+    for (const auto& e : entries) {
+        std::printf("selftest: model %s installed=%d license=%s\n", e.id.c_str(),
+                    e.installed ? 1 : 0, e.license.c_str());
+    }
+    if (entries.empty()) {
+        std::printf("selftest: REGISTRY FAILED: no entries\n");
+        return 1;
+    }
     studio::KimodoAdapter adapter;
     int abi = studio::KimodoAdapter::abiVersion();
     std::printf("selftest: kimodo abi=%d\n", abi);

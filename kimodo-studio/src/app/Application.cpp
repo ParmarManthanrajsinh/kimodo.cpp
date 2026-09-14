@@ -23,6 +23,15 @@ bool Application::init() {
     Theme::apply();
 
     state_.gpuName = "default GPU";
+    models_.init(std::string(KIMODO_STUDIO_SOURCE_DIR) + "/config/models.json",
+                 "E:/kimodo.cpp/models", state_.textBundle);
+    // Active registry model wins over baked-in defaults.
+    {
+        ModelEntry active;
+        if (models_.findCopy(models_.activeId(), active) && active.installed) {
+            state_.motionPath = active.localPath;
+        }
+    }
     engine_.setPaths(state_.motionPath, state_.textBundle);
     library_.init(AnimationLibrary::defaultBaseDir());
     viewport_.reset();
@@ -69,9 +78,27 @@ void Application::run() {
 
         BeginDrawing();
         ClearBackground(Color{18, 18, 22, 255});
+        // Model selection changes apply to the engine (model reloads lazily).
+        // Edge-triggered on active id so Settings custom paths are not clobbered.
+        {
+            const std::string activeId = models_.activeId();
+            if (lastActiveId_.empty()) {
+                lastActiveId_ = activeId;
+            }
+            if (activeId != lastActiveId_) {
+                lastActiveId_ = activeId;
+                ModelEntry active;
+                if (models_.findCopy(activeId, active) && active.installed &&
+                    !engine_.busy()) {
+                    state_.motionPath = active.localPath;
+                    engine_.setPaths(state_.motionPath, state_.textBundle);
+                    engine_.unloadModel();
+                }
+            }
+        }
         viewport_.draw3D();
         rlImGuiBegin();
-        ui_.draw(state_, viewport_, engine_, player_, library_, toasts_);
+        ui_.draw(state_, viewport_, engine_, player_, library_, models_, toasts_);
         toasts_.draw();
         rlImGuiEnd();
         EndDrawing();
@@ -80,6 +107,7 @@ void Application::run() {
 
 void Application::shutdown() {
     engine_.shutdown();
+    models_.shutdown();
     rlImGuiShutdown();
     if (IsWindowReady()) {
         CloseWindow();

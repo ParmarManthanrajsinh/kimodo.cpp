@@ -1,0 +1,15 @@
+{
+    "models": [
+        {
+            "id": "soma-rp-v1.1",
+            "name": "SOMA RP v1.1",
+            "skeleton": "soma30",
+            "version": "1.1",
+            "license": "See upstream model terms before redistribution",
+            "source": "huggingface.co (Kimodo SOMA RP)",
+            "motionFile": "kimodo-soma-rp-v1.1-f32.gguf",
+            "sha256": "3bf1229f4c1eff1d28f5196a854113da2df9a11a5e21c60694630903bf948ee4",
+            "sizeBytes": 1133166784
+        }
+    ]
+}
