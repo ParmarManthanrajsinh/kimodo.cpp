@@ -16,6 +16,8 @@ struct ModelEntry {
     std::string license;
     std::string source;        // hugging face repo
     std::string motionFile;    // expected filename
+    std::string repo;          // hugging face repo id, may be empty
+    std::string remotePath;    // path inside repo, may be empty
     std::string sha256;        // expected hex, may be empty
     uint64_t sizeBytes = 0;
 
@@ -25,7 +27,7 @@ struct ModelEntry {
     uint64_t localBytes = 0;
 };
 
-enum class ModelTask { None, Verify, Import, Delete };
+enum class ModelTask { None, Verify, Import, Delete, Download };
 
 // Local model registry + detection + maintenance worker.
 // UI polls taskLabel()/taskProgress(); worker never touches UI.
@@ -57,11 +59,14 @@ public:
     void verifyAsync(const std::string& id);
     void importAsync(const std::string& sourcePath, const std::string& id);
     void deleteAsync(const std::string& id);
+    void downloadAsync(const std::string& id);
+    void cancelTask();
 
 private:
     void runVerify(std::string id);
     void runImport(std::string sourcePath, std::string id);
     void runDelete(std::string id);
+    void runDownload(std::string id);
     void startTask(ModelTask t, const std::string& label);
 
     std::vector<ModelEntry> entries_;
@@ -74,6 +79,7 @@ private:
     std::atomic<ModelTask> task_{ModelTask::None};
     std::atomic<uint64_t> taskDone_{0};
     std::atomic<uint64_t> taskTotal_{0};
+    std::atomic<bool> cancelRequested_{false};
     mutable std::mutex mutex_;
     std::string taskLabel_ = "idle";
 };

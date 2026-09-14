@@ -19,6 +19,7 @@ struct AppState {
     unsigned long long seed = 42;
     std::string motionPath = "E:/kimodo.cpp/models/kimodo-soma-rp-v1.1-f32.gguf";
     std::string textBundle = "E:/kimodo.cpp/generated/llm2vec-text-bundle";
+    std::string hfUser; // verified Hugging Face account, empty = not connected
 };
 
 } // namespace studio

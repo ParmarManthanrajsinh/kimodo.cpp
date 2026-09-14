@@ -1,6 +1,7 @@
 #include "ui/UIManager.h"
 
 #include "animation/AnimationPlayer.h"
+#include "huggingface/HFAuthenticator.h"
 #include "imgui.h"
 #include "kimodo/KimodoEngine.h"
 #include "library/AnimationLibrary.h"
@@ -145,6 +146,9 @@ void drawModels(AppState& state, ModelManager& models, KimodoEngine& engine,
     if (models.busy()) {
         ImGui::ProgressBar(models.taskProgress(), ImVec2(-1, 0),
                            models.taskLabel().c_str());
+        if (ImGui::SmallButton("Cancel")) {
+            models.cancelTask();
+        }
         ImGui::Spacing();
     } else if (models.task() == ModelTask::None && !models.taskLabel().empty() &&
                models.taskLabel() != "idle") {
@@ -197,6 +201,12 @@ void drawModels(AppState& state, ModelManager& models, KimodoEngine& engine,
         } else {
             ImGui::TextDisabled("not installed (%.2f GB)",
                                 static_cast<double>(e.sizeBytes) / 1e9);
+            if (!e.repo.empty()) {
+                ImGui::TextDisabled("from %s", e.repo.c_str());
+                if (ImGui::SmallButton("Download") && !models.busy()) {
+                    models.downloadAsync(e.id);
+                }
+            }
             ImGui::InputText("Local .gguf", importBuf, sizeof(importBuf));
             ImGui::SameLine();
             if (ImGui::SmallButton("Import") && !models.busy() && importBuf[0]) {
@@ -312,6 +322,65 @@ void drawSettings(AppState& state, KimodoEngine& engine, Toasts& toasts) {
     int seed = static_cast<int>(state.seed);
     if (ImGui::InputInt("Seed", &seed) && seed >= 0) {
         state.seed = static_cast<unsigned long long>(seed);
+    }
+    ImGui::Spacing();
+    ImGui::Text("Hugging Face");
+    ImGui::Separator();
+    if (!state.hfUser.empty()) {
+        ImGui::Text("Status: Connected");
+        ImGui::Text("Account: %s", state.hfUser.c_str());
+        if (ImGui::Button("Disconnect")) {
+            HFAuthenticator::clearToken();
+            state.hfUser.clear();
+            toasts.push("Hugging Face disconnected", ToastKind::Info);
+        }
+    } else {
+        static char tokenBuf[512] = "";
+        static bool hasSaved = false;
+        static bool savedChecked = false;
+        if (!savedChecked) {
+            std::string probe;
+            hasSaved = HFAuthenticator::loadToken(probe);
+            savedChecked = true;
+        }
+        if (hasSaved) {
+            ImGui::TextDisabled("Saved token present (not verified).");
+            if (ImGui::Button("Verify")) {
+                std::string saved, error;
+                if (HFAuthenticator::loadToken(saved)) {
+                    const std::string user = HFAuthenticator::validate(saved, error);
+                    if (!user.empty()) {
+                        state.hfUser = user;
+                        toasts.push("Connected as " + user, ToastKind::Success);
+                    } else {
+                        toasts.push("Token invalid: " + error, ToastKind::Error);
+                    }
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Forget")) {
+                HFAuthenticator::clearToken();
+                hasSaved = false;
+            }
+        } else {
+            ImGui::TextDisabled("Paste a Hugging Face access token.");
+            ImGui::InputText("Token", tokenBuf, sizeof(tokenBuf),
+                             ImGuiInputTextFlags_Password);
+            ImGui::SameLine();
+            if (ImGui::Button("Connect") && tokenBuf[0]) {
+                std::string error;
+                const std::string user =
+                    HFAuthenticator::validate(tokenBuf, error);
+                if (!user.empty() && HFAuthenticator::saveToken(tokenBuf, error)) {
+                    state.hfUser = user;
+                    hasSaved = true;
+                    tokenBuf[0] = '\0';
+                    toasts.push("Connected as " + user, ToastKind::Success);
+                } else {
+                    toasts.push("Connect failed: " + error, ToastKind::Error);
+                }
+            }
+        }
     }
     ImGui::Spacing();
     ImGui::Text("Performance");

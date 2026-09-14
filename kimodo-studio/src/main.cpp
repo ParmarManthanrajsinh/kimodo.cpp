@@ -1,12 +1,16 @@
 #include "animation/Animation.h"
 #include "animation/AnimationPlayer.h"
 #include "app/Application.h"
+#include "huggingface/HFAuthenticator.h"
+#include "huggingface/HuggingFaceClient.h"
 #include "kimodo/KimodoAdapter.h"
 #include "models/ModelManager.h"
 #include "utils/Logger.h"
 
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
+#include <fstream>
 #include <string>
 
 namespace {
@@ -90,11 +94,60 @@ int selftest(const char* framesArg, const char* stepsArg) {
 }
 } // namespace
 
+int selftestHf() {
+    studio::Logger::instance().init(studio::Logger::defaultLogFile());
+    std::string error;
+    // Bad token must fail cleanly (401 path).
+    const std::string user =
+        studio::HuggingFaceClient::whoami("hf_invalid_token_for_selftest", error);
+    std::printf("selftest-hf: bad token user='%s' error='%s'\n", user.c_str(),
+                error.c_str());
+    if (!user.empty()) {
+        std::printf("selftest-hf: FAILED: bad token accepted\n");
+        return 1;
+    }
+    // Tiny real download through resolve redirect (SHA256SUMS, <1KB).
+    const std::string url = studio::HuggingFaceClient::resolveUrl(
+        "LocalAI-io/Kimodo-SOMA-RP-v1.1-GGML", "SHA256SUMS");
+    const std::string tmp =
+        std::string(std::getenv("TEMP") ? std::getenv("TEMP") : ".") + "/hf-selftest.txt";
+    std::remove(tmp.c_str());
+    if (!studio::HuggingFaceClient::download(
+            url, tmp, "",
+            [](uint64_t done, uint64_t total) {
+                std::printf("selftest-hf: download %llu/%llu\n",
+                            static_cast<unsigned long long>(done),
+                            static_cast<unsigned long long>(total));
+                return true;
+            },
+            error)) {
+        std::printf("selftest-hf: DOWNLOAD FAILED: %s\n", error.c_str());
+        return 1;
+    }
+    std::ifstream in(tmp);
+    const std::string content{std::istreambuf_iterator<char>(in), {}};
+    std::printf("selftest-hf: bytes=%llu head=%.64s\n",
+                static_cast<unsigned long long>(content.size()), content.c_str());
+    const bool ok = content.rfind(
+                        "3bf1229f4c1eff1d28f5196a854113da2df9a11a5e21c60694630903bf948ee4",
+                        0) == 0;
+    std::remove(tmp.c_str());
+    if (!ok) {
+        std::printf("selftest-hf: FAILED: unexpected content\n");
+        return 1;
+    }
+    std::printf("selftest-hf: OK\n");
+    return 0;
+}
+
 int main(int argc, char** argv) {
     if (argc >= 2 && std::string(argv[1]) == "--selftest") {
         const char* frames = argc >= 3 ? argv[2] : nullptr;
         const char* steps = argc >= 4 ? argv[3] : nullptr;
         return selftest(frames, steps);
+    }
+    if (argc >= 2 && std::string(argv[1]) == "--selftest-hf") {
+        return selftestHf();
     }
     studio::Application app;
     if (!app.init()) {

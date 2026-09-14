@@ -4,6 +4,8 @@
 #include <filesystem>
 #include <fstream>
 
+#include "huggingface/HFAuthenticator.h"
+#include "huggingface/HuggingFaceClient.h"
 #include "utils/Hash.h"
 #include "utils/Logger.h"
 
@@ -95,6 +97,8 @@ bool ModelManager::init(const std::string& registryPath, const std::string& mode
             findString(json, "license", e.license, pos);
             findString(json, "source", e.source, pos);
             findString(json, "motionFile", e.motionFile, pos);
+            findString(json, "repo", e.repo, pos);
+            findString(json, "remotePath", e.remotePath, pos);
             findString(json, "sha256", e.sha256, pos);
             double num = 0;
             if (findNumber(json, "sizeBytes", num, pos)) {
@@ -227,12 +231,17 @@ std::string ModelManager::taskLabel() const {
     return taskLabel_;
 }
 
+void ModelManager::cancelTask() {
+    cancelRequested_.store(true);
+}
+
 void ModelManager::startTask(ModelTask t, const std::string& label) {
     if (worker_.joinable()) {
         worker_.join();
     }
     taskDone_.store(0);
     taskTotal_.store(0);
+    cancelRequested_.store(false);
     {
         std::lock_guard<std::mutex> lock(mutex_);
         taskLabel_ = label;
@@ -262,6 +271,67 @@ void ModelManager::deleteAsync(const std::string& id) {
     }
     startTask(ModelTask::Delete, "Deleting " + id + "...");
     worker_ = std::thread(&ModelManager::runDelete, this, id);
+}
+
+void ModelManager::downloadAsync(const std::string& id) {
+    if (busy()) {
+        return;
+    }
+    startTask(ModelTask::Download, "Downloading " + id + "...");
+    worker_ = std::thread(&ModelManager::runDownload, this, id);
+}
+
+void ModelManager::runDownload(std::string id) {
+    std::string fail;
+    ModelEntry e;
+    if (!findCopy(id, e)) {
+        fail = "unknown model id";
+    } else if (e.repo.empty() || e.remotePath.empty()) {
+        fail = "no Hugging Face source in registry";
+    } else {
+        std::error_code ec;
+        std::filesystem::create_directories(modelDir_, ec);
+        const auto dest = std::filesystem::path(modelDir_) / e.motionFile;
+        const std::string tmp = dest.string() + ".download";
+        std::string token;
+        HFAuthenticator::loadToken(token); // may be empty for public repos
+        const std::string url = HuggingFaceClient::resolveUrl(e.repo, e.remotePath);
+        Logger::instance().info("Model " + id + " download started");
+        const bool ok = HuggingFaceClient::download(
+            url, tmp, token, [this](uint64_t done, uint64_t total) {
+                taskDone_.store(done);
+                taskTotal_.store(total);
+                return !cancelRequested_.load();
+            }, fail);
+        if (!ok) {
+            if (fail.empty()) {
+                fail = "download failed";
+            } else if (fail == "cancelled") {
+                fail = "Download cancelled (resume on next download)";
+            }
+        } else {
+            std::string error;
+            const std::string digest = FileHash::sha256(tmp, error);
+            if (!e.sha256.empty() && digest != e.sha256) {
+                std::filesystem::remove(tmp, ec);
+                fail = "CHECKSUM MISMATCH; download discarded";
+                Logger::instance().error("Model " + id + " download checksum mismatch");
+            } else {
+                std::filesystem::rename(tmp, dest, ec);
+                if (ec) {
+                    fail = "atomic install failed: " + ec.message();
+                } else {
+                    Logger::instance().info("Model " + id + " downloaded + verified");
+                }
+            }
+        }
+    }
+    rescan();
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        taskLabel_ = fail.empty() ? ("Installed " + id) : fail;
+    }
+    task_.store(ModelTask::None);
 }
 
 void ModelManager::runVerify(std::string id) {

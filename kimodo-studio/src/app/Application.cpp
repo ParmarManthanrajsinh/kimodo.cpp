@@ -78,6 +78,17 @@ void Application::run() {
 
         BeginDrawing();
         ClearBackground(Color{18, 18, 22, 255});
+        // Manager task completion surfaces as a toast (edge-triggered).
+        {
+            const bool busyNow = models_.busy();
+            if (lastManagerBusy_ && !busyNow) {
+                const std::string label = models_.taskLabel();
+                if (!label.empty() && label != "idle") {
+                    toasts_.push(label, ToastKind::Info);
+                }
+            }
+            lastManagerBusy_ = busyNow;
+        }
         // Model selection changes apply to the engine (model reloads lazily).
         // Edge-triggered on active id so Settings custom paths are not clobbered.
         {

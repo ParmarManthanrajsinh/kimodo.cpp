@@ -30,6 +30,7 @@ private:
     Toasts toasts_;
     EngineStatus lastEngineStatus_ = EngineStatus::Idle;
     std::string lastActiveId_;
+    bool lastManagerBusy_ = false;
     bool running_ = false;
 };
 

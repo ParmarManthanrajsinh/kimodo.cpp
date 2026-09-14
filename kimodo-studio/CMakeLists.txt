@@ -67,6 +67,8 @@ add_executable(kimodo_studio
     src/ui/Theme.cpp
     src/library/AnimationLibrary.cpp
     src/models/ModelManager.cpp
+    src/huggingface/HuggingFaceClient.cpp
+    src/huggingface/HFAuthenticator.cpp
     src/rendering/Viewport.cpp
     src/rendering/GridRenderer.cpp
     src/utils/Logger.cpp
@@ -82,7 +84,7 @@ target_link_libraries(kimodo_studio PRIVATE studio_imgui ${_raylib_target})
 target_compile_definitions(kimodo_studio PRIVATE
     KIMODO_STUDIO_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 if(WIN32)
-    target_link_libraries(kimodo_studio PRIVATE bcrypt)
+    target_link_libraries(kimodo_studio PRIVATE bcrypt winhttp advapi32)
 endif()
 
 # --- Kimodo backend: prebuilt MSVC libs (Phase 2; MSVC only) ---
