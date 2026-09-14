@@ -5,6 +5,7 @@
 #include "imgui.h"
 #include "kimodo/KimodoEngine.h"
 #include "library/AnimationLibrary.h"
+#include "export/BVHExporter.h"
 #include "export/GLBExporter.h"
 #include "models/ModelManager.h"
 #include "raylib.h"
@@ -446,6 +447,7 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
     static float exportFps = 30.0f;
     static float exportScale = 1.0f;
     static int exportRootMotion = 0; // 0 preserve, 1 in place, 2 extract
+    static int exportFormat = 0;     // 0 GLB, 1 BVH
     for (size_t i = entries.size(); i-- > 0;) {
         const LibraryEntry& e = entries[i];
         ImGui::PushID(static_cast<int>(i));
@@ -472,8 +474,9 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
             renameBuf[sizeof(renameBuf) - 1] = '\0';
         }
         ImGui::SameLine();
-        if (ImGui::SmallButton("Export")) {
-            exportEntryId = e.id;
+            if (ImGui::SmallButton("Export")) {
+                exportEntryId = e.id;
+                exportFormat = 0;
             const ExportPreset* def = findPreset("blender");
             exportPresetId = def ? def->id : "generic";
             exportFps = def ? def->fps : 30.0f;
@@ -558,6 +561,8 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
             ImGui::InputFloat("Scale", &exportScale, 1.0f, 10.0f);
             const char* rmItems[] = {"Preserve root motion", "In place", "Extract root motion"};
             ImGui::Combo("Root motion", &exportRootMotion, rmItems, 3);
+            const char* fmtItems[] = {"GLB", "BVH"};
+            ImGui::Combo("Format", &exportFormat, fmtItems, 2);
             if (preset && !preset->profile.empty() && preset->profile != target->skeleton) {
                 ImGui::TextDisabled("Auto-retargets to %s on export.", preset->profile.c_str());
             }
@@ -595,14 +600,18 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
                     }
                 }
                 if (ok) {
-                    GLBExporter exporter;
+                    GLBExporter glbExporter;
+                    BVHExporter bvhExporter;
+                    AnimationExporter* exporter =
+                        exportFormat == 1 ? static_cast<AnimationExporter*>(&bvhExporter)
+                                          : static_cast<AnimationExporter*>(&glbExporter);
                     ExportOptions opts;
+                    const std::string ext = exportFormat == 1 ? ".bvh" : ".glb";
                     opts.path =
                         (std::filesystem::path(GLBExporter::defaultExportDir()) /
-                         (target->id + "-" + exportPresetId + ".glb"))
+                         (target->id + "-" + exportPresetId + ext))
                             .string();
                     opts.fps = exportFps;
-                    opts.rootScale = 1.0f; // preset scale applied below
                     opts.basis = preset ? preset->basis
                                         : Mat3{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
                     opts.rootMotion = exportRootMotion == 1 ? RootMotion::InPlace
@@ -610,10 +619,10 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
                                                               : RootMotion::Preserve;
                     // Preset unit scale composes with user scale.
                     opts.rootScale = exportScale * (preset ? preset->scale : 1.0f);
-                    ok = exporter.exportAnimation(anim, opts, error);
+                    ok = exporter->exportAnimation(anim, opts, error);
                     if (ok) {
                         std::string msg = "Exported " + opts.path;
-                        const std::string rep = exporter.lastReport();
+                        const std::string rep = exporter->lastReport();
                         if (!rep.empty()) {
                             msg += " (" + rep + ")";
                         }

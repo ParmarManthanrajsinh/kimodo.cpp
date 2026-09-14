@@ -1,6 +1,8 @@
 #include "export/ExportPreset.h"
 
+#include <algorithm>
 #include <cmath>
+#include <sstream>
 
 namespace studio {
 
@@ -140,6 +142,151 @@ const ExportPreset* findPreset(const std::string& id) {
         }
     }
     return nullptr;
+}
+
+namespace {
+
+Quat slerp(Quat a, Quat b, float t) {
+    a = quatNormalize(a);
+    b = quatNormalize(b);
+    float dot = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+    if (dot < 0) {
+        dot = -dot;
+        b.x = -b.x;
+        b.y = -b.y;
+        b.z = -b.z;
+        b.w = -b.w;
+    }
+    if (dot > 0.9995f) {
+        Quat r{a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t,
+               a.w + (b.w - a.w) * t};
+        return quatNormalize(r);
+    }
+    const float theta = std::acos(dot);
+    const float s = std::sin(theta);
+    const float wa = std::sin((1 - t) * theta) / s;
+    const float wb = std::sin(t * theta) / s;
+    Quat r{a.x * wa + b.x * wb, a.y * wa + b.y * wb, a.z * wa + b.z * wb,
+           a.w * wa + b.w * wb};
+    return quatNormalize(r);
+}
+
+Animation resampleAnim(const Animation& in, float fps) {
+    if (fps <= 0 || std::abs(fps - in.fps) < 1e-6f || in.frames < 2) {
+        return in;
+    }
+    const float dur = in.duration();
+    const int outFrames = std::max(2, static_cast<int>(std::round(dur * fps)));
+    Animation out = in;
+    out.fps = fps;
+    out.frames = outFrames;
+    out.localRotationsXyzw.assign(static_cast<size_t>(outFrames) * in.joints * 4, 0);
+    out.rootPositions.assign(static_cast<size_t>(outFrames) * 3, 0);
+    for (int f = 0; f < outFrames; ++f) {
+        const float t = std::min(dur, static_cast<float>(f) / fps);
+        const float srcF = t * in.fps;
+        const int i0 = std::min(static_cast<int>(srcF), in.frames - 1);
+        const int i1 = std::min(i0 + 1, in.frames - 1);
+        const float a = std::min(1.0f, std::max(0.0f, srcF - i0));
+        for (int j = 0; j < in.joints; ++j) {
+            const float* r0 = in.localRotationsXyzw.data() + (i0 * in.joints + j) * 4;
+            const float* r1 = in.localRotationsXyzw.data() + (i1 * in.joints + j) * 4;
+            Quat q = slerp({r0[0], r0[1], r0[2], r0[3]}, {r1[0], r1[1], r1[2], r1[3]}, a);
+            float* d = out.localRotationsXyzw.data() + (f * in.joints + j) * 4;
+            d[0] = q.x;
+            d[1] = q.y;
+            d[2] = q.z;
+            d[3] = q.w;
+        }
+        const float* p0 = in.rootPositions.data() + i0 * 3;
+        const float* p1 = in.rootPositions.data() + i1 * 3;
+        float* d = out.rootPositions.data() + f * 3;
+        for (int k = 0; k < 3; ++k) {
+            d[k] = p0[k] + (p1[k] - p0[k]) * a;
+        }
+    }
+    return out;
+}
+
+} // namespace
+
+Animation prepareExport(const Animation& in, float fps, float scale, Mat3 basis,
+                        RootMotion rootMotion, std::string& report) {
+    report.clear();
+    Animation work = resampleAnim(in, fps > 0 ? fps : in.fps);
+    const int F = work.frames;
+    const int J = work.joints;
+
+    if (rootMotion != RootMotion::Preserve) {
+        float pathLen = 0.0f;
+        float px = work.rootPositions[0];
+        float pz = work.rootPositions[2];
+        for (int f = 0; f < F; ++f) {
+            float* p = work.rootPositions.data() + f * 3;
+            if (f > 0) {
+                const float dx = p[0] - px;
+                const float dz = p[2] - pz;
+                pathLen += std::sqrt(dx * dx + dz * dz);
+                px = p[0];
+                pz = p[2];
+            }
+            p[0] = 0.0f;
+            p[2] = 0.0f;
+        }
+        if (rootMotion == RootMotion::Extract) {
+            std::ostringstream rs;
+            rs << "extracted root path " << pathLen << " units";
+            report = rs.str();
+        } else {
+            report = "in-place (root XZ zeroed)";
+        }
+    }
+
+    // Identity fast path: no float churn when nothing transforms.
+    bool identity = scale == 1.0f;
+    for (int i = 0; identity && i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            if (basis.m[i][j] != (i == j ? 1.0f : 0.0f)) {
+                identity = false;
+            }
+        }
+    }
+    if (identity) {
+        return work;
+    }
+
+    const Mat3 ct = mat3Transpose(basis);
+    auto xformPos = [&](float x, float y, float z, float* out) {
+        out[0] = (basis.m[0][0] * x + basis.m[0][1] * y + basis.m[0][2] * z) * scale;
+        out[1] = (basis.m[1][0] * x + basis.m[1][1] * y + basis.m[1][2] * z) * scale;
+        out[2] = (basis.m[2][0] * x + basis.m[2][1] * y + basis.m[2][2] * z) * scale;
+    };
+    for (int j = 0; j < J; ++j) {
+        const auto& o = work.offsets[j];
+        float t[3];
+        xformPos(o[0], o[1], o[2], t);
+        work.offsets[j] = {t[0], t[1], t[2]};
+    }
+    for (size_t k = 0; k < work.localRotationsXyzw.size() / 4; ++k) {
+        const float* q = work.localRotationsXyzw.data() + k * 4;
+        Mat3 r = mat3FromQuat({q[0], q[1], q[2], q[3]});
+        Quat nq = quatFromMat3(mat3Mul(mat3Mul(basis, r), ct));
+        float* d = work.localRotationsXyzw.data() + k * 4;
+        d[0] = nq.x;
+        d[1] = nq.y;
+        d[2] = nq.z;
+        d[3] = nq.w;
+    }
+    for (int f = 0; f < F; ++f) {
+        const float* p = work.rootPositions.data() + f * 3;
+        float t[3];
+        xformPos(p[0], p[1], p[2], t);
+        float* d = work.rootPositions.data() + f * 3;
+        d[0] = t[0];
+        d[1] = t[1];
+        d[2] = t[2];
+    }
+    return work;
 }
 
 } // namespace studio

@@ -2,6 +2,7 @@
 #include "animation/AnimationPlayer.h"
 #include "animation/Skeleton.h"
 #include "app/Application.h"
+#include "export/BVHExporter.h"
 #include "export/ExportPreset.h"
 #include "export/GLBExporter.h"
 #include "huggingface/HFAuthenticator.h"
@@ -327,6 +328,44 @@ int selftestExport(const char* keepPath = nullptr) {
         std::remove(tmp.c_str());
         if (timesCount != 10) {
             std::printf("selftest-glb: FAILED: resample count\n");
+            return 1;
+        }
+        // Phase 12: BVH export sanity (headers, frame count, euler of identity).
+        studio::BVHExporter bvh;
+        studio::ExportOptions bopts;
+        bopts.path = tmp + ".bvh";
+        bopts.fps = 30.0f;
+        std::string berr;
+        if (!bvh.exportAnimation(anim, bopts, berr)) {
+            std::printf("selftest-glb: FAILED: bvh %s\n", berr.c_str());
+            return 1;
+        }
+        std::ifstream bin(bopts.path);
+        const std::string bvhText{std::istreambuf_iterator<char>(bin), {}};
+        std::remove(bopts.path.c_str());
+        const bool bH = bvhText.rfind("HIERARCHY\n", 0) == 0;
+        const bool bR = bvhText.find("ROOT Hips\n") != std::string::npos;
+        const bool bM = bvhText.find("MOTION\nFrames: 5\n") != std::string::npos;
+        const bool bF = bvhText.find("Frame Time: ") != std::string::npos;
+        // Frame 0 joint 0: root pos (0,0.97,0) + identity euler (0,0,0).
+        const size_t mp = bvhText.find("MOTION\n");
+        const size_t nl = bvhText.find('\n', bvhText.find("Frame Time: "));
+        const std::string row = bvhText.substr(nl + 1, 64);
+        // Note: atan2 can emit "-0"; accept both zero spellings.
+        const bool bE = row.rfind("0 0.97 0 0 ", 0) == 0 &&
+                        (row.rfind("0 0.97 0 0 0 ", 0) == 0 ||
+                         row.rfind("0 0.97 0 0 -0 ", 0) == 0);
+        std::printf("selftest-glb: bvh hier=%d root=%d motion=%d euler0=%d\n", bH, bR, bM,
+                    bE);
+        if (keepPath) {
+            const std::string kept = std::string(keepPath) + ".check.bvh";
+            std::ifstream bsrc(bopts.path, std::ios::binary);
+            std::ofstream bdst(kept, std::ios::binary | std::ios::trunc);
+            bdst << bsrc.rdbuf();
+            std::printf("selftest-glb: kept %s\n", kept.c_str());
+        }
+        if (!bH || !bR || !bM || !bF || !bE) {
+            std::printf("selftest-glb: FAILED: bvh content\n");
             return 1;
         }
     }

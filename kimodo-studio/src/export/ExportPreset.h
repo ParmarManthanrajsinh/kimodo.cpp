@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "animation/Animation.h"
+
 namespace studio {
 
 // Small 3x3 + quaternion math for export-time basis conversion (no external
@@ -37,5 +39,10 @@ struct ExportPreset {
 
 const std::vector<ExportPreset>& exportPresets();
 const ExportPreset* findPreset(const std::string& id);
+
+// Shared export preprocessing: fps resample, root-motion mode, unit scale,
+// basis conversion. Report describes root-motion handling (may be empty).
+Animation prepareExport(const Animation& in, float fps, float scale, Mat3 basis,
+                        RootMotion rootMotion, std::string& report);
 
 } // namespace studio

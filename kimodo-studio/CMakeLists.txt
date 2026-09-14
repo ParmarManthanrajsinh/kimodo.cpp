@@ -71,6 +71,7 @@ add_executable(kimodo_studio
     src/retarget/Retargeter.cpp
     src/export/GLBExporter.cpp
     src/export/ExportPreset.cpp
+    src/export/BVHExporter.cpp
     src/huggingface/HuggingFaceClient.cpp
     src/huggingface/HFAuthenticator.cpp
     src/rendering/Viewport.cpp
