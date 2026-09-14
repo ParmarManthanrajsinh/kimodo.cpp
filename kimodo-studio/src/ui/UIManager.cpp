@@ -1,6 +1,7 @@
 #include "ui/UIManager.h"
 
 #include "imgui.h"
+#include "animation/AnimationPlayer.h"
 #include "kimodo/KimodoEngine.h"
 #include "raylib.h"
 #include "rendering/Viewport.h"
@@ -20,7 +21,8 @@ static const char* screenLabel(Screen s) {
     return "Home";
 }
 
-void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine) {
+void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
+                     AnimationPlayer& player) {
     const float topH = 36.0f;
     const float sideW = 180.0f;
     const float statusH = 26.0f;
@@ -113,14 +115,48 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine) 
     }
     ImGui::End();
 
+    // Timeline (visible once an animation is loaded)
+    const float timelineH = 64.0f;
+    if (player.hasAnimation()) {
+        ImGui::SetNextWindowPos(ImVec2(sideW, (float)sh - statusH - timelineH));
+        ImGui::SetNextWindowSize(ImVec2((float)sw - sideW, timelineH));
+        ImGui::Begin("Timeline", nullptr,
+                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
+        if (ImGui::Button(player.playing() ? "Pause" : "Play")) {
+            player.toggle();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Restart")) {
+            player.restart();
+        }
+        ImGui::SameLine();
+        bool loop = player.loop();
+        if (ImGui::Checkbox("Loop", &loop)) {
+            player.setLoop(loop);
+        }
+        ImGui::SameLine();
+        float t = player.time();
+        if (ImGui::SliderFloat("##scrub", &t, 0.0f, player.duration(), "%.2fs")) {
+            player.scrub(t);
+        }
+        ImGui::SameLine();
+        ImGui::Text("f %d / %.0f fps", player.frame(), player.fps());
+        ImGui::End();
+    }
+
     // Status bar
     ImGui::SetNextWindowPos(ImVec2(0, (float)sh - statusH));
     ImGui::SetNextWindowSize(ImVec2((float)sw, statusH));
     ImGui::Begin("Status", nullptr,
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                      ImGuiWindowFlags_NoBringToFrontOnFocus);
-    ImGui::Text("FPS %d | %s | no model (Phase 1)", state.fps,
-                state.gpuName.c_str());
+    if (player.hasAnimation()) {
+        ImGui::Text("FPS %d | frame %d | %s", state.fps, player.frame(),
+                    engine.message().c_str());
+    } else {
+        ImGui::Text("FPS %d | %s | %s", state.fps, state.gpuName.c_str(),
+                    engine.message().c_str());
+    }
     ImGui::End();
 }
 

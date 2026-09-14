@@ -2,6 +2,7 @@
 
 #include <cmath>
 
+#include "animation/Skeleton.h"
 #include "raylib.h"
 #include "raymath.h"
 
@@ -77,10 +78,25 @@ void Viewport::recomputeCamera() const {
 void Viewport::draw3D() const {
     BeginMode3D(camera_);
     grid_.draw();
-    // Phase 1 placeholder: origin rig stub (future skeleton goes here).
-    DrawSphere(Vector3{0, 1, 0}, 0.12f, SKYBLUE);
-    DrawCapsule(Vector3{0, 0.4f, 0}, Vector3{0, 1.6f, 0}, 0.08f, 8, 8,
-                Color{120, 170, 255, 255});
+    if (pose_.size() == static_cast<size_t>(kSomaJoints)) {
+        const auto& parents = Skeleton::parents();
+        for (int j = 0; j < kSomaJoints; ++j) {
+            const int p = parents[j];
+            if (p >= 0) {
+                DrawCapsule(pose_[p], pose_[j], 0.035f, 6, 6,
+                            Color{120, 170, 255, 255});
+            }
+        }
+        for (int j = 0; j < kSomaJoints; ++j) {
+            DrawSphere(pose_[j], j == 0 ? 0.09f : 0.055f,
+                       j == 0 ? YELLOW : SKYBLUE);
+        }
+    } else {
+        // No animation yet: origin rig stub.
+        DrawSphere(Vector3{0, 1, 0}, 0.12f, SKYBLUE);
+        DrawCapsule(Vector3{0, 0.4f, 0}, Vector3{0, 1.6f, 0}, 0.08f, 8, 8,
+                    Color{120, 170, 255, 255});
+    }
     EndMode3D();
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "animation/AnimationPlayer.h"
 #include "app/AppState.h"
 #include "kimodo/KimodoEngine.h"
 #include "rendering/Viewport.h"
@@ -14,10 +15,14 @@ public:
     void shutdown();
 
 private:
+    void pollEngine();
+
     AppState state_;
     Viewport viewport_;
     UIManager ui_;
     KimodoEngine engine_;
+    AnimationPlayer player_;
+    EngineStatus lastEngineStatus_ = EngineStatus::Idle;
     bool running_ = false;
 };
 

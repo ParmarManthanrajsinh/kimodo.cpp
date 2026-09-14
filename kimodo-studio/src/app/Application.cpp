@@ -30,16 +30,36 @@ bool Application::init() {
     return true;
 }
 
+void Application::pollEngine() {
+    EngineStatus s = engine_.status();
+    if (s == EngineStatus::Finished && s != lastEngineStatus_) {
+        MotionResult result;
+        if (engine_.lastResult(result)) {
+            Animation anim;
+            anim.fromMotionResult(result);
+            player_.load(anim);
+            Logger::instance().info("Viewport: animation loaded, " +
+                                    std::to_string(anim.frames) + " frames");
+        }
+    }
+    lastEngineStatus_ = s;
+}
+
 void Application::run() {
     while (running_ && !WindowShouldClose()) {
         state_.fps = GetFPS();
+        pollEngine();
+        player_.update(GetFrameTime());
+        if (player_.hasAnimation()) {
+            viewport_.setPose(player_.worldPositions());
+        }
         viewport_.update();
 
         BeginDrawing();
         ClearBackground(Color{18, 18, 22, 255});
         viewport_.draw3D();
         rlImGuiBegin();
-        ui_.draw(state_, viewport_, engine_);
+        ui_.draw(state_, viewport_, engine_, player_);
         rlImGuiEnd();
         EndDrawing();
     }

@@ -69,6 +69,9 @@ add_executable(kimodo_studio
     src/utils/Logger.cpp
     src/kimodo/KimodoAdapter.cpp
     src/kimodo/KimodoEngine.cpp
+    src/animation/Skeleton.cpp
+    src/animation/Animation.cpp
+    src/animation/AnimationPlayer.cpp
 )
 target_include_directories(kimodo_studio PRIVATE src)
 target_link_libraries(kimodo_studio PRIVATE studio_imgui ${_raylib_target})

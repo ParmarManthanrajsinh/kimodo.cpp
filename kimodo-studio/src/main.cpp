@@ -1,7 +1,10 @@
+#include "animation/Animation.h"
+#include "animation/AnimationPlayer.h"
 #include "app/Application.h"
 #include "kimodo/KimodoAdapter.h"
 #include "utils/Logger.h"
 
+#include <cmath>
 #include <cstdio>
 #include <string>
 
@@ -35,6 +38,31 @@ int selftest(const char* framesArg, const char* stepsArg) {
         std::printf("selftest: root0=%.4f %.4f %.4f\n", result.rootPositions[0],
                     result.rootPositions[1], result.rootPositions[2]);
     }
+    // Phase 3: verify Animation + FK path (joint0 world == root0).
+    studio::Animation anim;
+    anim.fromMotionResult(result);
+    studio::AnimationPlayer player;
+    player.load(anim);
+    player.scrub(0.0f);
+    const auto& world = player.worldPositions();
+    std::printf("selftest: player world joints=%llu frame=%d\n",
+                static_cast<unsigned long long>(world.size()), player.frame());
+    if (world.empty()) {
+        std::printf("selftest: FK FAILED: no world positions\n");
+        return 1;
+    }
+    const float dx = world[0].x - result.rootPositions[0];
+    const float dy = world[0].y - result.rootPositions[1];
+    const float dz = world[0].z - result.rootPositions[2];
+    if (std::sqrt(dx * dx + dy * dy + dz * dz) > 1e-3f) {
+        std::printf("selftest: FK FAILED: joint0 != root (%.4f %.4f %.4f)\n", world[0].x,
+                    world[0].y, world[0].z);
+        return 1;
+    }
+    player.scrub(anim.duration() * 0.5f);
+    std::printf("selftest: mid scrub frame=%d hips=(%.3f %.3f %.3f)\n", player.frame(),
+                player.worldPositions()[0].x, player.worldPositions()[0].y,
+                player.worldPositions()[0].z);
     return 0;
 }
 } // namespace

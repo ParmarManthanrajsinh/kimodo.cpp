@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "raylib.h"
 #include "rendering/GridRenderer.h"
 
@@ -13,6 +15,9 @@ public:
     void draw3D() const;
     float distance() const { return dist_; }
 
+    void setPose(std::vector<Vector3> pose) { pose_ = std::move(pose); }
+    bool hasPose() const { return !pose_.empty(); }
+
 private:
     void recomputeCamera() const;
 
@@ -22,6 +27,7 @@ private:
     float dist_ = 8.0f;
     mutable Camera3D camera_ = {};
     GridRenderer grid_;
+    std::vector<Vector3> pose_;
 };
 
 } // namespace studio
