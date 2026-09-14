@@ -8,6 +8,7 @@
 #include "models/ModelManager.h"
 #include "raylib.h"
 #include "rendering/Viewport.h"
+#include "rlImGui.h"
 #include "ui/Toast.h"
 
 #include <cstring>
@@ -227,10 +228,10 @@ void drawModels(AppState& state, ModelManager& models, KimodoEngine& engine,
     ImGui::TextDisabled("Hugging Face downloads arrive in Phase 6.");
 }
 
-void drawLibrary(AppState& state, AnimationLibrary& library, AnimationPlayer& player,
-                 Toasts& toasts) {
+void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
+                 AnimationPlayer& player, Toasts& toasts, UIManager::CaptureFn& capture) {
     (void)state;
-    const auto& entries = library.entries();
+    const std::vector<LibraryEntry> entries = library.entries();
     ImGui::Text("Animations (%llu)", static_cast<unsigned long long>(entries.size()));
     ImGui::Separator();
     if (entries.empty()) {
@@ -242,8 +243,11 @@ void drawLibrary(AppState& state, AnimationLibrary& library, AnimationPlayer& pl
     for (size_t i = entries.size(); i-- > 0;) {
         const LibraryEntry& e = entries[i];
         ImGui::PushID(static_cast<int>(i));
+        self->drawThumb(e);
         ImGui::TextWrapped("%s", e.prompt.c_str());
-        ImGui::TextDisabled("%d frames - %s", e.frames, e.createdAt.c_str());
+        const float dur = e.fps > 0 ? static_cast<float>(e.frames) / e.fps : 0.0f;
+        ImGui::TextDisabled("%d frames - %.1fs - %s", e.frames, dur,
+                            e.createdAt.c_str());
         if (ImGui::SmallButton("Open")) {
             openEntry(library, e, player, toasts);
         }
@@ -264,6 +268,10 @@ void drawLibrary(AppState& state, AnimationLibrary& library, AnimationPlayer& pl
         ImGui::SameLine();
         if (ImGui::SmallButton("Export")) {
             toasts.push("Export arrives in Phase 10 (GLB first)", ToastKind::Warning);
+        }
+        ImGui::SameLine();
+        if (capture && ImGui::SmallButton("Thumbnail")) {
+            capture(e);
         }
         ImGui::SameLine();
         if (ImGui::SmallButton("Delete")) {
@@ -390,9 +398,33 @@ void drawSettings(AppState& state, KimodoEngine& engine, Toasts& toasts) {
 
 } // namespace
 
+void UIManager::drawThumb(const LibraryEntry& e) {
+    if (thumbs_.size() != thumbCount_) {
+        // Library mutated: drop stale GPU textures.
+        for (auto& [id, tex] : thumbs_) {
+            UnloadTexture(tex);
+        }
+        thumbs_.clear();
+    }
+    thumbCount_ = thumbs_.size();
+    if (!AnimationLibrary::hasThumb(e)) {
+        return;
+    }
+    auto it = thumbs_.find(e.id);
+    if (it == thumbs_.end()) {
+        Texture2D tex = LoadTexture(AnimationLibrary::thumbPath(e).string().c_str());
+        if (tex.id == 0) {
+            return;
+        }
+        it = thumbs_.emplace(e.id, tex).first;
+        thumbCount_ = thumbs_.size();
+    }
+    rlImGuiImageSize(&it->second, 120, 75);
+}
+
 void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
                      AnimationPlayer& player, AnimationLibrary& library,
-                     ModelManager& models, Toasts& toasts) {
+                     ModelManager& models, Toasts& toasts, CaptureFn capture) {
     const float topH = 36.0f;
     const float sideW = 180.0f;
     const float statusH = 26.0f;
@@ -443,7 +475,9 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         case Screen::Home: drawHome(state, library, player, toasts); break;
         case Screen::Generate: drawGenerate(state, engine); break;
         case Screen::Models: drawModels(state, models, engine, toasts); break;
-        case Screen::Library: drawLibrary(state, library, player, toasts); break;
+        case Screen::Library:
+            drawLibrary(this, state, library, player, toasts, capture);
+            break;
         case Screen::Settings: drawSettings(state, engine, toasts); break;
     }
     ImGui::Spacing();

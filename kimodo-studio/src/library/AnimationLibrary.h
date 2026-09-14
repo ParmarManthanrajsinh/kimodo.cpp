@@ -37,6 +37,11 @@ public:
     bool duplicate(const std::string& id);
     bool remove(const std::string& id);
 
+    static std::filesystem::path thumbPath(const LibraryEntry& e) {
+        return e.dir / "thumb.png";
+    }
+    static bool hasThumb(const LibraryEntry& e);
+
     static std::filesystem::path defaultBaseDir();
 
 private:

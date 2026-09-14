@@ -31,6 +31,9 @@ private:
     EngineStatus lastEngineStatus_ = EngineStatus::Idle;
     std::string lastActiveId_;
     bool lastManagerBusy_ = false;
+    std::string pendingThumb_; // capture clean 3D frame to this path
+
+    void captureThumbFile(const LibraryEntry& entry);
     bool running_ = false;
 };
 

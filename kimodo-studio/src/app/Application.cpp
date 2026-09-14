@@ -54,6 +54,7 @@ void Application::pollEngine() {
             if (library_.save(engine_.lastPrompt(), "soma-rp-v1.1", anim.fps, result,
                               saved)) {
                 toasts_.push("Animation saved to library", ToastKind::Success);
+                pendingThumb_ = AnimationLibrary::thumbPath(saved).string();
             } else {
                 toasts_.push("Animation generated, library save failed",
                              ToastKind::Warning);
@@ -64,6 +65,19 @@ void Application::pollEngine() {
         toasts_.push(engine_.message(), ToastKind::Error);
     }
     lastEngineStatus_ = s;
+}
+
+void Application::captureThumbFile(const LibraryEntry& entry) {
+    MotionResult result;
+    if (!library_.loadMotion(entry, result)) {
+        toasts_.push("Could not open animation", ToastKind::Error);
+        return;
+    }
+    Animation anim;
+    anim.fromMotionResult(result, entry.fps);
+    player_.load(anim);
+    pendingThumb_ = AnimationLibrary::thumbPath(entry).string();
+    toasts_.push("Thumbnail captured", ToastKind::Success);
 }
 
 void Application::run() {
@@ -107,9 +121,20 @@ void Application::run() {
                 }
             }
         }
+        if (!pendingThumb_.empty() && player_.hasAnimation()) {
+            // Clean 3D-only frame for the library thumbnail (no UI overlay).
+            BeginDrawing();
+            ClearBackground(Color{18, 18, 22, 255});
+            viewport_.draw3D();
+            EndDrawing();
+            TakeScreenshot(pendingThumb_.c_str());
+            pendingThumb_.clear();
+            continue;
+        }
         viewport_.draw3D();
         rlImGuiBegin();
-        ui_.draw(state_, viewport_, engine_, player_, library_, models_, toasts_);
+        ui_.draw(state_, viewport_, engine_, player_, library_, models_, toasts_,
+                 [this](const LibraryEntry& e) { captureThumbFile(e); });
         toasts_.draw();
         rlImGuiEnd();
         EndDrawing();

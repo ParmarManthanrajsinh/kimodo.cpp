@@ -225,6 +225,11 @@ bool AnimationLibrary::duplicate(const std::string& id) {
     return false;
 }
 
+bool AnimationLibrary::hasThumb(const LibraryEntry& e) {
+    std::error_code ec;
+    return std::filesystem::is_regular_file(e.dir / "thumb.png", ec);
+}
+
 bool AnimationLibrary::remove(const std::string& id) {
     for (auto it = entries_.begin(); it != entries_.end(); ++it) {
         if (it->id == id) {
