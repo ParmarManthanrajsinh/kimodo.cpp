@@ -6,9 +6,11 @@ namespace studio {
 class Viewport;
 class KimodoEngine;
 class AnimationPlayer;
+class AnimationLibrary;
+class Toasts;
 class UIManager {
 public:
     void draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
-              AnimationPlayer& player);
+              AnimationPlayer& player, AnimationLibrary& library, Toasts& toasts);
 };
 } // namespace studio

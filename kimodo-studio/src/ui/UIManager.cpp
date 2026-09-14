@@ -1,16 +1,20 @@
 #include "ui/UIManager.h"
 
-#include "imgui.h"
 #include "animation/AnimationPlayer.h"
+#include "imgui.h"
 #include "kimodo/KimodoEngine.h"
+#include "library/AnimationLibrary.h"
 #include "raylib.h"
 #include "rendering/Viewport.h"
+#include "ui/Toast.h"
 
 #include <cstring>
+#include <filesystem>
 
 namespace studio {
+namespace {
 
-static const char* screenLabel(Screen s) {
+const char* screenLabel(Screen s) {
     switch (s) {
         case Screen::Home: return "Home";
         case Screen::Generate: return "Generate";
@@ -21,8 +25,242 @@ static const char* screenLabel(Screen s) {
     return "Home";
 }
 
+bool fileStatus(const std::string& path, std::string& detail) {
+    std::error_code ec;
+    const auto bytes = std::filesystem::file_size(path, ec);
+    if (ec) {
+        detail = "missing";
+        return false;
+    }
+    const double gb = static_cast<double>(bytes) / 1e9;
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "%.2f GB present", gb);
+    detail = buf;
+    return true;
+}
+
+void openEntry(AnimationLibrary& library, const LibraryEntry& e, AnimationPlayer& player,
+               Toasts& toasts) {
+    MotionResult m;
+    if (!library.loadMotion(e, m)) {
+        toasts.push("Could not open animation", ToastKind::Error);
+        return;
+    }
+    Animation anim;
+    anim.fromMotionResult(m, e.fps);
+    player.load(anim);
+    toasts.push("Animation opened", ToastKind::Success);
+}
+
+void drawHome(AppState& state, AnimationLibrary& library, AnimationPlayer& player,
+              Toasts& toasts) {
+    ImGui::Text("Kimodo Studio");
+    ImGui::TextDisabled("Generate motion from text.");
+    ImGui::Spacing();
+    if (ImGui::Button("Generate Animation")) {
+        state.screen = Screen::Generate;
+    }
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Text("Recent Animations");
+    const auto& entries = library.entries();
+    if (entries.empty()) {
+        ImGui::TextDisabled("No animations yet. Generate one to start the library.");
+    }
+    const size_t show = std::min<size_t>(entries.size(), 3);
+    for (size_t i = 0; i < show; ++i) {
+        const LibraryEntry& e = entries[entries.size() - 1 - i];
+        ImGui::PushID(static_cast<int>(i));
+        ImGui::TextWrapped("%s", e.prompt.c_str());
+        ImGui::TextDisabled("%d frames - %s", e.frames, e.createdAt.c_str());
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Open")) {
+            openEntry(library, e, player, toasts);
+        }
+        ImGui::PopID();
+    }
+    ImGui::Spacing();
+    ImGui::Separator();
+    std::string detail;
+    if (fileStatus(state.motionPath, detail)) {
+        ImGui::Text("Model ready (%s)", detail.c_str());
+    } else {
+        ImGui::Text("No models installed.");
+        ImGui::TextDisabled("Install a model to start generating animations.");
+        if (ImGui::Button("Browse Models")) {
+            state.screen = Screen::Models;
+        }
+    }
+}
+
+void drawGenerate(AppState& state, KimodoEngine& engine) {
+    static char promptBuf[1024];
+    static bool promptInit = false;
+    if (!promptInit) {
+        std::strncpy(promptBuf, state.prompt.c_str(), sizeof(promptBuf) - 1);
+        promptBuf[sizeof(promptBuf) - 1] = '\0';
+        promptInit = true;
+    }
+    ImGui::TextWrapped("Model: SOMA RP v1.1 (local)");
+    ImGui::Spacing();
+    ImGui::InputTextMultiline("Prompt", promptBuf, sizeof(promptBuf), ImVec2(-1, 64));
+    state.prompt = promptBuf;
+    ImGui::InputInt("Frames", &state.frames);
+    ImGui::InputInt("Steps", &state.steps);
+    if (state.frames < 8) state.frames = 8;
+    if (state.frames > 600) state.frames = 600;
+    if (state.steps < 1) state.steps = 1;
+    if (state.steps > 200) state.steps = 200;
+
+    const bool busy = engine.busy();
+    if (busy) {
+        ImGui::BeginDisabled();
+        ImGui::Button("Generating...");
+        ImGui::EndDisabled();
+        static float prog = 0.0f;
+        prog += 0.01f;
+        if (prog > 1.0f) prog = 0.0f;
+        ImGui::ProgressBar(prog, ImVec2(-1, 0), "working");
+    } else if (ImGui::Button("Generate")) {
+        GenerationParams params;
+        params.frames = static_cast<uint32_t>(state.frames);
+        params.steps = static_cast<uint32_t>(state.steps);
+        params.seed = state.seed;
+        engine.requestGenerate(state.prompt, params);
+    }
+    ImGui::Spacing();
+    ImGui::TextWrapped("Status: %s", engine.message().c_str());
+}
+
+void drawModels(AppState& state) {
+    ImGui::Text("Installed");
+    ImGui::Separator();
+    std::string detail;
+    const bool motionOk = fileStatus(state.motionPath, detail);
+    ImGui::Text("SOMA RP v1.1");
+    ImGui::TextDisabled("%s", detail.c_str());
+    ImGui::TextDisabled("%s", state.motionPath.c_str());
+    ImGui::Spacing();
+    std::error_code ec;
+    const bool bundleOk =
+        std::filesystem::is_directory(state.textBundle, ec) && !ec;
+    ImGui::Text("LLM2Vec text bundle");
+    ImGui::TextDisabled("%s", bundleOk ? "present" : "missing");
+    ImGui::TextDisabled("%s", state.textBundle.c_str());
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::TextDisabled("GUI install, downloads and verification arrive in Phase 5.");
+    if (!motionOk || !bundleOk) {
+        ImGui::TextDisabled("Point Settings at a local model to generate.");
+    }
+}
+
+void drawLibrary(AppState& state, AnimationLibrary& library, AnimationPlayer& player,
+                 Toasts& toasts) {
+    (void)state;
+    const auto& entries = library.entries();
+    ImGui::Text("Animations (%llu)", static_cast<unsigned long long>(entries.size()));
+    ImGui::Separator();
+    if (entries.empty()) {
+        ImGui::TextDisabled("Library empty. Finished generations auto-save here.");
+        return;
+    }
+    static std::string renameId;
+    static char renameBuf[1024];
+    for (size_t i = entries.size(); i-- > 0;) {
+        const LibraryEntry& e = entries[i];
+        ImGui::PushID(static_cast<int>(i));
+        ImGui::TextWrapped("%s", e.prompt.c_str());
+        ImGui::TextDisabled("%d frames - %s", e.frames, e.createdAt.c_str());
+        if (ImGui::SmallButton("Open")) {
+            openEntry(library, e, player, toasts);
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Duplicate")) {
+            if (library.duplicate(e.id)) {
+                toasts.push("Animation duplicated", ToastKind::Success);
+            } else {
+                toasts.push("Duplicate failed", ToastKind::Error);
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Rename")) {
+            renameId = e.id;
+            std::strncpy(renameBuf, e.prompt.c_str(), sizeof(renameBuf) - 1);
+            renameBuf[sizeof(renameBuf) - 1] = '\0';
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Export")) {
+            toasts.push("Export arrives in Phase 10 (GLB first)", ToastKind::Warning);
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Delete")) {
+            if (library.remove(e.id)) {
+                toasts.push("Animation deleted", ToastKind::Info);
+            } else {
+                toasts.push("Delete failed", ToastKind::Error);
+            }
+            ImGui::PopID();
+            break; // list mutated; restart next frame
+        }
+        if (renameId == e.id) {
+            ImGui::InputText("##rename", renameBuf, sizeof(renameBuf));
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Save")) {
+                if (library.rename(e.id, renameBuf)) {
+                    toasts.push("Animation renamed", ToastKind::Success);
+                } else {
+                    toasts.push("Rename failed", ToastKind::Error);
+                }
+                renameId.clear();
+            }
+        }
+        ImGui::Separator();
+        ImGui::PopID();
+    }
+}
+
+void drawSettings(AppState& state, KimodoEngine& engine, Toasts& toasts) {
+    ImGui::Text("Models");
+    ImGui::Separator();
+    static char motionBuf[1024];
+    static char bundleBuf[1024];
+    static bool settingsInit = false;
+    if (!settingsInit) {
+        std::strncpy(motionBuf, state.motionPath.c_str(), sizeof(motionBuf) - 1);
+        motionBuf[sizeof(motionBuf) - 1] = '\0';
+        std::strncpy(bundleBuf, state.textBundle.c_str(), sizeof(bundleBuf) - 1);
+        bundleBuf[sizeof(bundleBuf) - 1] = '\0';
+        settingsInit = true;
+    }
+    ImGui::InputText("Motion model", motionBuf, sizeof(motionBuf));
+    ImGui::InputText("Text bundle", bundleBuf, sizeof(bundleBuf));
+    if (ImGui::Button("Apply paths")) {
+        state.motionPath = motionBuf;
+        state.textBundle = bundleBuf;
+        engine.setPaths(state.motionPath, state.textBundle);
+        engine.unloadModel();
+        toasts.push("Paths applied, model unloaded", ToastKind::Success);
+    }
+    ImGui::Spacing();
+    ImGui::Text("Generation defaults");
+    ImGui::Separator();
+    ImGui::InputInt("Frames", &state.frames);
+    ImGui::InputInt("Steps", &state.steps);
+    int seed = static_cast<int>(state.seed);
+    if (ImGui::InputInt("Seed", &seed) && seed >= 0) {
+        state.seed = static_cast<unsigned long long>(seed);
+    }
+    ImGui::Spacing();
+    ImGui::Text("Performance");
+    ImGui::Separator();
+    ImGui::TextDisabled("GPU auto-detect, VRAM strategy and CPU offload arrive in Phase 7.");
+}
+
+} // namespace
+
 void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
-                     AnimationPlayer& player) {
+                     AnimationPlayer& player, AnimationLibrary& library, Toasts& toasts) {
     const float topH = 36.0f;
     const float sideW = 180.0f;
     const float statusH = 26.0f;
@@ -50,8 +288,7 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
     const Screen items[] = {Screen::Home, Screen::Generate, Screen::Models,
                             Screen::Library, Screen::Settings};
     for (Screen item : items) {
-        const bool selected = (state.screen == item);
-        if (ImGui::Selectable(screenLabel(item), selected)) {
+        if (ImGui::Selectable(screenLabel(item), state.screen == item)) {
             state.screen = item;
         }
     }
@@ -63,50 +300,19 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
     }
     ImGui::End();
 
-    // Side panel content per screen
+    // Content panel per screen
     ImGui::SetNextWindowPos(ImVec2(sideW, topH));
     ImGui::SetNextWindowSize(ImVec2(300.0f, (float)sh - topH - statusH));
     ImGui::Begin("Panel", nullptr,
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
     ImGui::Text("%s", screenLabel(state.screen));
     ImGui::Separator();
-    if (state.screen == Screen::Generate) {
-        static char promptBuf[1024];
-        static bool promptInit = false;
-        if (!promptInit) {
-            std::strncpy(promptBuf, state.prompt.c_str(), sizeof(promptBuf) - 1);
-            promptBuf[sizeof(promptBuf) - 1] = '\0';
-            promptInit = true;
-        }
-        ImGui::TextWrapped("Model: SOMA RP (local)");
-        ImGui::Spacing();
-        ImGui::InputTextMultiline("Prompt", promptBuf, sizeof(promptBuf),
-                                  ImVec2(-1, 64));
-        state.prompt = promptBuf;
-        ImGui::InputInt("Frames", &state.frames);
-        ImGui::InputInt("Steps", &state.steps);
-        if (state.frames < 8) state.frames = 8;
-        if (state.frames > 600) state.frames = 600;
-        if (state.steps < 1) state.steps = 1;
-        if (state.steps > 200) state.steps = 200;
-
-        const bool busy = engine.busy();
-        if (busy) {
-            ImGui::BeginDisabled();
-            ImGui::Button("Generating...");
-            ImGui::EndDisabled();
-        } else if (ImGui::Button("Generate")) {
-            GenerationParams params;
-            params.frames = static_cast<uint32_t>(state.frames);
-            params.steps = static_cast<uint32_t>(state.steps);
-            params.seed = state.seed;
-            engine.requestGenerate(state.prompt, params);
-        }
-        ImGui::Spacing();
-        ImGui::TextWrapped("Status: %s", engine.message().c_str());
-    } else {
-        ImGui::TextWrapped("Viewport renders behind panels. "
-                           "Left-drag orbit, middle-drag pan, wheel zoom.");
+    switch (state.screen) {
+        case Screen::Home: drawHome(state, library, player, toasts); break;
+        case Screen::Generate: drawGenerate(state, engine); break;
+        case Screen::Models: drawModels(state); break;
+        case Screen::Library: drawLibrary(state, library, player, toasts); break;
+        case Screen::Settings: drawSettings(state, engine, toasts); break;
     }
     ImGui::Spacing();
     ImGui::Text("Camera dist: %.1f", viewport.distance());

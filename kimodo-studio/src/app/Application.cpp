@@ -24,6 +24,7 @@ bool Application::init() {
 
     state_.gpuName = "default GPU";
     engine_.setPaths(state_.motionPath, state_.textBundle);
+    library_.init(AnimationLibrary::defaultBaseDir());
     viewport_.reset();
     Logger::instance().info("Window + ImGui ready");
     running_ = true;
@@ -40,7 +41,18 @@ void Application::pollEngine() {
             player_.load(anim);
             Logger::instance().info("Viewport: animation loaded, " +
                                     std::to_string(anim.frames) + " frames");
+            LibraryEntry saved;
+            if (library_.save(engine_.lastPrompt(), "soma-rp-v1.1", anim.fps, result,
+                              saved)) {
+                toasts_.push("Animation saved to library", ToastKind::Success);
+            } else {
+                toasts_.push("Animation generated, library save failed",
+                             ToastKind::Warning);
+            }
         }
+    }
+    if (s == EngineStatus::Error && s != lastEngineStatus_) {
+        toasts_.push(engine_.message(), ToastKind::Error);
     }
     lastEngineStatus_ = s;
 }
@@ -59,7 +71,8 @@ void Application::run() {
         ClearBackground(Color{18, 18, 22, 255});
         viewport_.draw3D();
         rlImGuiBegin();
-        ui_.draw(state_, viewport_, engine_, player_);
+        ui_.draw(state_, viewport_, engine_, player_, library_, toasts_);
+        toasts_.draw();
         rlImGuiEnd();
         EndDrawing();
     }

@@ -63,7 +63,9 @@ add_executable(kimodo_studio
     src/app/Application.cpp
     src/app/AppState.cpp
     src/ui/UIManager.cpp
+    src/ui/Toast.cpp
     src/ui/Theme.cpp
+    src/library/AnimationLibrary.cpp
     src/rendering/Viewport.cpp
     src/rendering/GridRenderer.cpp
     src/utils/Logger.cpp

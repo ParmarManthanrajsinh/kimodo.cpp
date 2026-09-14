@@ -22,12 +22,34 @@ void KimodoEngine::requestGenerate(std::string prompt, GenerationParams params) 
         std::lock_guard<std::mutex> lock(mutex_);
         message_ = "starting worker";
     }
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        lastPrompt_ = prompt;
+    }
     worker_ = std::thread(&KimodoEngine::run, this, std::move(prompt), params);
 }
 
 std::string KimodoEngine::message() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return message_;
+}
+
+std::string KimodoEngine::lastPrompt() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return lastPrompt_;
+}
+
+void KimodoEngine::unloadModel() {
+    if (busy()) {
+        return;
+    }
+    if (worker_.joinable()) {
+        worker_.join();
+    }
+    adapter_.unload();
+    std::lock_guard<std::mutex> lock(mutex_);
+    message_ = "model unloaded (paths apply on next generate)";
+    status_.store(EngineStatus::Idle);
 }
 
 bool KimodoEngine::busy() const {

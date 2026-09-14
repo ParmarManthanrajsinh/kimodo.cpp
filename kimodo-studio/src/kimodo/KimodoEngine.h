@@ -34,7 +34,11 @@ public:
 
     EngineStatus status() const { return status_.load(); }
     std::string message() const;
+    std::string lastPrompt() const;
     bool busy() const;
+
+    // Unloads model so new paths take effect. No-op while busy.
+    void unloadModel();
 
     // Last successful result (copied under lock).
     bool lastResult(MotionResult& out) const;
@@ -51,6 +55,7 @@ private:
     std::atomic<EngineStatus> status_{EngineStatus::Idle};
     mutable std::mutex mutex_;
     std::string message_ = "idle";
+    std::string lastPrompt_;
     MotionResult result_;
     bool hasResult_ = false;
 };
