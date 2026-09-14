@@ -1,0 +1,58 @@
+#pragma once
+
+#include <atomic>
+#include <mutex>
+#include <string>
+#include <thread>
+
+#include "kimodo/KimodoAdapter.h"
+
+namespace studio {
+
+enum class EngineStatus {
+    Idle,
+    LoadingModel,
+    Generating,
+    Finished,
+    Error,
+};
+
+// Owns adapter + single worker thread. UI polls status()/message()
+// each frame; worker never touches ImGui or Raylib.
+class KimodoEngine {
+public:
+    KimodoEngine() = default;
+    ~KimodoEngine() { shutdown(); }
+
+    KimodoEngine(const KimodoEngine&) = delete;
+    KimodoEngine& operator=(const KimodoEngine&) = delete;
+
+    void setPaths(std::string motionGguf, std::string textBundle);
+
+    // Starts async load (if needed) + generate. No-op while busy.
+    void requestGenerate(std::string prompt, GenerationParams params);
+
+    EngineStatus status() const { return status_.load(); }
+    std::string message() const;
+    bool busy() const;
+
+    // Last successful result (copied under lock).
+    bool lastResult(MotionResult& out) const;
+
+    void shutdown();
+
+private:
+    void run(std::string prompt, GenerationParams params);
+
+    KimodoAdapter adapter_;
+    std::string motionPath_;
+    std::string textBundle_;
+    std::thread worker_;
+    std::atomic<EngineStatus> status_{EngineStatus::Idle};
+    mutable std::mutex mutex_;
+    std::string message_ = "idle";
+    MotionResult result_;
+    bool hasResult_ = false;
+};
+
+} // namespace studio

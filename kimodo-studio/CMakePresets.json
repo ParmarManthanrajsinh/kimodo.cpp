@@ -1,0 +1,38 @@
+{
+    "version": 6,
+    "configurePresets": [
+        {
+            "name": "windows-ninja-gcc",
+            "displayName": "Windows Ninja GCC (MSYS2)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER": "C:/msys64/ucrt64/bin/gcc.exe",
+                "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
+            }
+        },
+        {
+            "name": "windows-vs2022",
+            "displayName": "Windows VS2022 x64",
+            "generator": "Visual Studio 17 2022",
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_CONFIGURATION_TYPES": "Release"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "windows-ninja-gcc",
+            "configurePreset": "windows-ninja-gcc",
+            "configuration": "Release"
+        },
+        {
+            "name": "windows-vs2022",
+            "configurePreset": "windows-vs2022",
+            "configuration": "Release"
+        }
+    ]
+}
