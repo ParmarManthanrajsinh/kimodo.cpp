@@ -15,6 +15,11 @@ namespace kimodo {
 
 inline constexpr unsigned embedding_width = 4096;
 
+// Optional generation progress hook: (diffusion_steps_done, diffusion_steps_total,
+// user). Return true to request cancellation. Must not throw.
+using generation_progress_hook = bool (*)(unsigned steps_done, unsigned steps_total,
+                                          void *user) noexcept;
+
 struct motion_data {
     unsigned frames = 0;
     unsigned joints = 0;
@@ -34,10 +39,12 @@ public:
     std::expected<motion_data, std::string> generate_embedding(
         const std::array<float, embedding_width> &embedding,
         unsigned frames, unsigned steps, std::uint64_t seed,
-        float text_cfg, float constraint_cfg) const;
+        float text_cfg, float constraint_cfg,
+        generation_progress_hook progress = nullptr, void *progress_user = nullptr) const;
     std::expected<motion_data, std::string> generate_text(
         std::string_view utf8_prompt, unsigned frames, unsigned steps, std::uint64_t seed,
-        float text_cfg, float constraint_cfg) const;
+        float text_cfg, float constraint_cfg,
+        generation_progress_hook progress = nullptr, void *progress_user = nullptr) const;
     std::expected<motion_data, std::string> generate_text_sequence(
         std::span<const prompt_segment> segments, unsigned transition_frames,
         unsigned steps, std::uint64_t seed, float text_cfg, float constraint_cfg) const;

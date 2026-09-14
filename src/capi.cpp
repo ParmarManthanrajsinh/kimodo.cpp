@@ -36,13 +36,28 @@ kimodo_model *kimodo_model_load(const char *motion, const char *text, const char
 }
 void kimodo_model_free(kimodo_model *m) { delete m; }
 const char *kimodo_model_last_error(const kimodo_model *m) { return m ? m->last_error.c_str() : "invalid model"; }
+namespace {
+struct progress_forward {
+    kimodo_progress_fn fn;
+    void *user;
+};
+bool forward_progress(unsigned done, unsigned total, void *user) noexcept {
+    auto *fwd = static_cast<progress_forward *>(user);
+    return fwd->fn(done, total, fwd->user) != 0;
+}
+}
 kimodo_motion *kimodo_generate(kimodo_model *m, const char *prompt, const kimodo_generation_options *o, char *err, int len) {
+    return kimodo_generate_with_progress(m, prompt, o, nullptr, nullptr, err, len);
+}
+kimodo_motion *kimodo_generate_with_progress(kimodo_model *m, const char *prompt, const kimodo_generation_options *o, kimodo_progress_fn progress, void *progress_user, char *err, int len) {
     try {
         std::string error;
         if (!m || !m->value) { set_error(m, err, len, "invalid model"); return nullptr; }
         if (!prompt) { set_error(m, err, len, "UTF-8 prompt is required"); return nullptr; }
         if (!valid_options(o, error)) { set_error(m, err, len, error); return nullptr; }
-        auto generated = m->value->generate_text(prompt, o->frames, o->diffusion_steps, o->seed, o->text_cfg_weight, o->constraint_cfg_weight);
+        progress_forward fwd{progress, progress_user};
+        auto generated = m->value->generate_text(prompt, o->frames, o->diffusion_steps, o->seed, o->text_cfg_weight, o->constraint_cfg_weight,
+            progress ? &forward_progress : nullptr, progress ? &fwd : nullptr);
         if (!generated) { set_error(m, err, len, generated.error()); return nullptr; }
         m->last_error.clear(); return new kimodo_motion{std::move(*generated)};
     } catch (const std::exception &x) { set_error(m, err, len, x.what()); return nullptr; }

@@ -117,10 +117,17 @@ void drawGenerate(AppState& state, KimodoEngine& engine) {
         ImGui::BeginDisabled();
         ImGui::Button("Generating...");
         ImGui::EndDisabled();
-        static float prog = 0.0f;
-        prog += 0.01f;
-        if (prog > 1.0f) prog = 0.0f;
-        ImGui::ProgressBar(prog, ImVec2(-1, 0), "working");
+        if (engine.sampling()) {
+            char label[64];
+            std::snprintf(label, sizeof(label), "step %u / %u", engine.stepsDone(),
+                          engine.stepsTotal());
+            ImGui::ProgressBar(engine.progress(), ImVec2(-1, 0), label);
+        } else {
+            ImGui::TextDisabled("Preparing (weights / encoding)...");
+        }
+        if (ImGui::Button("Cancel")) {
+            engine.cancel();
+        }
     } else if (ImGui::Button("Generate")) {
         GenerationParams params;
         params.frames = static_cast<uint32_t>(state.frames);

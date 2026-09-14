@@ -55,8 +55,22 @@ bool KimodoAdapter::load(const std::string& motionGguf, const std::string& textB
 #endif
 }
 
+namespace {
+#ifdef KIMODO_HAVE_BACKEND
+int progressTrampoline(unsigned done, unsigned total, void* user) noexcept {
+    auto* fn = static_cast<KimodoAdapter::ProgressFn*>(user);
+    try {
+        return (*fn)(done, total) ? 1 : 0;
+    } catch (...) {
+        return 1; // never let exceptions cross the C boundary; treat as cancel
+    }
+}
+#endif
+} // namespace
+
 bool KimodoAdapter::generate(const std::string& prompt, const GenerationParams& params,
-                              MotionResult& out, std::string& error) {
+                              MotionResult& out, std::string& error,
+                              ProgressFn progress) {
 #ifdef KIMODO_HAVE_BACKEND
     if (!loaded_ || !handle_ || !handle_->model) {
         error = "model not loaded";
@@ -71,8 +85,10 @@ bool KimodoAdapter::generate(const std::string& prompt, const GenerationParams& 
     opts.text_cfg_weight = params.textCfg;
     opts.constraint_cfg_weight = params.constraintCfg;
     char err[1024] = {};
-    kimodo_motion* motion =
-        kimodo_generate(handle_->model, prompt.c_str(), &opts, err, sizeof(err));
+    kimodo_motion* motion = kimodo_generate_with_progress(
+        handle_->model, prompt.c_str(), &opts,
+        progress ? &progressTrampoline : nullptr, progress ? &progress : nullptr, err,
+        sizeof(err));
     if (!motion) {
         error = err[0] ? err : "kimodo_generate failed";
         lastError_ = error;

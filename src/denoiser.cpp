@@ -157,7 +157,8 @@ std::expected<std::vector<float>, std::string> run_separated_cfg_denoiser_condit
 std::expected<std::vector<float>, std::string> sample_motion_from_noise(
     const ggml_motion_weights &weights, std::span<const float> initial,
     std::span<const float> embedding, std::size_t frames, unsigned steps,
-    float text_weight, float constraint_weight) {
+    float text_weight, float constraint_weight,
+    sample_progress_hook progress, void *progress_user) {
     if(initial.size()!=frames*weights.motion_dim()) return std::unexpected("invalid initial motion noise dimensions");
     auto schedule=make_cosine_schedule(1000,steps); if(!schedule)return std::unexpected(schedule.error());
     std::vector<float> state(initial.begin(),initial.end()), next(state.size());
@@ -167,6 +168,7 @@ std::expected<std::vector<float>, std::string> sample_motion_from_noise(
         auto stepped=ddim_step(*schedule,i,state.data(),clean->data(),next.data(),state.size());
         if(!stepped)return std::unexpected(stepped.error());
         state.swap(next);
+        if(progress && progress(steps-i,steps,progress_user)) return std::unexpected("generation cancelled");
     }
     return state;
 }

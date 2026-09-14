@@ -18,15 +18,29 @@ void KimodoEngine::requestGenerate(std::string prompt, GenerationParams params) 
         worker_.join();
     }
     status_.store(EngineStatus::Generating);
+    stepsDone_.store(0);
+    stepsTotal_.store(params.steps);
+    sampling_.store(false);
+    cancelRequested_.store(false);
     {
         std::lock_guard<std::mutex> lock(mutex_);
         message_ = "starting worker";
-    }
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
         lastPrompt_ = prompt;
     }
     worker_ = std::thread(&KimodoEngine::run, this, std::move(prompt), params);
+}
+
+void KimodoEngine::cancel() {
+    cancelRequested_.store(true);
+}
+
+float KimodoEngine::progress() const {
+    const unsigned total = stepsTotal_.load();
+    if (total == 0) {
+        return 0.0f;
+    }
+    float p = static_cast<float>(stepsDone_.load()) / static_cast<float>(total);
+    return p < 0.0f ? 0.0f : (p > 1.0f ? 1.0f : p);
 }
 
 std::string KimodoEngine::message() const {
@@ -102,16 +116,28 @@ void KimodoEngine::run(std::string prompt, GenerationParams params) {
     status_.store(EngineStatus::Generating);
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        message_ = "Encoding prompt / sampling...";
+        message_ = "Preparing (weights / encoding)...";
     }
     Logger::instance().info("Kimodo: generation started: " + prompt);
     MotionResult result;
     std::string error;
-    if (!adapter_.generate(prompt, params, result, error)) {
+    auto onProgress = [this](unsigned done, unsigned total) {
+        stepsDone_.store(done);
+        stepsTotal_.store(total);
+        sampling_.store(true);
+        return cancelRequested_.load();
+    };
+    if (!adapter_.generate(prompt, params, result, error, onProgress)) {
         std::lock_guard<std::mutex> lock(mutex_);
-        message_ = "Generation failed: " + error;
-        status_.store(EngineStatus::Error);
-        Logger::instance().error("Kimodo generate failed: " + error);
+        if (error == "generation cancelled" || cancelRequested_.load()) {
+            message_ = "Generation cancelled";
+            status_.store(EngineStatus::Idle);
+            Logger::instance().info("Kimodo: generation cancelled by user");
+        } else {
+            message_ = "Generation failed: " + error;
+            status_.store(EngineStatus::Error);
+            Logger::instance().error("Kimodo generate failed: " + error);
+        }
         return;
     }
     {

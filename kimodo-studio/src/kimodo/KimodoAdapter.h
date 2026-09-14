@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -38,8 +39,11 @@ public:
               std::string& error);
     bool isLoaded() const { return loaded_; }
 
+    // progress(done, total) runs on the worker thread; return true to cancel.
+    using ProgressFn = std::function<bool(unsigned done, unsigned total)>;
+
     bool generate(const std::string& prompt, const GenerationParams& params,
-                  MotionResult& out, std::string& error);
+                  MotionResult& out, std::string& error, ProgressFn progress = {});
     void unload();
 
     const std::string& lastError() const { return lastError_; }

@@ -49,10 +49,15 @@ std::expected<std::vector<float>, std::string> run_separated_cfg_denoiser(
     float constraint_weight, std::size_t frames);
 
 // Deterministic eta=0 DDIM sampling from caller-supplied F32 initial noise.
+// Optional progress hook: called after each completed DDIM step with
+// (steps_done, steps_total). Return nonzero from the hook to abort sampling.
+using sample_progress_hook = bool (*)(unsigned steps_done, unsigned steps_total,
+                                      void *user) noexcept;
 std::expected<std::vector<float>, std::string> sample_motion_from_noise(
     const ggml_motion_weights &weights, std::span<const float> initial_noise,
     std::span<const float> embedding, std::size_t frames, unsigned steps,
-    float text_weight, float constraint_weight);
+    float text_weight, float constraint_weight,
+    sample_progress_hook progress = nullptr, void *progress_user = nullptr);
 
 // Multi-prompt transition sampler. `observed` and `observed_mask` are [T,motion_dim]
 // normalized motion-representation values/masks. This mirrors the upstream

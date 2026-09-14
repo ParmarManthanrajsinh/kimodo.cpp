@@ -26,7 +26,13 @@ int selftest(const char* framesArg, const char* stepsArg) {
     params.steps = stepsArg ? static_cast<uint32_t>(std::stoul(stepsArg)) : 25;
     params.seed = 42;
     studio::MotionResult result;
-    if (!adapter.generate("A person walks forward.", params, result, error)) {
+    auto onProgress = [](unsigned done, unsigned total) {
+        if (done == 1 || done == total || done % 5 == 0) {
+            std::printf("selftest: progress %u/%u\n", done, total);
+        }
+        return false;
+    };
+    if (!adapter.generate("A person walks forward.", params, result, error, onProgress)) {
         std::printf("selftest: GENERATE FAILED: %s\n", error.c_str());
         return 1;
     }

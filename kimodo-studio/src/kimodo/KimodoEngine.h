@@ -31,11 +31,18 @@ public:
 
     // Starts async load (if needed) + generate. No-op while busy.
     void requestGenerate(std::string prompt, GenerationParams params);
+    void cancel();
 
     EngineStatus status() const { return status_.load(); }
     std::string message() const;
     std::string lastPrompt() const;
     bool busy() const;
+
+    // Real sampler progress, written by worker callback, read by UI.
+    float progress() const;
+    unsigned stepsDone() const { return stepsDone_.load(); }
+    unsigned stepsTotal() const { return stepsTotal_.load(); }
+    bool sampling() const { return sampling_.load(); }
 
     // Unloads model so new paths take effect. No-op while busy.
     void unloadModel();
@@ -53,6 +60,10 @@ private:
     std::string textBundle_;
     std::thread worker_;
     std::atomic<EngineStatus> status_{EngineStatus::Idle};
+    std::atomic<unsigned> stepsDone_{0};
+    std::atomic<unsigned> stepsTotal_{0};
+    std::atomic<bool> sampling_{false};
+    std::atomic<bool> cancelRequested_{false};
     mutable std::mutex mutex_;
     std::string message_ = "idle";
     std::string lastPrompt_;

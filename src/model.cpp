@@ -47,12 +47,14 @@ std::expected<std::unique_ptr<model>, std::string> model::load(std::string_view 
 
 std::expected<motion_data, std::string> model::generate_text(
     std::string_view utf8_prompt, unsigned frames, unsigned steps, std::uint64_t seed,
-    float text_cfg, float constraint_cfg) const {
+    float text_cfg, float constraint_cfg,
+    generation_progress_hook progress, void *progress_user) const {
 #ifdef KIMODO_HAVE_GGML
     if (!impl_->text) return std::unexpected("model was loaded without a native text bundle");
     auto embedding = impl_->text->encode(utf8_prompt);
     if (!embedding) return std::unexpected(embedding.error());
-    return generate_embedding(*embedding, frames, steps, seed, text_cfg, constraint_cfg);
+    return generate_embedding(*embedding, frames, steps, seed, text_cfg, constraint_cfg,
+                              progress, progress_user);
 #else
     (void) utf8_prompt; (void) frames; (void) steps; (void) seed; (void) text_cfg; (void) constraint_cfg;
     return std::unexpected("Kimodo was built without GGML support");
@@ -61,7 +63,8 @@ std::expected<motion_data, std::string> model::generate_text(
 
 std::expected<motion_data, std::string> model::generate_embedding(
     const std::array<float, embedding_width> &embedding, unsigned frames, unsigned steps,
-    std::uint64_t seed, float text_cfg, float constraint_cfg) const {
+    std::uint64_t seed, float text_cfg, float constraint_cfg,
+    generation_progress_hook progress, void *progress_user) const {
     if (frames == 0 || frames > 10000) return std::unexpected("frames must be in 1..10000");
     if (steps == 0 || steps > 1000) return std::unexpected("diffusion_steps must be in 1..1000");
     if (!std::isfinite(text_cfg) || !std::isfinite(constraint_cfg)) return std::unexpected("CFG weights must be finite");
@@ -80,7 +83,7 @@ std::expected<motion_data, std::string> model::generate_embedding(
     const size_t motion_dim=impl_->skeleton->motion_dim();
     std::vector<float> noise(static_cast<size_t>(frames)*motion_dim);
     for (float &value : noise) value = normal(rng);
-    auto sampled = detail::sample_motion_from_noise(*impl_->weights, noise, embedding, frames, steps, text_cfg, constraint_cfg);
+    auto sampled = detail::sample_motion_from_noise(*impl_->weights, noise, embedding, frames, steps, text_cfg, constraint_cfg, progress, progress_user);
     if (!sampled) return std::unexpected(sampled.error());
     auto global_mean=impl_->weights->f32_values("stats.global_root.mean"), global_std=impl_->weights->f32_values("stats.global_root.std");
     auto body_mean=impl_->weights->f32_values("stats.body.mean"), body_std=impl_->weights->f32_values("stats.body.std");

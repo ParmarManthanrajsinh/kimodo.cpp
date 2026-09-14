@@ -88,6 +88,24 @@ KIMODO_API kimodo_motion *kimodo_generate(
     int err_len);
 
 /*
+ * Progress-aware generation. `progress` is called from the worker thread
+ * after each completed diffusion step with (steps_done, steps_total).
+ * It must be thread-safe, must not throw, and must not call back into
+ * kimodo. Return nonzero to request cancellation. May be NULL.
+ */
+typedef int (*kimodo_progress_fn)(unsigned steps_done, unsigned steps_total,
+                                  void *user) noexcept;
+
+KIMODO_API kimodo_motion *kimodo_generate_with_progress(
+    kimodo_model *model,
+    const char *prompt,
+    const kimodo_generation_options *options,
+    kimodo_progress_fn progress,
+    void *progress_user,
+    char *err,
+    int err_len);
+
+/*
  * Denoiser-only entry point.  This is the first supported integration
  * boundary and deliberately does not start Python or load a text runtime.
  */
