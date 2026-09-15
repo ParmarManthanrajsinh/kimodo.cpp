@@ -30,6 +30,11 @@ public:
     static void forwardKinematicsGeneral(
         const float* localXyzw, const float* root, const std::vector<int>& parents,
         const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& out);
+    // Same, but also returns world orientations (parent-composed local quats).
+    static void forwardKinematicsFull(
+        const float* localXyzw, const float* root, const std::vector<int>& parents,
+        const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& outPos,
+        std::vector<Quaternion>& outRot);
     static const std::array<int, kSomaJoints>& parents() {
         return Soma30Spec::parents;
     }

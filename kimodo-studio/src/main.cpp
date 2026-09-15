@@ -2,6 +2,7 @@
 #include "animation/AnimationPlayer.h"
 #include "animation/Skeleton.h"
 #include "app/Application.h"
+#include "raymath.h"
 #include "export/BVHExporter.h"
 #include "export/ExportPreset.h"
 #include "export/GLBExporter.h"
@@ -15,11 +16,13 @@
 #include "retarget/SkeletonProfile.h"
 #include "utils/Logger.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <string>
+#include <vector>
 
 namespace {
 int selftest(const char* framesArg, const char* stepsArg) {
@@ -138,16 +141,42 @@ int selftest(const char* framesArg, const char* stepsArg) {
     }
     std::printf("selftest: retarget joints=%d missing=%llu\n", out.joints,
                 static_cast<unsigned long long>(missing.size()));
-    if (out.joints != 22 || out.frames != anim.frames) {
+    if (out.joints != 92 || out.frames != anim.frames) {
         std::printf("selftest: RETARGET FAILED: bad dims\n");
         return 1;
     }
-    // pelvis (target 0) must equal Hips (source 0) frame 0.
-    const float* q = out.localRotationsXyzw.data();
-    const float* s = anim.localRotationsXyzw.data();
-    if (q[0] != s[0] || q[1] != s[1] || q[2] != s[2] || q[3] != s[3]) {
-        std::printf("selftest: RETARGET FAILED: pelvis quat != Hips quat\n");
-        return 1;
+    // Transfer check: mapped LOCAL quats must equal source locals exactly,
+    // and target offsets must come from the true profile (not transferred).
+    {
+        bool ok = true;
+        for (const auto& [tgt, src] : map) {
+            int ti = -1, si = -1;
+            for (int k = 0; k < out.joints; ++k) {
+                if (out.jointNames[k] == tgt) {
+                    ti = k;
+                }
+            }
+            for (int k = 0; k < anim.joints; ++k) {
+                if (anim.jointNames[k] == src) {
+                    si = k;
+                }
+            }
+            if (ti < 0 || si < 0) {
+                continue;
+            }
+            const float* q = out.localRotationsXyzw.data() + ti * 4;
+            const float* s = anim.localRotationsXyzw.data() + si * 4;
+            if (q[0] != s[0] || q[1] != s[1] || q[2] != s[2] || q[3] != s[3]) {
+                ok = false;
+            }
+        }
+        // Hips offset must be the true Manny value (~0.959m), not SOMA's.
+        const float hipsY = out.offsets[0][1];
+        std::printf("selftest: retarget transfer=%d hipsOffY=%.4f\n", ok ? 1 : 0, hipsY);
+        if (!ok || std::abs(hipsY - 0.9590f) > 0.01f) {
+            std::printf("selftest: RETARGET FAILED: transfer/offsets\n");
+            return 1;
+        }
     }
     // Export the Manny retarget through the Unreal preset (user's exact path).
     {

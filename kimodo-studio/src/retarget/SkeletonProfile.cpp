@@ -1,34 +1,52 @@
 #include "retarget/SkeletonProfile.h"
 
+#include "retarget/manny_true.inc"
+
 namespace studio {
 
 const std::vector<SkeletonProfile>& targetProfiles() {
     static const std::vector<SkeletonProfile> profiles = [] {
         std::vector<SkeletonProfile> out;
 
+        // True Manny rest pose extracted from user FBX Lcl values
+        // (see manny_true.inc header). Units meters.
         SkeletonProfile manny;
         manny.id = "unreal-manny";
-        manny.name = "Unreal Manny (UE5)";
-        manny.joints = {"pelvis",      "spine_01", "spine_02",   "spine_03",
-                        "neck_01",     "head",     "clavicle_l", "upperarm_l",
-                        "forearm_l",   "hand_l",   "clavicle_r", "upperarm_r",
-                        "forearm_r",   "hand_r",   "thigh_l",    "calf_l",
-                        "foot_l",      "ball_l",   "thigh_r",    "calf_r",
-                        "foot_r",      "ball_r"};
-        manny.parents = {-1, 0, 1, 2, 3, 4, 3, 6, 7, 8, 3, 10, 11, 12,
-                         0, 14, 15, 16, 0, 18, 19, 20};
+        manny.name = "Manny Mixamo (UE)";
+        manny.hasBind = true;
+        for (int i = 0; i < kMannyTrueJoints; ++i) {
+            manny.joints.emplace_back(kMannyTrueNames[i]);
+            manny.parents.push_back(kMannyTrueParents[i]);
+            manny.offsets.push_back({kMannyTrueOffsets[i][0], kMannyTrueOffsets[i][1],
+                                     kMannyTrueOffsets[i][2]});
+            manny.restLocal.push_back({kMannyTrueRest[i][0], kMannyTrueRest[i][1],
+                                       kMannyTrueRest[i][2], kMannyTrueRest[i][3]});
+        }
         manny.defaultMap = {
-            {"pelvis", "Hips"},         {"spine_01", "Spine1"},
-            {"spine_02", "Spine2"},     {"spine_03", "Chest"},
-            {"neck_01", "Neck1"},       {"head", "Head"},
-            {"clavicle_l", "LeftShoulder"}, {"upperarm_l", "LeftArm"},
-            {"forearm_l", "LeftForeArm"}, {"hand_l", "LeftHand"},
-            {"clavicle_r", "RightShoulder"}, {"upperarm_r", "RightArm"},
-            {"forearm_r", "RightForeArm"}, {"hand_r", "RightHand"},
-            {"thigh_l", "LeftLeg"},     {"calf_l", "LeftShin"},
-            {"foot_l", "LeftFoot"},     {"ball_l", "LeftToeBase"},
-            {"thigh_r", "RightLeg"},    {"calf_r", "RightShin"},
-            {"foot_r", "RightFoot"},    {"ball_r", "RightToeBase"},
+            {"Hips", "Hips"},
+            {"Spine", "Spine1"},
+            {"Spine1", "Spine2"},
+            {"Spine2", "Chest"},
+            {"Spine3", "Chest"},
+            {"Neck", "Neck1"},
+            {"Neck1", "Neck2"},
+            {"Head", "Head"},
+            {"LeftShoulder", "LeftShoulder"},
+            {"LeftArm", "LeftArm"},
+            {"LeftForeArm", "LeftForeArm"},
+            {"LeftHand", "LeftHand"},
+            {"RightShoulder", "RightShoulder"},
+            {"RightArm", "RightArm"},
+            {"RightForeArm", "RightForeArm"},
+            {"RightHand", "RightHand"},
+            {"LeftUpLeg", "LeftLeg"},
+            {"LeftLeg", "LeftShin"},
+            {"LeftFoot", "LeftFoot"},
+            {"LeftToeBase", "LeftToeBase"},
+            {"RightUpLeg", "RightLeg"},
+            {"RightLeg", "RightShin"},
+            {"RightFoot", "RightFoot"},
+            {"RightToeBase", "RightToeBase"},
         };
         out.push_back(std::move(manny));
 

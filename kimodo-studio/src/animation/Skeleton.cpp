@@ -59,22 +59,30 @@ void Skeleton::forwardKinematics(const float* localXyzw, const float* root,
 void Skeleton::forwardKinematicsGeneral(
     const float* localXyzw, const float* root, const std::vector<int>& parents,
     const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& out) {
+    std::vector<Quaternion> worldRot;
+    forwardKinematicsFull(localXyzw, root, parents, offsets, out, worldRot);
+}
+
+void Skeleton::forwardKinematicsFull(
+    const float* localXyzw, const float* root, const std::vector<int>& parents,
+    const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& outPos,
+    std::vector<Quaternion>& outRot) {
     const int J = static_cast<int>(parents.size());
-    out.resize(J);
-    std::vector<Quaternion> worldRot(J);
+    outPos.resize(J);
+    outRot.resize(J);
     for (int j = 0; j < J; ++j) {
         Quaternion local{localXyzw[j * 4], localXyzw[j * 4 + 1],
                          localXyzw[j * 4 + 2], localXyzw[j * 4 + 3]};
         local = QuaternionNormalize(local);
         const int p = parents[j];
         if (p < 0 || p >= J) {
-            worldRot[j] = local;
-            out[j] = {root[0], root[1], root[2]};
+            outRot[j] = local;
+            outPos[j] = {root[0], root[1], root[2]};
         } else {
-            worldRot[j] = QuaternionMultiply(worldRot[p], local);
+            outRot[j] = QuaternionMultiply(outRot[p], local);
             const auto& o = offsets[j];
-            Vector3 off = Vector3RotateByQuaternion({o[0], o[1], o[2]}, worldRot[p]);
-            out[j] = Vector3Add(out[p], off);
+            Vector3 off = Vector3RotateByQuaternion({o[0], o[1], o[2]}, outRot[p]);
+            outPos[j] = Vector3Add(outPos[p], off);
         }
     }
 }

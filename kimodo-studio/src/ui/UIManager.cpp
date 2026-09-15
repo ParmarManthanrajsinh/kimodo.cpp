@@ -452,6 +452,8 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
     for (size_t i = entries.size(); i-- > 0;) {
         const LibraryEntry& e = entries[i];
         ImGui::PushID(static_cast<int>(i));
+        ImGui::BeginChild("card", ImVec2(-1, 0),
+                          ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY);
         self->drawThumb(e);
         ImGui::TextWrapped("%s", e.prompt.c_str());
         const float dur = e.fps > 0 ? static_cast<float>(e.frames) / e.fps : 0.0f;
@@ -474,10 +476,9 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
             std::strncpy(renameBuf, e.prompt.c_str(), sizeof(renameBuf) - 1);
             renameBuf[sizeof(renameBuf) - 1] = '\0';
         }
-        ImGui::SameLine();
-            if (ImGui::SmallButton("Export")) {
-                exportEntryId = e.id;
-                exportFormat = 0;
+        if (ImGui::SmallButton("Export")) {
+            exportEntryId = e.id;
+            exportFormat = 0;
             const ExportPreset* def = findPreset("blender");
             exportPresetId = def ? def->id : "generic";
             exportFps = def ? def->fps : 30.0f;
@@ -501,6 +502,7 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
             } else {
                 toasts.push("Delete failed", ToastKind::Error);
             }
+            ImGui::EndChild();
             ImGui::PopID();
             break; // list mutated; restart next frame
         }
@@ -516,7 +518,8 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
                 renameId.clear();
             }
         }
-        ImGui::Separator();
+        ImGui::EndChild();
+        ImGui::Spacing();
         ImGui::PopID();
     }
 
@@ -798,14 +801,16 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                      ImGuiWindowFlags_NoBringToFrontOnFocus);
     ImGui::TextUnformatted("KIMODO STUDIO");
-    const float gpuX = (float)sw - 250.0f;
-    ImGui::SameLine(gpuX);
-    ImGui::TextDisabled("GPU");
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0.30f, 0.85f, 0.45f, 1.0f), "%s", "\xE2\x97\x8F"); // ●
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Settings")) {
-        state.screen = Screen::Settings;
+    // Right-aligned cluster (robust to window width).
+    {
+        ImGui::SameLine(ImGui::GetWindowWidth() - 170.0f);
+        ImGui::TextDisabled("GPU");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.30f, 0.85f, 0.45f, 1.0f), "%s", "\xE2\x97\x8F"); // ●
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Settings")) {
+            state.screen = Screen::Settings;
+        }
     }
     ImGui::End();
 

@@ -42,6 +42,7 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
     };
 
     const int T = static_cast<int>(target.joints.size());
+    const int S = source.joints;
     Animation result;
     result.frames = source.frames;
     result.joints = T;
@@ -60,15 +61,29 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
         if (it != map.end() && !it->second.empty() && it->second != "(none)") {
             tgtToSrc[t] = srcIndex(it->second);
         }
-        const int s = tgtToSrc[t];
-        if (s >= 0 && static_cast<size_t>(s) < source.offsets.size()) {
-            result.offsets[t] = source.offsets[s];
+    }
+
+    // Rest offsets: from target bind when available (true proportions),
+    // else transferred through the map (legacy profiles).
+    if (target.hasBind && static_cast<int>(target.offsets.size()) == T) {
+        result.offsets = target.offsets;
+    } else {
+        for (int t = 0; t < T; ++t) {
+            const int s = tgtToSrc[t];
+            if (s >= 0 && static_cast<size_t>(s) < source.offsets.size()) {
+                result.offsets[t] = source.offsets[s];
+            }
         }
     }
 
+    // Rotation transfer: motion quats are parent-relative in each skeleton's
+    // own rest frame, so copying them preserves the animation relative to
+    // rest. Unmapped joints hold identity.
     for (int f = 0; f < source.frames; ++f) {
         const float* srcRots =
-            source.localRotationsXyzw.data() + static_cast<size_t>(f) * source.joints * 4;
+            source.localRotationsXyzw.data() + static_cast<size_t>(f) * S * 4;
+        const float* srcRoot =
+            source.rootPositions.data() + static_cast<size_t>(f) * 3;
         float* dstRots =
             result.localRotationsXyzw.data() + static_cast<size_t>(f) * T * 4;
         for (int t = 0; t < T; ++t) {
@@ -86,8 +101,6 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
                 q[3] = 1; // identity bind
             }
         }
-        const float* srcRoot =
-            source.rootPositions.data() + static_cast<size_t>(f) * 3;
         float* dstRoot = result.rootPositions.data() + static_cast<size_t>(f) * 3;
         dstRoot[0] = srcRoot[0] * opts.rootScale;
         dstRoot[1] = srcRoot[1] * opts.rootScale;
