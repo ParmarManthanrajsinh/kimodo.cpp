@@ -1507,27 +1507,11 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
 
     // Right header controls
     {
-        ImGui::SetCursorPos(ImVec2((float)sw - 355.0f, 13.0f));
-        ImGui::TextColored(ImVec4(0.55f, 0.56f, 0.60f, 1.0f), "GPU");
-        ImGui::SameLine(0, 6.0f);
-        if (nvidiaTex_.id > 0) {
-            rlImGuiImageSize(&nvidiaTex_, 15, 15);
-        } else {
-            ImDrawList* dl = ImGui::GetWindowDrawList();
-            ImVec2 dotPos = ImGui::GetCursorScreenPos();
-            dl->AddCircleFilled(ImVec2(dotPos.x + 4.0f, dotPos.y + 7.0f), 4.0f, IM_COL32(118, 185, 0, 255));
-            ImGui::Dummy(ImVec2(10.0f, 14.0f));
-        }
-        ImGui::SameLine(0, 6.0f);
-        ImGui::TextColored(ImVec4(0.92f, 0.92f, 0.94f, 1.0f), "%s", state.gpuName.c_str());
-        ImGui::SameLine(0, 16.0f);
-        ImGui::TextColored(ImVec4(0.55f, 0.56f, 0.60f, 1.0f), "VRAM");
-        ImGui::SameLine(0, 6.0f);
-        ImGui::TextColored(ImVec4(0.92f, 0.92f, 0.94f, 1.0f), "5.2 / 8 GB");
-        ImGui::SameLine(0, 16.0f);
         char gearBtn[32];
-        std::snprintf(gearBtn, sizeof(gearBtn), "%s Settings", studio::icons::kSettings);
-        if (ImGui::SmallButton(gearBtn)) {
+        std::snprintf(gearBtn, sizeof(gearBtn), "%s  Settings", studio::icons::kSettings);
+        const float btnW = ImGui::CalcTextSize(gearBtn).x + 24.0f;
+        ImGui::SetCursorPos(ImVec2((float)sw - btnW - 16.0f, 10.0f));
+        if (ImGui::Button(gearBtn, ImVec2(btnW, 26.0f))) {
             state.screen = Screen::Settings;
             state.lastToolScreen = Screen::Settings;
         }
