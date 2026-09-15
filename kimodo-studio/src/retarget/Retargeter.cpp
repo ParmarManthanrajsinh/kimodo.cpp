@@ -1,5 +1,7 @@
 #include "retarget/Retargeter.h"
 
+#include "animation/Skeleton.h"
+#include "raymath.h"
 #include "retarget/SkeletonProfile.h"
 
 namespace studio {
@@ -76,9 +78,31 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
         }
     }
 
-    // Rotation transfer: motion quats are parent-relative in each skeleton's
-    // own rest frame, so copying them preserves the animation relative to
-    // rest. Unmapped joints hold identity.
+    // Rest-offset rotation transfer (upstream Kimodo convention):
+    //   tgtWorld = srcWorld * (inv(srcRest) * tgtRest), source rest = identity
+    //   tgtLocal = inv(parentAnimatedWorld) * tgtWorld
+    // At source rest this reproduces the target rest exactly; during motion
+    // it carries relative articulation. Unmapped joints hold rest.
+    const bool useBind = target.hasBind &&
+                         static_cast<int>(target.restLocal.size()) == T;
+    std::vector<Quaternion> tgtRestWorld(T, {0, 0, 0, 1});
+    if (useBind) {
+        std::vector<float> restFlat(static_cast<size_t>(T) * 4);
+        for (int t = 0; t < T; ++t) {
+            restFlat[t * 4] = target.restLocal[t][0];
+            restFlat[t * 4 + 1] = target.restLocal[t][1];
+            restFlat[t * 4 + 2] = target.restLocal[t][2];
+            restFlat[t * 4 + 3] = target.restLocal[t][3];
+        }
+        const float origin[3] = {0, 0, 0};
+        std::vector<Vector3> dummy;
+        Skeleton::forwardKinematicsFull(restFlat.data(), origin, target.parents,
+                                        result.offsets, dummy, tgtRestWorld);
+    }
+
+    std::vector<Vector3> srcPos;
+    std::vector<Quaternion> srcWorld;
+    std::vector<Quaternion> outWorld(T);
     for (int f = 0; f < source.frames; ++f) {
         const float* srcRots =
             source.localRotationsXyzw.data() + static_cast<size_t>(f) * S * 4;
@@ -86,19 +110,49 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
             source.rootPositions.data() + static_cast<size_t>(f) * 3;
         float* dstRots =
             result.localRotationsXyzw.data() + static_cast<size_t>(f) * T * 4;
-        for (int t = 0; t < T; ++t) {
-            const int s = tgtToSrc[t];
-            float* q = dstRots + t * 4;
-            if (s >= 0) {
-                q[0] = srcRots[s * 4];
-                q[1] = srcRots[s * 4 + 1];
-                q[2] = srcRots[s * 4 + 2];
-                q[3] = srcRots[s * 4 + 3];
-            } else {
-                q[0] = 0;
-                q[1] = 0;
-                q[2] = 0;
-                q[3] = 1; // identity bind
+        if (useBind) {
+            Skeleton::forwardKinematicsFull(srcRots, srcRoot, source.parents,
+                                            source.offsets, srcPos, srcWorld);
+            // Topological order: parents precede children in both profiles.
+            for (int t = 0; t < T; ++t) {
+                const int s = tgtToSrc[t];
+                float* q = dstRots + t * 4;
+                Quaternion tw;
+                if (s >= 0 && s < S && s < static_cast<int>(srcWorld.size())) {
+                    tw = QuaternionNormalize(
+                        QuaternionMultiply(srcWorld[s], tgtRestWorld[t]));
+                } else {
+                    // Unmapped: rest world (holds relaxed rest pose).
+                    tw = tgtRestWorld[t];
+                }
+                outWorld[t] = tw;
+                Quaternion pw = {0, 0, 0, 1};
+                const int p = target.parents[t];
+                if (p >= 0 && p < T) {
+                    pw = outWorld[p];
+                }
+                Quaternion lq = QuaternionNormalize(
+                    QuaternionMultiply(QuaternionInvert(pw), tw));
+                q[0] = lq.x;
+                q[1] = lq.y;
+                q[2] = lq.z;
+                q[3] = lq.w;
+            }
+        } else {
+            for (int t = 0; t < T; ++t) {
+                const int s = tgtToSrc[t];
+                float* q = dstRots + t * 4;
+                if (s >= 0) {
+                    q[0] = srcRots[s * 4];
+                    q[1] = srcRots[s * 4 + 1];
+                    q[2] = srcRots[s * 4 + 2];
+                    q[3] = srcRots[s * 4 + 3];
+                } else {
+                    q[0] = 0;
+                    q[1] = 0;
+                    q[2] = 0;
+                    q[3] = 1; // identity bind
+                }
             }
         }
         float* dstRoot = result.rootPositions.data() + static_cast<size_t>(f) * 3;

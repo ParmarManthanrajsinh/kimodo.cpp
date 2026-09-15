@@ -141,40 +141,70 @@ int selftest(const char* framesArg, const char* stepsArg) {
     }
     std::printf("selftest: retarget joints=%d missing=%llu\n", out.joints,
                 static_cast<unsigned long long>(missing.size()));
-    if (out.joints != 92 || out.frames != anim.frames) {
+    if (out.joints != static_cast<int>(manny->joints.size()) ||
+        out.frames != anim.frames) {
         std::printf("selftest: RETARGET FAILED: bad dims\n");
         return 1;
     }
-    // Transfer check: mapped LOCAL quats must equal source locals exactly,
-    // and target offsets must come from the true profile (not transferred).
+    // Identity source motion must reproduce the target rest exactly.
     {
-        bool ok = true;
-        for (const auto& [tgt, src] : map) {
-            int ti = -1, si = -1;
-            for (int k = 0; k < out.joints; ++k) {
-                if (out.jointNames[k] == tgt) {
-                    ti = k;
-                }
-            }
-            for (int k = 0; k < anim.joints; ++k) {
-                if (anim.jointNames[k] == src) {
-                    si = k;
-                }
-            }
-            if (ti < 0 || si < 0) {
-                continue;
-            }
-            const float* q = out.localRotationsXyzw.data() + ti * 4;
-            const float* s = anim.localRotationsXyzw.data() + si * 4;
-            if (q[0] != s[0] || q[1] != s[1] || q[2] != s[2] || q[3] != s[3]) {
-                ok = false;
-            }
+        studio::Animation ident;
+        ident.frames = 2;
+        ident.joints = anim.joints;
+        ident.fps = 30.0f;
+        ident.skeletonName = "soma30";
+        ident.jointNames = anim.jointNames;
+        ident.parents = anim.parents;
+        ident.offsets = anim.offsets;
+        ident.localRotationsXyzw.assign(2 * anim.joints * 4, 0.0f);
+        for (int k = 0; k < 2 * anim.joints; ++k) {
+            ident.localRotationsXyzw[k * 4 + 3] = 1.0f;
         }
-        // Hips offset must be the true Manny value (~0.959m), not SOMA's.
+        ident.rootPositions.assign(6, 0.0f);
+        studio::Animation restOut;
+        std::string rerr;
+        studio::Retargeter::Options ropts;
+        if (!studio::Retargeter::retarget(ident, *manny, map, ropts, restOut, rerr)) {
+            std::printf("selftest: RETARGET FAILED: identity %s\n", rerr.c_str());
+            return 1;
+        }
+        float worst = 0.0f;
+        for (int t = 0; t < restOut.joints; ++t) {
+            const float* q = restOut.localRotationsXyzw.data() + t * 4;
+            const auto& e = manny->restLocal[t];
+            const float d = std::abs(q[0] - e[0]) + std::abs(q[1] - e[1]) +
+                            std::abs(q[2] - e[2]) + std::abs(q[3] - e[3]);
+            worst = std::max(worst, d);
+        }
+        std::printf("selftest: retarget identity-rest worst=%.6f\n", worst);
+        if (worst > 1e-4f) {
+            std::printf("selftest: RETARGET FAILED: rest not preserved\n");
+            return 1;
+        }
+    }
+    // Hips offset must be the true Manny value (~0.959m), not SOMA's.
+    {
         const float hipsY = out.offsets[0][1];
-        std::printf("selftest: retarget transfer=%d hipsOffY=%.4f\n", ok ? 1 : 0, hipsY);
-        if (!ok || std::abs(hipsY - 0.9590f) > 0.01f) {
-            std::printf("selftest: RETARGET FAILED: transfer/offsets\n");
+        std::printf("selftest: retarget hipsOffY=%.4f\n", hipsY);
+        if (std::abs(hipsY - 0.9590f) > 0.01f) {
+            std::printf("selftest: RETARGET FAILED: offsets\n");
+            return 1;
+        }
+    }
+    // Collapse detector: mid-frame mean joint height must look standing.
+    {
+        studio::AnimationPlayer probe;
+        probe.load(out);
+        probe.scrub(out.duration() * 0.5f);
+        const auto& w = probe.worldPositions();
+        double meanY = 0.0;
+        for (const Vector3& v : w) {
+            meanY += v.y;
+        }
+        meanY /= static_cast<double>(w.size());
+        std::printf("selftest: retarget midMeanY=%.3f\n", meanY);
+        if (meanY < 0.3) {
+            std::printf("selftest: RETARGET FAILED: collapsed figure\n");
             return 1;
         }
     }
