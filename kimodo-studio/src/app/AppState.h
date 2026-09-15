@@ -4,10 +4,11 @@
 
 namespace studio {
 
-enum class Screen { Home, Generate, Models, Library, Retarget, Export, Settings };
+enum class Screen { Home, Generate, Models, Library, Retarget, Export, Settings, Inspector };
 
 struct AppState {
     Screen screen = Screen::Retarget;
+    Screen lastToolScreen = Screen::Retarget;
     std::string gpuName = "RTX 4060";
     int fps = 0;
     bool vulkanAvailable = false;

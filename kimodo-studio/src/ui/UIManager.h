@@ -27,5 +27,7 @@ public:
 private:
     std::map<std::string, Texture2D> thumbs_;
     size_t thumbCount_ = 0;
+    Texture2D nvidiaTex_{};
+    bool nvidiaTexLoaded_ = false;
 };
 } // namespace studio

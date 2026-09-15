@@ -1,5 +1,7 @@
 #include <windows.h>
 
+1 ICON "@CMAKE_CURRENT_SOURCE_DIR@/nvidia-logo.ico"
+
 VS_VERSION_INFO VERSIONINFO
     FILEVERSION     0,1,0,0
     PRODUCTVERSION  0,1,0,0

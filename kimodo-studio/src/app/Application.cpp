@@ -97,6 +97,27 @@ bool Application::init() {
         Logger::instance().error("Raylib window init failed");
         return false;
     }
+
+    {
+        const char* iconCandidates[] = {
+            KIMODO_STUDIO_SOURCE_DIR "/nvidia-logo.png",
+            "nvidia-logo.png",
+            "../nvidia-logo.png",
+        };
+        for (const char* ic : iconCandidates) {
+            std::error_code ec;
+            if (std::filesystem::is_regular_file(ic, ec) && !ec) {
+                Image appIcon = LoadImage(ic);
+                if (appIcon.data) {
+                    SetWindowIcon(appIcon);
+                    UnloadImage(appIcon);
+                    Logger::instance().info(std::string("Window icon set: ") + ic);
+                    break;
+                }
+            }
+        }
+    }
+
     SetTargetFPS(60);
 
     rlImGuiSetLoadFontsCallback(loadStudioFonts);

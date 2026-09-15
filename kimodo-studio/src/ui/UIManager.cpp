@@ -82,6 +82,7 @@ const char* screenLabel(Screen s) {
         case Screen::Retarget: return "Retarget";
         case Screen::Export: return "Export";
         case Screen::Settings: return "Settings";
+        case Screen::Inspector: return "Inspector";
     }
     return "Home";
 }
@@ -95,6 +96,7 @@ const char* screenShortcut(Screen s) {
         case Screen::Retarget: return "5";
         case Screen::Export: return "6";
         case Screen::Settings: return "7";
+        case Screen::Inspector: return "8";
     }
     return "";
 }
@@ -465,22 +467,22 @@ void drawRetarget(AppState& state, AnimationLibrary& library, AnimationPlayer& p
                            static_cast<unsigned long long>(totalJ));
     }
     {
-        const float availW = ImGui::GetContentRegionAvail().x;
-        const float gearW = 34.0f;
-        const float btnW = availW - gearW - 8.0f;
-        if (ImGui::Button("Auto Map", ImVec2(btnW > 60.0f ? btnW : 60.0f, 30.0f))) {
+        if (ImGui::Button("Auto Map", ImVec2(-1.0f, 30.0f))) {
             map = Retargeter::autoMap(profile);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Reset mapping to profile defaults");
         }
-        ImGui::SameLine();
-        if (ImGui::Button(studio::icons::kSettings, ImVec2(gearW, 30.0f))) {
-            // Open settings/profile options
-        }
     }
 
-    if (ImGui::CollapsingHeader("Advanced Mapping")) {
+    static bool advOpen = false;
+    char advBuf[48];
+    std::snprintf(advBuf, sizeof(advBuf), "%s  Advanced Mapping", advOpen ? "\xcb\x85" : ">");
+    if (ImGui::Selectable(advBuf, false)) {
+        advOpen = !advOpen;
+    }
+
+    if (advOpen) {
         std::vector<std::string> items = {"(none: hold rest)"};
         for (const std::string& n : sourceAnim.jointNames) {
             items.push_back(n);
@@ -510,8 +512,9 @@ void drawRetarget(AppState& state, AnimationLibrary& library, AnimationPlayer& p
     ImGui::Spacing();
 
     // 4. Preview
-    static bool previewOpen = true;
-    ImGui::TextColored(ImVec4(0.95f, 0.95f, 0.96f, 1.0f), "4. Preview");
+    char prevH[32];
+    std::snprintf(prevH, sizeof(prevH), "%s 4.Preview", studio::icons::kChevronDown);
+    ImGui::TextColored(ImVec4(0.95f, 0.95f, 0.96f, 1.0f), "%s", prevH);
     auto buildOpts = [&]() {
         Retargeter::Options opts;
         opts.rootScale = rootScale;
@@ -541,7 +544,9 @@ void drawRetarget(AppState& state, AnimationLibrary& library, AnimationPlayer& p
     ImGui::Spacing();
 
     // 5. Save / Export
-    ImGui::TextColored(ImVec4(0.95f, 0.95f, 0.96f, 1.0f), "5. Save / Export");
+    char saveH[32];
+    std::snprintf(saveH, sizeof(saveH), "%s 5.Save / Export", studio::icons::kChevronDown);
+    ImGui::TextColored(ImVec4(0.95f, 0.95f, 0.96f, 1.0f), "%s", saveH);
     {
         const float availW = ImGui::GetContentRegionAvail().x;
         const float halfW = (availW - 8.0f) * 0.5f;
@@ -1331,6 +1336,10 @@ void UIManager::shutdown() {
     if (gHfAuth.thread.joinable()) {
         gHfAuth.thread.join();
     }
+    if (nvidiaTexLoaded_ && nvidiaTex_.id > 0) {
+        UnloadTexture(nvidiaTex_);
+        nvidiaTexLoaded_ = false;
+    }
 }
 
 void UIManager::drawThumb(const LibraryEntry& e) {
@@ -1425,6 +1434,28 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         }
     }
 
+    // Lazy load NVIDIA GPU texture for top bar badge
+    if (!nvidiaTexLoaded_) {
+        const char* candidates[] = {
+            KIMODO_STUDIO_SOURCE_DIR "/nvidia-logo.png",
+            "nvidia-logo.png",
+            "../nvidia-logo.png",
+        };
+        for (const char* p : candidates) {
+            std::error_code ec;
+            if (std::filesystem::is_regular_file(p, ec) && !ec) {
+                nvidiaTex_ = LoadTexture(p);
+                if (nvidiaTex_.id > 0) {
+                    nvidiaTexLoaded_ = true;
+                    break;
+                }
+            }
+        }
+        if (!nvidiaTexLoaded_) {
+            nvidiaTexLoaded_ = true;
+        }
+    }
+
     // Top application bar: wordmark + workspace tabs + GPU/settings.
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2((float)sw, topH));
@@ -1435,15 +1466,15 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
     // Vector Kimodo origami green logo
     Theme::drawKimodoLogo(12.0f, 9.0f, 28.0f);
 
-    ImGui::SetCursorPos(ImVec2(48.0f, 8.0f));
+    ImGui::SetCursorPos(ImVec2(48.0f, 7.0f));
     ImGui::TextColored(ImVec4(0.96f, 0.96f, 0.98f, 1.0f), "KIMODO STUDIO");
-    ImGui::SetCursorPos(ImVec2(48.0f, 24.0f));
+    ImGui::SetCursorPos(ImVec2(48.0f, 23.0f));
     ImGui::TextColored(ImVec4(0.48f, 0.49f, 0.54f, 1.0f), "AI MOTION WORKSTATION");
 
     // Center tabs
     const Screen tabs[] = {Screen::Generate, Screen::Library, Screen::Retarget, Screen::Export};
     const float tabAreaW = 340.0f;
-    ImGui::SetCursorPos(ImVec2(((float)sw - tabAreaW) * 0.5f, 10.0f));
+    ImGui::SetCursorPos(ImVec2(((float)sw - tabAreaW) * 0.5f, 9.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
     for (const Screen t : tabs) {
         const bool active = state.screen == t;
@@ -1453,14 +1484,19 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.18f, 0.22f, 0.5f));
         if (ImGui::Button(screenLabel(t), ImVec2(76.0f, 26.0f))) {
             state.screen = t;
+            state.lastToolScreen = t;
         }
         ImGui::PopStyleColor(4);
         if (active) {
             const ImVec2 min = ImGui::GetItemRectMin();
             const ImVec2 max = ImGui::GetItemRectMax();
-            ImGui::GetWindowDrawList()->AddLine(
-                ImVec2(min.x + 8.0f, max.y + 4.0f), ImVec2(max.x - 8.0f, max.y + 4.0f),
-                ImGui::GetColorU32(Theme::accent()), 2.5f);
+            const float pillW = 48.0f;
+            const float midX = (min.x + max.x) * 0.5f;
+            const float pillY = topH - 3.0f;
+            ImGui::GetWindowDrawList()->AddRectFilled(
+                ImVec2(midX - pillW * 0.5f, pillY),
+                ImVec2(midX + pillW * 0.5f, topH),
+                ImGui::GetColorU32(Theme::accent()), 1.5f);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("%s (%s)", screenLabel(t), screenShortcut(t));
@@ -1471,24 +1507,29 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
 
     // Right header controls
     {
-        ImGui::SetCursorPos(ImVec2((float)sw - 340.0f, 13.0f));
+        ImGui::SetCursorPos(ImVec2((float)sw - 355.0f, 13.0f));
         ImGui::TextColored(ImVec4(0.55f, 0.56f, 0.60f, 1.0f), "GPU");
-        ImGui::SameLine();
-        ImDrawList* dl = ImGui::GetWindowDrawList();
-        ImVec2 dotPos = ImGui::GetCursorScreenPos();
-        dl->AddCircleFilled(ImVec2(dotPos.x + 4.0f, dotPos.y + 7.0f), 4.0f, IM_COL32(71, 209, 71, 255));
-        ImGui::Dummy(ImVec2(10.0f, 14.0f));
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.92f, 0.92f, 0.94f, 1.0f), "RTX 4060");
+        ImGui::SameLine(0, 6.0f);
+        if (nvidiaTex_.id > 0) {
+            rlImGuiImageSize(&nvidiaTex_, 15, 15);
+        } else {
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            ImVec2 dotPos = ImGui::GetCursorScreenPos();
+            dl->AddCircleFilled(ImVec2(dotPos.x + 4.0f, dotPos.y + 7.0f), 4.0f, IM_COL32(118, 185, 0, 255));
+            ImGui::Dummy(ImVec2(10.0f, 14.0f));
+        }
+        ImGui::SameLine(0, 6.0f);
+        ImGui::TextColored(ImVec4(0.92f, 0.92f, 0.94f, 1.0f), "%s", state.gpuName.c_str());
         ImGui::SameLine(0, 16.0f);
         ImGui::TextColored(ImVec4(0.55f, 0.56f, 0.60f, 1.0f), "VRAM");
-        ImGui::SameLine();
+        ImGui::SameLine(0, 6.0f);
         ImGui::TextColored(ImVec4(0.92f, 0.92f, 0.94f, 1.0f), "5.2 / 8 GB");
         ImGui::SameLine(0, 16.0f);
         char gearBtn[32];
         std::snprintf(gearBtn, sizeof(gearBtn), "%s Settings", studio::icons::kSettings);
         if (ImGui::SmallButton(gearBtn)) {
             state.screen = Screen::Settings;
+            state.lastToolScreen = Screen::Settings;
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Settings (7)");
@@ -1514,51 +1555,53 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         ImGui::PopStyleColor(3);
         if (clicked) {
             state.screen = item;
+            if (item != Screen::Inspector) {
+                state.lastToolScreen = item;
+            }
         }
         if (active) {
             ImVec2 min = ImGui::GetItemRectMin();
             ImVec2 max = ImGui::GetItemRectMax();
             ImDrawList* sDl = ImGui::GetWindowDrawList();
-            sDl->AddRect(min, max, IM_COL32(71, 209, 71, 120), 4.0f);
-            sDl->AddRectFilled(min, max, IM_COL32(71, 209, 71, 25), 4.0f);
-            sDl->AddLine(ImVec2(min.x, min.y), ImVec2(min.x, max.y), IM_COL32(71, 209, 71, 255), 3.0f);
+            sDl->AddRectFilled(min, max, IM_COL32(24, 52, 26, 220), 4.0f);
+            sDl->AddLine(ImVec2(max.x - 1.0f, min.y + 2.0f), ImVec2(max.x - 1.0f, max.y - 2.0f),
+                         IM_COL32(71, 209, 71, 255), 3.0f);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("%s (%s)", name, screenShortcut(item));
         }
     };
 
-    ImGui::TextColored(ImVec4(0.40f, 0.41f, 0.46f, 1.0f), "WORKSPACE");
+    ImGui::TextColored(ImVec4(0.38f, 0.40f, 0.46f, 1.0f), "WORKSPACE");
     ImGui::Spacing();
     navItem(Screen::Home, studio::icons::kHome);
     navItem(Screen::Generate, studio::icons::kGenerate);
     navItem(Screen::Library, studio::icons::kLibrary);
     navItem(Screen::Retarget, studio::icons::kRetarget);
     navItem(Screen::Export, studio::icons::kExport);
+    navItem(Screen::Inspector, studio::icons::kEye, "Inspector");
     ImGui::Spacing();
     ImGui::Spacing();
 
-    ImGui::TextColored(ImVec4(0.40f, 0.41f, 0.46f, 1.0f), "ASSETS");
+    ImGui::TextColored(ImVec4(0.38f, 0.40f, 0.46f, 1.0f), "ASSETS");
     ImGui::Spacing();
     navItem(Screen::Models, studio::icons::kModel);
-    navItem(Screen::Library, studio::icons::kRunning, "Animations");
-    navItem(Screen::Models, studio::icons::kUser, "Characters");
     ImGui::Spacing();
     ImGui::Spacing();
 
-    ImGui::TextColored(ImVec4(0.40f, 0.41f, 0.46f, 1.0f), "SYSTEM");
+    ImGui::TextColored(ImVec4(0.38f, 0.40f, 0.46f, 1.0f), "SYSTEM");
     ImGui::Spacing();
     navItem(Screen::Settings, studio::icons::kSettings);
 
     // Bottom watermark pinned to rail bottom
     {
         const float avail = ImGui::GetContentRegionAvail().y;
-        if (avail > 70.0f) {
-            ImGui::Dummy(ImVec2(0, avail - 70.0f));
+        if (avail > 64.0f) {
+            ImGui::Dummy(ImVec2(0, avail - 64.0f));
         }
-        ImGui::TextColored(ImVec4(0.24f, 0.25f, 0.28f, 1.0f), "AI MOTION");
-        ImGui::TextColored(ImVec4(0.24f, 0.25f, 0.28f, 1.0f), "FOR A MORE");
-        ImGui::TextColored(ImVec4(0.24f, 0.25f, 0.28f, 1.0f), "CREATIVE TOMORROW");
+        ImGui::TextColored(ImVec4(0.20f, 0.21f, 0.24f, 1.0f), "AI MOTION");
+        ImGui::TextColored(ImVec4(0.20f, 0.21f, 0.24f, 1.0f), "FOR A MORE");
+        ImGui::TextColored(ImVec4(0.20f, 0.21f, 0.24f, 1.0f), "CREATIVE TOMORROW");
     }
     ImGui::End();
 
@@ -1568,20 +1611,21 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
     ImGui::Begin("SidePanel", nullptr,
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
     
-    // Tab headers: Retarget | Inspector
-    static int rightTab = 0;
+    // Tab headers: [Dynamic Active Tool] | Inspector
+    const bool isInspector = (state.screen == Screen::Inspector);
+    const char* toolTabName = screenLabel(state.lastToolScreen);
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.14f, 0.14f, 0.18f, 0.5f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.18f, 0.22f, 0.5f));
         
-        ImGui::PushStyleColor(ImGuiCol_Text, rightTab == 0 ? ImVec4(1, 1, 1, 1) : ImVec4(0.55f, 0.56f, 0.60f, 1));
-        if (ImGui::Button("Retarget", ImVec2(80.0f, 26.0f))) {
-            rightTab = 0;
+        ImGui::PushStyleColor(ImGuiCol_Text, !isInspector ? ImVec4(1, 1, 1, 1) : ImVec4(0.55f, 0.56f, 0.60f, 1));
+        if (ImGui::Button(toolTabName, ImVec2(80.0f, 26.0f))) {
+            state.screen = state.lastToolScreen;
         }
         ImGui::PopStyleColor();
-        if (rightTab == 0) {
+        if (!isInspector) {
             const ImVec2 min = ImGui::GetItemRectMin();
             const ImVec2 max = ImGui::GetItemRectMax();
             ImGui::GetWindowDrawList()->AddLine(
@@ -1590,12 +1634,12 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         }
 
         ImGui::SameLine(0, 16.0f);
-        ImGui::PushStyleColor(ImGuiCol_Text, rightTab == 1 ? ImVec4(1, 1, 1, 1) : ImVec4(0.55f, 0.56f, 0.60f, 1));
+        ImGui::PushStyleColor(ImGuiCol_Text, isInspector ? ImVec4(1, 1, 1, 1) : ImVec4(0.55f, 0.56f, 0.60f, 1));
         if (ImGui::Button("Inspector", ImVec2(80.0f, 26.0f))) {
-            rightTab = 1;
+            state.screen = Screen::Inspector;
         }
         ImGui::PopStyleColor();
-        if (rightTab == 1) {
+        if (isInspector) {
             const ImVec2 min = ImGui::GetItemRectMin();
             const ImVec2 max = ImGui::GetItemRectMax();
             ImGui::GetWindowDrawList()->AddLine(
@@ -1608,9 +1652,7 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
     ImGui::Separator();
     ImGui::Spacing();
 
-    if (state.screen == Screen::Retarget && rightTab == 0) {
-        drawRetarget(state, library, player, toasts, viewport);
-    } else if (rightTab == 1) {
+    if (isInspector) {
         Theme::sectionHeader("INSPECTOR");
         if (player.hasAnimation()) {
             ImGui::TextDisabled("Frames %d", player.frame());
@@ -1639,6 +1681,7 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
             case Screen::Retarget: drawRetarget(state, library, player, toasts, viewport); break;
             case Screen::Export: drawExport(state, library, player, toasts); break;
             case Screen::Settings: drawSettings(state, engine, toasts); break;
+            case Screen::Inspector: break;
         }
     }
     ImGui::End();
@@ -1656,26 +1699,23 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
                          ImGuiWindowFlags_NoBringToFrontOnFocus |
                          ImGuiWindowFlags_NoSavedSettings);
         
-        // Left tool group: Perspective, Grid, Axes, Floor, Skeleton
-        if (ImGui::Button("Perspective  v")) {
-            // Perspective camera menu
-        }
-        ImGui::SameLine(0, 8.0f);
-
+        // Tools: Grid, Axes, Floor, Skeleton
         auto togglePill = [&](const char* label, const char* icon, bool active, auto onClick) {
             char buf[48];
             std::snprintf(buf, sizeof(buf), "%s %s", icon, label);
             if (active) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.22f, 0.12f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.24f, 0.12f, 1.0f));
                 ImGui::PushStyleColor(ImGuiCol_Border, Theme::accent());
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.92f, 1.0f, 0.92f, 1.0f));
             } else {
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.12f, 0.15f, 1.0f));
                 ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.20f, 0.20f, 0.24f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.75f, 0.76f, 0.82f, 1.0f));
             }
             if (ImGui::Button(buf)) {
                 onClick();
             }
-            ImGui::PopStyleColor(2);
+            ImGui::PopStyleColor(3);
             ImGui::SameLine(0, 6.0f);
         };
 
@@ -1684,44 +1724,39 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         togglePill("Floor", studio::icons::kFloor, viewport.showFloor(), [&]() { viewport.setFloor(!viewport.showFloor()); });
         togglePill("Skeleton", studio::icons::kSkeleton, viewport.showSkeleton(), [&]() { viewport.setSkeleton(!viewport.showSkeleton()); });
 
-        // Right tool group: Camera, Split, Link, Expand, Reset
-        const float rGroupW = 200.0f;
+        // Right tool: Reset view
+        const float rGroupW = 90.0f;
         ImGui::SameLine(vw - rGroupW);
-        if (ImGui::Button(studio::icons::kCamera)) { /* camera tool */ }
-        ImGui::SameLine(0, 4.0f);
-        if (ImGui::Button(studio::icons::kSplit)) { /* split tool */ }
-        ImGui::SameLine(0, 4.0f);
-        if (ImGui::Button(studio::icons::kLink)) { /* link tool */ }
-        ImGui::SameLine(0, 4.0f);
-        if (ImGui::Button(studio::icons::kExpand)) { /* expand tool */ }
-        ImGui::SameLine(0, 4.0f);
         char resetB[32];
         std::snprintf(resetB, sizeof(resetB), "%s Reset", studio::icons::kReset);
-        if (ImGui::Button(resetB)) {
+        if (ImGui::Button(resetB, ImVec2(80.0f, 0))) {
             viewport.reset();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Reset 3D camera to default orbit view");
         }
         ImGui::End();
 
         // Viewport Stats Badge (just beneath top-right of toolbar)
         const int joints = player.hasAnimation() ? static_cast<int>(player.worldPositions().size()) : 30;
         char stats[96];
-        std::snprintf(stats, sizeof(stats), "Skeleton \xc2\xb7 Joints: %d  Vertices: 0  FPS: %d", joints, state.fps > 0 ? state.fps : 60);
+        std::snprintf(stats, sizeof(stats), "Skeleton \xc2\xb7 Joints: %d   Vertices: 0   FPS: %d", joints, state.fps > 0 ? state.fps : 60);
         const float statsW = ImGui::CalcTextSize(stats).x + 16.0f;
-        ImGui::SetNextWindowPos(ImVec2(vx + vw - statsW - 6.0f, topH + 48.0f));
+        ImGui::SetNextWindowPos(ImVec2(vx + vw - statsW - 6.0f, topH + 46.0f));
         ImGui::SetNextWindowSize(ImVec2(statsW, 24.0f));
         ImGui::Begin("ViewportStats", nullptr,
                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                          ImGuiWindowFlags_NoBringToFrontOnFocus |
                          ImGuiWindowFlags_NoSavedSettings |
                          ImGuiWindowFlags_NoBackground);
-        ImGui::TextColored(ImVec4(0.60f, 0.61f, 0.66f, 1.0f), "%s", stats);
+        ImGui::TextColored(ImVec4(0.50f, 0.51f, 0.56f, 1.0f), "%s", stats);
         ImGui::End();
 
         // Bottom-Right Camera/Frame Status Card
-        const float bx = vx + vw - 216.0f;
-        const float by = (float)sh - timelineH - statusH - 72.0f;
+        const float bx = vx + vw - 200.0f;
+        const float by = (float)sh - timelineH - statusH - 74.0f;
         ImGui::SetNextWindowPos(ImVec2(bx, by));
-        ImGui::SetNextWindowSize(ImVec2(210.0f, 64.0f));
+        ImGui::SetNextWindowSize(ImVec2(194.0f, 66.0f));
         ImGui::Begin("ViewportCam", nullptr,
                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                          ImGuiWindowFlags_NoBringToFrontOnFocus |
@@ -1763,7 +1798,10 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
                 const float sy = axes[a].x * up.x + axes[a].y * up.y + axes[a].z * up.z;
                 const ImVec2 end = ImVec2(org.x + sx * 26.0f, org.y - sy * 26.0f);
                 dl->AddLine(org, end, cols[a], 2.2f);
-                dl->AddText(ImVec2(end.x + 3.0f, end.y - 6.0f), cols[a], tags[a]);
+                const float norm = std::sqrt(sx * sx + sy * sy);
+                const float offX = norm > 0.001f ? (sx / norm) * 7.0f : 4.0f;
+                const float offY = norm > 0.001f ? (-sy / norm) * 7.0f : -4.0f;
+                dl->AddText(ImVec2(end.x + offX - 3.0f, end.y + offY - 6.0f), cols[a], tags[a]);
             }
         }
         ImGui::End();
@@ -1777,7 +1815,7 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
                      ImGuiWindowFlags_NoBringToFrontOnFocus);
     
     // Row 1: Transport Controls
-    ImGui::SetCursorPos(ImVec2(16.0f, 8.0f));
+    ImGui::SetCursorPos(ImVec2(16.0f, 9.0f));
     ImGui::TextColored(ImVec4(0.85f, 0.86f, 0.90f, 1.0f), "Timeline");
     
     ImGui::SameLine(0, 140.0f);
@@ -1799,16 +1837,19 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         if (playing) {
             dl->AddRectFilled(ImVec2(center.x - 5.0f, center.y - 5.0f),
                               ImVec2(center.x + 5.0f, center.y + 5.0f),
-                              IM_COL32(71, 209, 71, 255), 2.0f);
+                              IM_COL32(71, 209, 71, 255), 1.0f);
         } else {
-            const ImVec2 p1 = ImVec2(center.x - 4.0f, center.y - 6.0f);
-            const ImVec2 p2 = ImVec2(center.x - 4.0f, center.y + 6.0f);
-            const ImVec2 p3 = ImVec2(center.x + 6.0f, center.y);
-            dl->AddTriangleFilled(p1, p2, p3, IM_COL32(71, 209, 71, 255));
+            const ImVec2 a(center.x - 3.5f, center.y - 6.0f);
+            const ImVec2 b(center.x - 3.5f, center.y + 6.0f);
+            const ImVec2 c(center.x + 6.0f, center.y);
+            dl->AddTriangleFilled(a, b, c, IM_COL32(71, 209, 71, 255));
         }
-        ImGui::InvisibleButton("##PlayCircle", ImVec2(28.0f, 28.0f));
-        if (ImGui::IsItemClicked()) {
-            if (player.hasAnimation()) player.toggle();
+
+        if (ImGui::InvisibleButton("##PlayBtn", ImVec2(r * 2.0f, r * 2.0f))) {
+            if (player.hasAnimation()) {
+                if (player.playing()) player.pause();
+                else player.play();
+            }
         }
     }
     ImGui::SameLine(0, 6.0f);
@@ -1843,35 +1884,22 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
     ImGui::TextColored(ImVec4(0.65f, 0.66f, 0.70f, 1.0f), "%s", tcBuf);
     ImGui::SameLine(0, 32.0f);
 
-    // FPS dropdown pill
-    if (ImGui::Button("FPS 30  v", ImVec2(76.0f, 24.0f))) {
-        // FPS menu
-    }
-    ImGui::SameLine(0, 8.0f);
-
     // Loop pill switch
     {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.22f, 0.12f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_Border, Theme::accent());
+        const bool isLoop = player.loop();
+        if (isLoop) {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.28f, 0.12f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Border, Theme::accent());
+        }
         char lBuf[32];
-        std::snprintf(lBuf, sizeof(lBuf), "  %s  Loop", studio::icons::kCheck);
+        std::snprintf(lBuf, sizeof(lBuf), "%s  Loop", isLoop ? studio::icons::kCheck : "  ");
         if (ImGui::Button(lBuf, ImVec2(76.0f, 24.0f))) {
             player.setLoop(!player.loop());
         }
-        ImGui::PopStyleColor(2);
+        if (isLoop) {
+            ImGui::PopStyleColor(2);
+        }
     }
-    ImGui::SameLine(0, 8.0f);
-
-    // 1.0x Speed pill
-    if (ImGui::Button("1.0x", ImVec2(50.0f, 24.0f))) {
-        // Speed
-    }
-    ImGui::SameLine(0, 8.0f);
-
-    // Zoom/fit icons
-    if (ImGui::Button(studio::icons::kZoomIn, ImVec2(24.0f, 24.0f))) {}
-    ImGui::SameLine(0, 4.0f);
-    if (ImGui::Button(studio::icons::kZoomOut, ImVec2(24.0f, 24.0f))) {}
 
     // Row 2: Custom Timeline Scrubber Ruler Track with Frame Ticks
     {
@@ -1885,9 +1913,15 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         ImVec2 p0 = ImGui::GetCursorScreenPos();
         ImVec2 p1 = ImVec2(p0.x + trackW, p0.y + trackH);
 
-        // Track bar background
-        dl->AddRectFilled(p0, p1, IM_COL32(18, 18, 22, 255), 4.0f);
-        dl->AddRect(p0, p1, IM_COL32(32, 32, 38, 255), 4.0f);
+        // Track bar background groove
+        dl->AddRectFilled(p0, p1, IM_COL32(14, 15, 18, 255), 4.0f);
+        dl->AddRect(p0, p1, IM_COL32(28, 29, 36, 255), 4.0f);
+
+        // Loaded animation sequence bar (dark grey rounded bar)
+        const float seqH = 14.0f;
+        const ImVec2 seq0 = ImVec2(p0.x + 3.0f, p0.y + 4.0f);
+        const ImVec2 seq1 = ImVec2(p1.x - 3.0f, seq0.y + seqH);
+        dl->AddRectFilled(seq0, seq1, IM_COL32(40, 42, 52, 255), 3.0f);
 
         // Frame ticks & numbers
         const int totalFrames = maxFrames > 0 ? maxFrames : 120;
@@ -1895,15 +1929,15 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
             const float frac = static_cast<float>(f) / static_cast<float>(totalFrames);
             const float tx = p0.x + frac * trackW;
             const bool isMajor = (f % 10 == 0);
-            const float tickH = isMajor ? 8.0f : 4.0f;
-            const ImU32 tickCol = isMajor ? IM_COL32(90, 92, 100, 255) : IM_COL32(50, 52, 58, 255);
-            dl->AddLine(ImVec2(tx, p0.y + 4.0f), ImVec2(tx, p0.y + 4.0f + tickH), tickCol, 1.0f);
+            const float tickH = isMajor ? 5.0f : 3.0f;
+            const ImU32 tickCol = isMajor ? IM_COL32(120, 122, 134, 255) : IM_COL32(65, 68, 78, 255);
+            dl->AddLine(ImVec2(tx, seq1.y + 1.0f), ImVec2(tx, seq1.y + 1.0f + tickH), tickCol, 1.0f);
 
             if (isMajor) {
                 char fNum[16];
                 std::snprintf(fNum, sizeof(fNum), "%d", f);
                 ImVec2 tSz = ImGui::CalcTextSize(fNum);
-                dl->AddText(ImVec2(tx - tSz.x * 0.5f, p0.y + 14.0f), IM_COL32(110, 112, 122, 255), fNum);
+                dl->AddText(ImVec2(tx - tSz.x * 0.5f, seq1.y + 7.0f), IM_COL32(115, 118, 128, 255), fNum);
             }
         }
 
@@ -1911,11 +1945,11 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         const float curFrac = static_cast<float>(curFrame) / static_cast<float>(totalFrames);
         const float needleX = p0.x + curFrac * trackW;
 
-        // Needle line
+        // Needle vertical line
         dl->AddLine(ImVec2(needleX, p0.y + 2.0f), ImVec2(needleX, p1.y - 2.0f), IM_COL32(71, 209, 71, 255), 2.0f);
-        // Pill handle at center
-        dl->AddRectFilled(ImVec2(needleX - 3.0f, p0.y + 7.0f), ImVec2(needleX + 3.0f, p0.y + 19.0f),
-                          IM_COL32(71, 209, 71, 255), 2.0f);
+        // Pill handle centered on the sequence bar
+        dl->AddRectFilled(ImVec2(needleX - 2.5f, seq0.y), ImVec2(needleX + 2.5f, seq1.y),
+                          IM_COL32(71, 209, 71, 255), 2.5f);
 
         // Interactive click/drag scrub
         ImGui::InvisibleButton("##TimelineTrack", ImVec2(trackW, trackH));
@@ -1940,10 +1974,13 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
     
     // Left: [green dot] Ready | Loaded animation
     {
+        ImGui::SetCursorPosX(16.0f);
         ImDrawList* dl = ImGui::GetWindowDrawList();
         ImVec2 p = ImGui::GetCursorScreenPos();
-        dl->AddCircleFilled(ImVec2(p.x + 12.0f, p.y + 11.0f), 4.0f, IM_COL32(71, 209, 71, 255));
-        ImGui::SetCursorPosX(26.0f);
+        const float dotRadius = 3.5f;
+        const float dotY = p.y + ImGui::GetTextLineHeight() * 0.5f;
+        dl->AddCircleFilled(ImVec2(p.x + dotRadius, dotY), dotRadius, IM_COL32(71, 209, 71, 255));
+        ImGui::SetCursorPosX(16.0f + dotRadius * 2.0f + 8.0f);
         ImGui::TextColored(ImVec4(0.85f, 0.86f, 0.90f, 1.0f), "Ready");
         ImGui::SameLine(0, 16.0f);
         ImGui::TextColored(ImVec4(0.35f, 0.36f, 0.40f, 1.0f), "|");
@@ -1958,16 +1995,14 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         }
     }
 
-    // Right: Vulkan | 60 FPS | Kimodo Studio 0.1.0
+    // Right: Vulkan    60 FPS    Kimodo Studio 0.1.0
     {
-        const char* rInfo = "Vulkan    60 FPS    Kimodo Studio 0.1.0";
-        float rw = ImGui::CalcTextSize(rInfo).x + 24.0f;
+        char rBuf[64];
+        std::snprintf(rBuf, sizeof(rBuf), "Vulkan   %d FPS   Kimodo Studio %s",
+                      state.fps > 0 ? state.fps : 60, KIMODO_STUDIO_VERSION);
+        float rw = ImGui::CalcTextSize(rBuf).x + 24.0f;
         ImGui::SameLine((float)sw - rw);
-        ImGui::TextColored(ImVec4(0.55f, 0.56f, 0.60f, 1.0f), "Vulkan");
-        ImGui::SameLine(0, 12.0f);
-        ImGui::TextColored(ImVec4(0.55f, 0.56f, 0.60f, 1.0f), "%d FPS", state.fps > 0 ? state.fps : 60);
-        ImGui::SameLine(0, 12.0f);
-        ImGui::TextColored(ImVec4(0.55f, 0.56f, 0.60f, 1.0f), "Kimodo Studio " KIMODO_STUDIO_VERSION);
+        ImGui::TextColored(ImVec4(0.55f, 0.56f, 0.60f, 1.0f), "%s", rBuf);
     }
     ImGui::End();
 }
