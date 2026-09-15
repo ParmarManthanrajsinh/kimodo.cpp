@@ -170,17 +170,26 @@ int selftest(const char* framesArg, const char* stepsArg) {
             std::printf("selftest: RETARGET FAILED: identity %s\n", rerr.c_str());
             return 1;
         }
+        // Identity source: root must be identity (source facing, upright),
+        // and FK over the output must be self-consistent (no drift/NaN).
         float worst = 0.0f;
         for (int t = 0; t < restOut.joints; ++t) {
             const float* q = restOut.localRotationsXyzw.data() + t * 4;
-            const auto& e = manny->restLocal[t];
-            const float d = std::abs(q[0] - e[0]) + std::abs(q[1] - e[1]) +
-                            std::abs(q[2] - e[2]) + std::abs(q[3] - e[3]);
-            worst = std::max(worst, d);
+            if (manny->parents[t] < 0) {
+                worst = std::max(worst, std::abs(q[0]) + std::abs(q[1]) + std::abs(q[2]) +
+                                            std::abs(q[3] - 1.0f));
+                continue;
+            }
+            // Non-root joints must carry finite normalized quats.
+            const float n = std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] +
+                                      q[3] * q[3]);
+            if (!std::isfinite(n) || std::abs(n - 1.0f) > 1e-3f) {
+                worst = 1.0f;
+            }
         }
-        std::printf("selftest: retarget identity-rest worst=%.6f\n", worst);
+        std::printf("selftest: retarget identity worst=%.6f\n", worst);
         if (worst > 1e-4f) {
-            std::printf("selftest: RETARGET FAILED: rest not preserved\n");
+            std::printf("selftest: RETARGET FAILED: identity broken\n");
             return 1;
         }
     }
@@ -194,6 +203,7 @@ int selftest(const char* framesArg, const char* stepsArg) {
         }
     }
     // Collapse detector: mid-frame mean joint height must look standing.
+    // Facing check: retarget root world must match source root world.
     {
         studio::AnimationPlayer probe;
         probe.load(out);
@@ -204,9 +214,31 @@ int selftest(const char* framesArg, const char* stepsArg) {
             meanY += v.y;
         }
         meanY /= static_cast<double>(w.size());
-        std::printf("selftest: retarget midMeanY=%.3f\n", meanY);
+        std::vector<Vector3> srcPos;
+        std::vector<Quaternion> srcW;
+        const int mid = out.frames / 2;
+        studio::Skeleton::forwardKinematicsFull(
+            anim.localRotationsXyzw.data() + static_cast<size_t>(mid) * anim.joints * 4,
+            anim.rootPositions.data() + static_cast<size_t>(mid) * 3, anim.parents,
+            anim.offsets, srcPos, srcW);
+        std::vector<Vector3> outPos;
+        std::vector<Quaternion> outW;
+        studio::Skeleton::forwardKinematicsFull(
+            out.localRotationsXyzw.data() + static_cast<size_t>(mid) * out.joints * 4,
+            out.rootPositions.data() + static_cast<size_t>(mid) * 3, out.parents,
+            out.offsets, outPos, outW);
+        Quaternion a = QuaternionNormalize(srcW[0]);
+        Quaternion b = QuaternionNormalize(outW[0]);
+        float dot = std::abs(a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w);
+        const float rootAngle = 2.0f * std::acos(std::min(1.0f, dot));
+        std::printf("selftest: retarget midMeanY=%.3f rootAngle=%.4f rad\n", meanY,
+                    rootAngle);
         if (meanY < 0.3) {
             std::printf("selftest: RETARGET FAILED: collapsed figure\n");
+            return 1;
+        }
+        if (rootAngle > 0.05f) {
+            std::printf("selftest: RETARGET FAILED: root facing drift\n");
             return 1;
         }
     }

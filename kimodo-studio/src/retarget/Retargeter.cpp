@@ -81,8 +81,11 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
     // Rest-offset rotation transfer (upstream Kimodo convention):
     //   tgtWorld = srcWorld * (inv(srcRest) * tgtRest), source rest = identity
     //   tgtLocal = inv(parentAnimatedWorld) * tgtWorld
-    // At source rest this reproduces the target rest exactly; during motion
-    // it carries relative articulation. Unmapped joints hold rest.
+    // Rest worlds are first normalized by the root (upright frame): a rig's
+    // rest root orientation is a frame artifact, not pose; carrying it would
+    // rigidly tip the whole figure (e.g. pre-rotated Mixamo hips). At source
+    // rest this reproduces the normalized target rest; during motion it
+    // carries relative articulation with source facing. Unmapped hold rest.
     const bool useBind = target.hasBind &&
                          static_cast<int>(target.restLocal.size()) == T;
     std::vector<Quaternion> tgtRestWorld(T, {0, 0, 0, 1});
@@ -98,6 +101,19 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
         std::vector<Vector3> dummy;
         Skeleton::forwardKinematicsFull(restFlat.data(), origin, target.parents,
                                         result.offsets, dummy, tgtRestWorld);
+        // Normalize by the root: upright frame, source facing preserved.
+        int rootIdx = 0;
+        for (int t = 0; t < T; ++t) {
+            if (target.parents[t] < 0) {
+                rootIdx = t;
+                break;
+            }
+        }
+        const Quaternion norm = QuaternionInvert(tgtRestWorld[rootIdx]);
+        for (int t = 0; t < T; ++t) {
+            tgtRestWorld[t] =
+                QuaternionNormalize(QuaternionMultiply(norm, tgtRestWorld[t]));
+        }
     }
 
     std::vector<Vector3> srcPos;
