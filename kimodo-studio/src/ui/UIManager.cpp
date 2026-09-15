@@ -444,6 +444,7 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
     static std::string renameId;
     static char renameBuf[1024];
     static std::string exportEntryId;
+    static bool exportPending = false; // OpenPopup must run at top-level ID stack
     static std::string exportPresetId = "blender";
     static float exportFps = 30.0f;
     static float exportScale = 1.0f;
@@ -484,7 +485,7 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
             exportFps = def ? def->fps : 30.0f;
             exportScale = def ? def->scale : 1.0f;
             exportRootMotion = 0;
-            ImGui::OpenPopup("Export animation");
+            exportPending = true;
         }
         ImGui::SameLine();
         if (capture && ImGui::SmallButton("Thumbnail")) {
@@ -524,6 +525,11 @@ void drawLibrary(UIManager* self, AppState& state, AnimationLibrary& library,
     }
 
     // Export modal: preset + fps + scale + root motion (+ auto-retarget).
+    // OpenPopup runs here (top-level ID stack) so its ID matches Begin below.
+    if (exportPending) {
+        ImGui::OpenPopup("Export animation");
+        exportPending = false;
+    }
     if (ImGui::BeginPopupModal("Export animation", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         const LibraryEntry* target = nullptr;
         for (const LibraryEntry& e : entries) {

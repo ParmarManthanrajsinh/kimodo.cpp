@@ -4,6 +4,8 @@
 #include "raymath.h"
 #include "retarget/SkeletonProfile.h"
 
+#include <cmath>
+
 namespace studio {
 
 BoneMap Retargeter::autoMap(const SkeletonProfile& target) {
@@ -81,9 +83,10 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
     // Rest-offset rotation transfer (upstream Kimodo convention):
     //   tgtWorld = srcWorld * (inv(srcRest) * tgtRest), source rest = identity
     //   tgtLocal = inv(parentAnimatedWorld) * tgtWorld
-    // Rest worlds are first normalized by the root (upright frame): a rig's
-    // rest root orientation is a frame artifact, not pose; carrying it would
-    // rigidly tip the whole figure (e.g. pre-rotated Mixamo hips). At source
+    // Rest worlds use yaw-only root normalization (keeps upright stance and
+    // source facing; full-orientation normalize tips, none about-faces).
+    // The mapped root keeps the source world orientation exactly so global
+    // facing/travel match the source clip. At source
     // rest this reproduces the normalized target rest; during motion it
     // carries relative articulation with source facing. Unmapped hold rest.
     const bool useBind = target.hasBind &&
@@ -101,7 +104,9 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
         std::vector<Vector3> dummy;
         Skeleton::forwardKinematicsFull(restFlat.data(), origin, target.parents,
                                         result.offsets, dummy, tgtRestWorld);
-        // Normalize by the root: upright frame, source facing preserved.
+        // Yaw-only root normalization: align facing with the source without
+        // tipping (a full-orientation normalize tips the figure; none leaves
+        // a constant about-face when the rig rest root carries yaw).
         int rootIdx = 0;
         for (int t = 0; t < T; ++t) {
             if (target.parents[t] < 0) {
@@ -109,10 +114,16 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
                 break;
             }
         }
-        const Quaternion norm = QuaternionInvert(tgtRestWorld[rootIdx]);
-        for (int t = 0; t < T; ++t) {
-            tgtRestWorld[t] =
-                QuaternionNormalize(QuaternionMultiply(norm, tgtRestWorld[t]));
+        {
+            const Quaternion r = tgtRestWorld[rootIdx];
+            const float siny = 2.0f * (r.w * r.y + r.x * r.z);
+            const float cosy = 1.0f - 2.0f * (r.y * r.y + r.z * r.z);
+            const float half = -0.5f * std::atan2(siny, cosy);
+            const Quaternion yawOnly{0.0f, std::sin(half), 0.0f, std::cos(half)};
+            for (int t = 0; t < T; ++t) {
+                tgtRestWorld[t] = QuaternionNormalize(
+                    QuaternionMultiply(yawOnly, tgtRestWorld[t]));
+            }
         }
     }
 
@@ -134,9 +145,13 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
                 const int s = tgtToSrc[t];
                 float* q = dstRots + t * 4;
                 Quaternion tw;
+                const bool isRoot = target.parents[t] < 0;
                 if (s >= 0 && s < S && s < static_cast<int>(srcWorld.size())) {
-                    tw = QuaternionNormalize(
-                        QuaternionMultiply(srcWorld[s], tgtRestWorld[t]));
+                    // Mapped root keeps source world: exact facing/travel.
+                    // Others compose source world with yaw-normalized rest.
+                    tw = isRoot ? QuaternionNormalize(srcWorld[s])
+                                : QuaternionNormalize(QuaternionMultiply(
+                                      srcWorld[s], tgtRestWorld[t]));
                 } else {
                     // Unmapped: rest world (holds relaxed rest pose).
                     tw = tgtRestWorld[t];

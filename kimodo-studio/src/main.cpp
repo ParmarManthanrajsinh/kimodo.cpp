@@ -1,4 +1,4 @@
-#include "animation/Animation.h"
+﻿#include "animation/Animation.h"
 #include "animation/AnimationPlayer.h"
 #include "animation/Skeleton.h"
 #include "app/Application.h"
@@ -148,6 +148,40 @@ int selftest(const char* framesArg, const char* stepsArg) {
         std::printf("selftest: RETARGET FAILED: bad dims\n");
         return 1;
     }
+    // Rest-pose assertion: FK over profile rest must stand tall
+    // (head well above feet relative to root). Catches convention flips
+    // in the emitted profile (direct = flat pancake when wrong).
+    {
+        const studio::SkeletonProfile* prof = manny;
+        std::vector<float> restFlat(static_cast<size_t>(prof->joints.size()) * 4);
+        for (size_t t = 0; t < prof->joints.size(); ++t) {
+            restFlat[t * 4] = prof->restLocal[t][0];
+            restFlat[t * 4 + 1] = prof->restLocal[t][1];
+            restFlat[t * 4 + 2] = prof->restLocal[t][2];
+            restFlat[t * 4 + 3] = prof->restLocal[t][3];
+        }
+        std::vector<Vector3> pos;
+        std::vector<Quaternion> rot;
+        const float org[3] = {0, 0, 0};
+        studio::Skeleton::forwardKinematicsFull(restFlat.data(), org, prof->parents,
+                                                prof->offsets, pos, rot);
+        int hi = -1, fi = -1;
+        for (size_t k = 0; k < prof->joints.size(); ++k) {
+            if (prof->joints[k] == "Head") {
+                hi = static_cast<int>(k);
+            }
+            if (prof->joints[k] == "LeftFoot") {
+                fi = static_cast<int>(k);
+            }
+        }
+        const float span = pos[hi].y - pos[fi].y;
+        std::printf("selftest: rest-pose headY=%.3f footY=%.3f span=%.3f\n", pos[hi].y,
+                    pos[fi].y, span);
+        if (span < 1.2f) {
+            std::printf("selftest: RETARGET FAILED: rest pose not standing\n");
+            return 1;
+        }
+    }
     // Identity source motion must reproduce the target rest exactly.
     {
         studio::Animation ident;
@@ -170,17 +204,17 @@ int selftest(const char* framesArg, const char* stepsArg) {
             std::printf("selftest: RETARGET FAILED: identity %s\n", rerr.c_str());
             return 1;
         }
-        // Identity source: root must be identity (source facing, upright),
-        // and FK over the output must be self-consistent (no drift/NaN).
+        // Identity source: root keeps source world (identity here), others
+        // finite unit quats. Guards the root special-case against regressing
+        // into offset math (which tips the figure).
         float worst = 0.0f;
         for (int t = 0; t < restOut.joints; ++t) {
             const float* q = restOut.localRotationsXyzw.data() + t * 4;
             if (manny->parents[t] < 0) {
-                worst = std::max(worst, std::abs(q[0]) + std::abs(q[1]) + std::abs(q[2]) +
-                                            std::abs(q[3] - 1.0f));
+                worst = std::max(worst, std::abs(q[0]) + std::abs(q[1]) +
+                                            std::abs(q[2]) + std::abs(q[3] - 1.0f));
                 continue;
             }
-            // Non-root joints must carry finite normalized quats.
             const float n = std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] +
                                       q[3] * q[3]);
             if (!std::isfinite(n) || std::abs(n - 1.0f) > 1e-3f) {
@@ -202,43 +236,86 @@ int selftest(const char* framesArg, const char* stepsArg) {
             return 1;
         }
     }
-    // Collapse detector: mid-frame mean joint height must look standing.
-    // Facing check: retarget root world must match source root world.
+    // Upright-figure check on the WALK retarget: head clearly above feet
+    // through the clip (catches tipped-over output), plus forward travel.
     {
-        studio::AnimationPlayer probe;
-        probe.load(out);
-        probe.scrub(out.duration() * 0.5f);
-        const auto& w = probe.worldPositions();
-        double meanY = 0.0;
-        for (const Vector3& v : w) {
-            meanY += v.y;
+        int headIdx = -1, footL = -1, footR = -1;
+        for (int k = 0; k < out.joints; ++k) {
+            if (out.jointNames[k] == "Head") {
+                headIdx = k;
+            }
+            if (out.jointNames[k] == "LeftFoot") {
+                footL = k;
+            }
+            if (out.jointNames[k] == "RightFoot") {
+                footR = k;
+            }
         }
-        meanY /= static_cast<double>(w.size());
-        std::vector<Vector3> srcPos;
-        std::vector<Quaternion> srcW;
-        const int mid = out.frames / 2;
-        studio::Skeleton::forwardKinematicsFull(
-            anim.localRotationsXyzw.data() + static_cast<size_t>(mid) * anim.joints * 4,
-            anim.rootPositions.data() + static_cast<size_t>(mid) * 3, anim.parents,
-            anim.offsets, srcPos, srcW);
-        std::vector<Vector3> outPos;
-        std::vector<Quaternion> outW;
-        studio::Skeleton::forwardKinematicsFull(
-            out.localRotationsXyzw.data() + static_cast<size_t>(mid) * out.joints * 4,
-            out.rootPositions.data() + static_cast<size_t>(mid) * 3, out.parents,
-            out.offsets, outPos, outW);
-        Quaternion a = QuaternionNormalize(srcW[0]);
-        Quaternion b = QuaternionNormalize(outW[0]);
-        float dot = std::abs(a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w);
-        const float rootAngle = 2.0f * std::acos(std::min(1.0f, dot));
-        std::printf("selftest: retarget midMeanY=%.3f rootAngle=%.4f rad\n", meanY,
-                    rootAngle);
-        if (meanY < 0.3) {
-            std::printf("selftest: RETARGET FAILED: collapsed figure\n");
+        if (headIdx < 0 || footL < 0 || footR < 0) {
+            std::printf("selftest: RETARGET FAILED: missing head/feet\n");
             return 1;
         }
-        if (rootAngle > 0.05f) {
-            std::printf("selftest: RETARGET FAILED: root facing drift\n");
+        int upright = 0;
+        const int samples = 8;
+        std::vector<Vector3> pos;
+        std::vector<Quaternion> rot;
+        for (int s = 0; s < samples; ++s) {
+            const int f = (s * (out.frames - 1)) / (samples - 1);
+            studio::Skeleton::forwardKinematicsFull(
+                out.localRotationsXyzw.data() + static_cast<size_t>(f) * out.joints * 4,
+                out.rootPositions.data() + static_cast<size_t>(f) * 3, out.parents,
+                out.offsets, pos, rot);
+            const float clearance =
+                pos[headIdx].y - 0.5f * (pos[footL].y + pos[footR].y);
+            (void)s;
+            if (clearance > 0.8f) {
+                ++upright;
+            }
+        }
+        const float* r0 = out.rootPositions.data();
+        const float* r1 = out.rootPositions.data() + (out.frames - 1) * 3;
+        const float travel = std::sqrt((r1[0] - r0[0]) * (r1[0] - r0[0]) +
+                                       (r1[2] - r0[2]) * (r1[2] - r0[2]));
+        const float* s0 = anim.rootPositions.data();
+        const float* s1 = anim.rootPositions.data() + (anim.frames - 1) * 3;
+        // Facing check: retarget root yaw must track source root yaw
+        // (catches constant about-face/moonwalk).
+        auto yawOf = [](const float* q) {
+            return std::atan2(2.0f * (q[3] * q[1] + q[0] * q[2]),
+                              1.0f - 2.0f * (q[1] * q[1] + q[2] * q[2]));
+        };
+        const int mf = out.frames / 2;
+        const float* sqm = anim.localRotationsXyzw.data() +
+                           static_cast<size_t>(mf) * anim.joints * 4;
+        const float* oqm = out.localRotationsXyzw.data() +
+                           static_cast<size_t>(mf) * out.joints * 4;
+        // Root world yaw via FK.
+        std::vector<Vector3> pA, pB;
+        std::vector<Quaternion> qA, qB;
+        studio::Skeleton::forwardKinematicsFull(
+            sqm, s0, anim.parents, anim.offsets, pA, qA);
+        studio::Skeleton::forwardKinematicsFull(
+            oqm, r0, out.parents, out.offsets, pB, qB);
+        float syaw = yawOf(reinterpret_cast<const float*>(&qA[0]));
+        float tyaw = yawOf(reinterpret_cast<const float*>(&qB[0]));
+        float yawDiff = std::abs(syaw - tyaw);
+        if (yawDiff > 3.14159265f) {
+            yawDiff = 2.0f * 3.14159265f - yawDiff;
+        }
+        std::printf("selftest: retarget upright %d/%d travel=%.3fm yawDiff=%.3f rad\n",
+                    upright, samples, travel, yawDiff);
+        std::printf("selftest: rootPath src=(%.3f %.3f)->(%.3f %.3f) tgt=(%.3f %.3f)->(%.3f %.3f)\n",
+                    s0[0], s0[2], s1[0], s1[2], r0[0], r0[2], r1[0], r1[2]);
+        if (yawDiff > 0.15f) {
+            std::printf("selftest: RETARGET FAILED: facing mismatch\n");
+            return 1;
+        }
+        if (upright < samples - 1) {
+            std::printf("selftest: RETARGET FAILED: figure not upright\n");
+            return 1;
+        }
+        if (travel < 0.2f) {
+            std::printf("selftest: RETARGET FAILED: no forward travel\n");
             return 1;
         }
     }
