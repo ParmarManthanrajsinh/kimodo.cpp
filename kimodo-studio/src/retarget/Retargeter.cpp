@@ -225,37 +225,18 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
         result.offsets = target.offsets;
     }
 
-    // Target rest world orientations (bind path).
+    // Target reference (STEP 1/2): one shared bind pose, validated UE5
+    // hierarchy. No yaw normalization, no ad-hoc rest edits (STEP 5):
+    // the bind pose stays exactly as measured.
+    TargetReference tgtRef;
     std::vector<Quaternion> tgtRestWorld(T, {0, 0, 0, 1});
-    if (useBind) {
-        std::vector<float> restFlat(static_cast<size_t>(T) * 4);
-        for (int t = 0; t < T; ++t) {
-            restFlat[t * 4] = target.restLocal[t][0];
-            restFlat[t * 4 + 1] = target.restLocal[t][1];
-            restFlat[t * 4 + 2] = target.restLocal[t][2];
-            restFlat[t * 4 + 3] = target.restLocal[t][3];
+    if (useBind && !target.chains.empty()) {
+        if (!buildTargetReference(target, tgtRef, error)) {
+            return false;
         }
-        const float origin[3] = {0, 0, 0};
-        std::vector<Vector3> dummy;
-        Skeleton::forwardKinematicsFull(restFlat.data(), origin, target.parents,
-                                        result.offsets, dummy, tgtRestWorld);
-        // Yaw-only root normalization: keeps upright stance and source
-        // facing (full-orientation normalize tips, none about-faces).
-        int rootIdx = 0;
         for (int t = 0; t < T; ++t) {
-            if (target.parents[t] < 0) {
-                rootIdx = t;
-                break;
-            }
-        }
-        const Quaternion r = tgtRestWorld[rootIdx];
-        const float siny = 2.0f * (r.w * r.y + r.x * r.z);
-        const float cosy = 1.0f - 2.0f * (r.y * r.y + r.z * r.z);
-        const float half = -0.5f * std::atan2(siny, cosy);
-        const Quaternion yawOnly{0.0f, std::sin(half), 0.0f, std::cos(half)};
-        for (int t = 0; t < T; ++t) {
-            tgtRestWorld[t] = QuaternionNormalize(
-                QuaternionMultiply(yawOnly, tgtRestWorld[t]));
+            tgtRestWorld[t] = {tgtRef.worldRot[t][0], tgtRef.worldRot[t][1],
+                               tgtRef.worldRot[t][2], tgtRef.worldRot[t][3]};
         }
     }
 
@@ -394,15 +375,22 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
                     tw = {0, 0, 0, 1};
                 }
             } else if (!pl.holdRest && pl.src >= 0 && pl.src < S) {
-                // Local-delta transfer: the source joint's OWN local motion
-                // (source rest orientations are identity in this pipeline),
-                // fractioned by span weight, composed onto target rest world.
-                // World-rotation transfer is wrong for nested sources: the
-                // child world contains the parent motion, which then cancels
-                // against the transferred parent and drops the motion.
+                // Reference-relative delta (STEP 4/6/7):
+                //   sourceDelta = L_anim * inv(L_ref), L_ref = identity
+                //     (SOMA convention: Kimodo emits absolute locals, no
+                //     baked rest rotations; asserted by construction).
+                //   tw = targetWorldRef * C(sourceDelta), span-fractioned.
+                // Local (not world) deltas: a child world contains parent
+                // motion, which would cancel against the transferred parent
+                // and drop span motion. Root excluded (unmapped carrier,
+                // keeps converted source world for facing/travel).
                 const float* sl = srcRots + pl.src * 4;
-                const auto cl =
-                    opts.basis.applyQuat({sl[0], sl[1], sl[2], sl[3]});
+                Quaternion delta{sl[0], sl[1], sl[2], sl[3]};
+                // inv(L_ref) with L_ref = identity: explicit no-op documenting
+                // the convention; replace with real ref when core provides one.
+                delta = qNorm(delta);
+                const auto cl = opts.basis.applyQuat(
+                    {delta.x, delta.y, delta.z, delta.w});
                 Quaternion moved =
                     qSlerpFrac({cl[0], cl[1], cl[2], cl[3]}, pl.weight);
                 if (useBind) {

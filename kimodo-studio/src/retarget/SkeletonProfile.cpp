@@ -30,7 +30,12 @@ int mixamoIndex(const std::string& name) {
     return -1;
 }
 
-// Build the UE5 Manny rest pose from measured Mixamo rest data.
+// Build UE5-topology rest pose from measured Mixamo rest data.
+// PROVENANCE: topology is UE5 Manny, but transforms come from the
+// Mixamo-rigged Manny FBX (Hips/Spine/LeftUpLeg rig, cm Y-up) measured via
+// ufbx. This is NOT a native UE5 Manny bind pose. Do not label it true UE5
+// until restLocal/offsets are measured from the actual UE5 skeleton
+// (SKM_Manny FBX with root/pelvis/spine_01 rig, or uasset export).
 // Strategy: Mixamo rest WORLD matrices (via FK over Lcl values) are the
 // source of truth. Every UE5 bone takes the world matrix of its Mixamo
 // correspondent (or a resampled station), then derives parent-relative
@@ -264,14 +269,15 @@ const std::vector<SkeletonProfile>& targetProfiles() {
         };
         out.push_back(std::move(manny));
 
-        // Genuine UE5 Manny topology (root/pelvis/spine_01..05, neck/head,
+        // UE5 Manny topology (root/pelvis/spine_01..05, neck/head,
         // full limb chains). Rest shape resampled from the Mixamo rest data
-        // above (same ~180cm humanoid); see resample note in builder.
+        // above (same ~180cm humanoid); see provenance note in builder.
         {
             SkeletonProfile ue;
             ue.id = "unreal-manny";
             ue.name = "UE5 Manny";
             ue.hasBind = true;
+            ue.bindProvenance = "mixamo-measured-topology-ue5";
             buildUe5Manny(ue);
             ue.defaultMap = {
                 {"pelvis", "Hips"},
@@ -350,6 +356,68 @@ const std::vector<SkeletonProfile>& targetProfiles() {
         return out;
     }();
     return profiles;
+}
+
+// Expected UE5 Manny core topology (STEP 2). Fingers, toes, twist bones
+// excluded by design (no SOMA source joints); everything else must match
+// exactly or the profile is not UE5-Manny-compatible.
+static const char* kUe5CoreJoints[] = {
+    "root", "pelvis", "spine_01", "spine_02", "spine_03", "spine_04",
+    "spine_05", "neck_01", "neck_02", "head", "clavicle_l", "upperarm_l",
+    "forearm_l", "hand_l", "clavicle_r", "upperarm_r", "forearm_r",
+    "hand_r", "thigh_l", "calf_l", "foot_l", "ball_l", "thigh_r",
+    "calf_r", "foot_r", "ball_r",
+};
+static const int kUe5CoreParents[] = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 6, 10,
+                                      11, 12, 6, 14, 15, 16, 1, 18, 19, 20,
+                                      1, 22, 23, 24};
+
+bool buildTargetReference(const SkeletonProfile& profile, TargetReference& out,
+                          std::string& error) {
+    const int T = static_cast<int>(profile.joints.size());
+    const int N = static_cast<int>(sizeof(kUe5CoreJoints) / sizeof(kUe5CoreJoints[0]));
+    if (T != N) {
+        error = "UE5 hierarchy: joint count " + std::to_string(T) + " != " +
+                std::to_string(N);
+        return false;
+    }
+    for (int i = 0; i < N; ++i) {
+        if (profile.joints[i] != kUe5CoreJoints[i] || profile.parents[i] != kUe5CoreParents[i]) {
+            error = std::string("UE5 hierarchy mismatch at ") + std::to_string(i);
+            return false;
+        }
+    }
+    if (!profile.hasBind || static_cast<int>(profile.offsets.size()) != T ||
+        static_cast<int>(profile.restLocal.size()) != T) {
+        error = "UE5 reference: incomplete bind data";
+        return false;
+    }
+    std::vector<float> restFlat(static_cast<size_t>(T) * 4);
+    for (int t = 0; t < T; ++t) {
+        restFlat[t * 4] = profile.restLocal[t][0];
+        restFlat[t * 4 + 1] = profile.restLocal[t][1];
+        restFlat[t * 4 + 2] = profile.restLocal[t][2];
+        restFlat[t * 4 + 3] = profile.restLocal[t][3];
+    }
+    const float origin[3] = {0, 0, 0};
+    out.profile = &profile;
+    std::vector<Vector3> pos;
+    std::vector<Quaternion> rot;
+    Skeleton::forwardKinematicsFull(restFlat.data(), origin, profile.parents,
+                                    profile.offsets, pos, rot);
+    out.valid = static_cast<int>(pos.size()) == T &&
+                static_cast<int>(rot.size()) == T;
+    if (!out.valid) {
+        error = "UE5 reference: FK failed";
+        return false;
+    }
+    out.worldPos.assign(T, {0, 0, 0});
+    out.worldRot.assign(T, {0, 0, 0, 1});
+    for (int t = 0; t < T; ++t) {
+        out.worldPos[t] = {pos[t].x, pos[t].y, pos[t].z};
+        out.worldRot[t] = {rot[t].x, rot[t].y, rot[t].z, rot[t].w};
+    }
+    return true;
 }
 
 const SkeletonProfile* findProfile(const std::string& id) {

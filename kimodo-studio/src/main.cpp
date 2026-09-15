@@ -664,6 +664,15 @@ int synthIndex(const studio::Animation& a, const char* name) {
     return -1;
 }
 
+int synthIndex(const studio::SkeletonProfile& p, const char* name) {
+    for (size_t i = 0; i < p.joints.size(); ++i) {
+        if (p.joints[i] == name) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
 studio::Animation makeSynthSoma(int frames = 3) {
     studio::Animation a;
     a.frames = frames;
@@ -800,6 +809,99 @@ int selftestChains() {
         checkSynth(worst < 1e-4f, "identity reproduces target rest");
     }
 
+    // Pure transfer opts (no IK): isolate rotation math from contact solve.
+    studio::Retargeter::Options noIK = opts;
+    noIK.legIK = false;
+
+    // FK helper: world pos/rot of anim frame f with its own root.
+    auto fkFrame = [](const studio::Animation& a, int f, std::vector<Vector3>& p,
+                      std::vector<Quaternion>& r) {
+        studio::Skeleton::forwardKinematicsFull(
+            a.localRotationsXyzw.data() + static_cast<size_t>(f) * a.joints * 4,
+            a.rootPositions.data() + static_cast<size_t>(f) * 3, a.parents,
+            a.offsets, p, r);
+    };
+    // Target reference worlds from profile rest.
+    std::vector<float> refFlat(static_cast<size_t>(ue->joints.size()) * 4);
+    for (size_t t = 0; t < ue->joints.size(); ++t) {
+        refFlat[t * 4] = ue->restLocal[t][0];
+        refFlat[t * 4 + 1] = ue->restLocal[t][1];
+        refFlat[t * 4 + 2] = ue->restLocal[t][2];
+        refFlat[t * 4 + 3] = ue->restLocal[t][3];
+    }
+    studio::TargetReference tgtRef;
+    {
+        std::string referr;
+        checkSynth(studio::buildTargetReference(*ue, tgtRef, referr),
+                   "target reference builds (UE5 hierarchy verified)");
+    }
+
+    // STEP 3: reference pose in -> reference pose out. Compare WORLD
+    // positions and rotations, not just normalized locals. Root excluded
+    // from rotation check (carrier keeps source world); positions use the
+    // retargeted root so translation convention cannot hide error.
+    {
+        studio::Animation src = makeSynthSoma(2);
+        studio::Animation out;
+        std::string err;
+        checkSynth(studio::Retargeter::retarget(src, *ue, map, noIK, out, err),
+                   "refpose retarget runs");
+        std::vector<Vector3> pos;
+        std::vector<Quaternion> rot;
+        fkFrame(out, 0, pos, rot);
+        // Reference FK under the same root as frame 0 output.
+        std::vector<Vector3> rp;
+        std::vector<Quaternion> rr;
+        studio::Skeleton::forwardKinematicsFull(refFlat.data(),
+                                                out.rootPositions.data(),
+                                                out.parents, out.offsets, rp, rr);
+        float worstP = 0.0f, worstR = 0.0f;
+        for (int t = 0; t < out.joints; ++t) {
+            worstP = std::max(worstP, static_cast<float>(Vector3Distance(pos[t], rp[t])));
+            if (ue->parents[t] < 0) {
+                continue;
+            }
+            const Quaternion& a = rot[t];
+            const Quaternion& b = rr[t];
+            worstR = std::max(worstR, std::abs(a.x - b.x) + std::abs(a.y - b.y) +
+                                            std::abs(a.z - b.z) + std::abs(a.w - b.w));
+        }
+        std::printf("selftest-chains: refpose world worstP=%.6f worstR=%.6f\n", worstP,
+                    worstR);
+        checkSynth(worstP < 1e-4f, "refpose world positions preserved");
+        checkSynth(worstR < 1e-4f, "refpose world rotations preserved");
+    }
+
+    // STEP 9: reference diagnostic. Makes frame errors obvious.
+    {
+        studio::Animation src = makeSynthSoma(1);
+        std::vector<Vector3> sp;
+        std::vector<Quaternion> sr;
+        const float sroot[3] = {0.0f, 0.9f, 0.0f};
+        std::vector<float> sident(static_cast<size_t>(src.joints) * 4, 0.0f);
+        for (int k = 0; k < src.joints; ++k) {
+            sident[k * 4 + 3] = 1.0f;
+        }
+        studio::Skeleton::forwardKinematicsFull(sident.data(), sroot, src.parents,
+                                                src.offsets, sp, sr);
+        const char* sNames[] = {"Hips",     "Spine1",   "Spine2",    "Chest",
+                                "LeftShoulder", "LeftArm",    "LeftForeArm", "LeftFoot"};
+        const char* tNames[] = {"pelvis",   "spine_01", "spine_03",  "spine_04",
+                                "clavicle_l",   "upperarm_l", "forearm_l",   "foot_l"};
+        for (int k = 0; k < 8; ++k) {
+            const int si = synthIndex(src, sNames[k]);
+            const int ti = synthIndex(*ue, tNames[k]);
+            const Vector3& p0 = sp[si];
+            const Quaternion& r0 = sr[si];
+            const auto& p1 = tgtRef.worldPos[ti];
+            const auto& r1 = tgtRef.worldRot[ti];
+            std::printf("selftest-chains: ref %s S=(%.3f %.3f %.3f)/(%.3f %.3f %.3f %.3f) T %s=(%.3f %.3f %.3f)/(%.3f %.3f %.3f %.3f)\n",
+                        sNames[k], p0.x, p0.y, p0.z, r0.x, r0.y, r0.z, r0.w, tNames[k],
+                        p1[0], p1[1], p1[2], r1[0], r1[1], r1[2], r1[3]);
+        }
+        checkSynth(tgtRef.valid, "reference diagnostic printed");
+    }
+
     // Pure root yaw 30deg -> target root yaw ~30deg (req 8 facing).
     {
         studio::Animation src = makeSynthSoma(2);
@@ -807,10 +909,43 @@ int selftestChains() {
         setSynthLocal(src, "Hips", 0.0f, std::sin(h), 0.0f, std::cos(h));
         studio::Animation out;
         std::string err;
-        studio::Retargeter::retarget(src, *ue, map, opts, out, err);
+        studio::Retargeter::retarget(src, *ue, map, noIK, out, err);
         const float* q = out.localRotationsXyzw.data(); // root local == world
         const float yaw = yawOfArr(q) * 360.0f / (2.0f * 3.14159265f);
         checkSynth(std::abs(yaw - 30.0f) < 2.0f, "root yaw tracks source");
+    }
+
+    // Pelvis rotation only: 20deg X on Hips -> pelvis world delta 20deg,
+    // spine_01 local stays rest (motion belongs to pelvis, not spine).
+    {
+        studio::Animation src = makeSynthSoma(2);
+        const float h = 20.0f * 3.14159265f / 360.0f;
+        setSynthLocal(src, "Hips", std::sin(h), 0.0f, 0.0f, std::cos(h));
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *ue, map, noIK, out, err);
+        const int pel = synthIndex(out, "pelvis");
+        const int s1 = synthIndex(out, "spine_01");
+        std::vector<Vector3> pos;
+        std::vector<Quaternion> rot;
+        fkFrame(out, 0, pos, rot);
+        const Quaternion& a = rot[pel];
+        const auto& b = tgtRef.worldRot[pel];
+        const float dw =
+            quatAngle(a.x, a.y, a.z, a.w, b[0], b[1], b[2], b[3]) * 360.0f /
+            (2.0f * 3.14159265f);
+        // spine_01 WORLD must hold rest: its local counter-rotates against
+        // the moved parent, which is correct (motion lives in pelvis world,
+        // not duplicated as extra spine bend).
+        const Quaternion& c = rot[s1];
+        const auto& d = tgtRef.worldRot[s1];
+        const float dw1 =
+            quatAngle(c.x, c.y, c.z, c.w, d[0], d[1], d[2], d[3]) * 360.0f /
+            (2.0f * 3.14159265f);
+        std::printf("selftest-chains: pelvis worldDelta=%.1f spine01 worldHold=%.2f\n",
+                    dw, dw1);
+        checkSynth(std::abs(dw - 20.0f) < 2.0f, "pelvis rotation transfers");
+        checkSynth(dw1 < 2.0f, "pelvis motion not duplicated into spine");
     }
 
     // Knee flex 45deg about X -> calf world delta ~45deg.
@@ -922,6 +1057,110 @@ int selftestChains() {
         checkSynth(d4 < 25.0f && d5 < 25.0f, "spine no full duplication");
         checkSynth(d4 > 3.0f && d5 > 3.0f, "spine span shared, none dropped");
         checkSynth(std::abs(d4 + d5 - 30.0f) < 4.0f, "spine motion conserved");
+    }
+
+    // Right arm: 20deg Z on RightArm -> upperarm_r world delta ~20deg.
+    {
+        studio::Animation src = makeSynthSoma(2);
+        const float h = 20.0f * 3.14159265f / 360.0f;
+        setSynthLocal(src, "RightArm", 0.0f, 0.0f, std::sin(h), std::cos(h));
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *ue, map, noIK, out, err);
+        const int ur = synthIndex(out, "upperarm_r");
+        std::vector<Vector3> pos;
+        std::vector<Quaternion> rot;
+        fkFrame(out, 0, pos, rot);
+        const Quaternion& a = rot[ur];
+        const auto& b = tgtRef.worldRot[ur];
+        const float ang =
+            quatAngle(a.x, a.y, a.z, a.w, b[0], b[1], b[2], b[3]) * 360.0f /
+            (2.0f * 3.14159265f);
+        checkSynth(std::abs(ang - 20.0f) < 3.0f, "right arm transfers");
+    }
+
+    // Right leg: 45deg X on RightShin -> calf_r world delta ~45deg.
+    {
+        studio::Animation src = makeSynthSoma(2);
+        const float h = 45.0f * 3.14159265f / 360.0f;
+        setSynthLocal(src, "RightShin", std::sin(h), 0.0f, 0.0f, std::cos(h));
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *ue, map, noIK, out, err);
+        const int cr = synthIndex(out, "calf_r");
+        std::vector<Vector3> pos;
+        std::vector<Quaternion> rot;
+        fkFrame(out, 0, pos, rot);
+        const Quaternion& a = rot[cr];
+        const auto& b = tgtRef.worldRot[cr];
+        const float ang =
+            quatAngle(a.x, a.y, a.z, a.w, b[0], b[1], b[2], b[3]) * 360.0f /
+            (2.0f * 3.14159265f);
+        checkSynth(std::abs(ang - 45.0f) < 5.0f, "right leg transfers");
+    }
+
+    // Combined walking pose (full opts incl. IK): yaw 10 + arm swings
+    // +-15deg + left knee 25deg + forward root. Guards: all finite,
+    // all normalized, head above feet (upright, limbs not inverted),
+    // root yaw tracks source (no 180 flip).
+    {
+        studio::Animation src = makeSynthSoma(3);
+        auto degAxis = [](float deg, float x, float y, float z) {
+            const float h = deg * 3.14159265f / 360.0f;
+            return std::array<float, 4>{x * std::sin(h), y * std::sin(h),
+                                        z * std::sin(h), std::cos(h)};
+        };
+        const auto yaw = degAxis(10.0f, 0.0f, 1.0f, 0.0f);
+        const auto swL = degAxis(15.0f, 0.0f, 0.0f, 1.0f);
+        const auto swR = degAxis(-15.0f, 0.0f, 0.0f, 1.0f);
+        const auto knee = degAxis(25.0f, 1.0f, 0.0f, 0.0f);
+        setSynthLocal(src, "Hips", yaw[0], yaw[1], yaw[2], yaw[3]);
+        setSynthLocal(src, "LeftArm", swL[0], swL[1], swL[2], swL[3]);
+        setSynthLocal(src, "RightArm", swR[0], swR[1], swR[2], swR[3]);
+        setSynthLocal(src, "LeftShin", knee[0], knee[1], knee[2], knee[3]);
+        for (int f = 0; f < 3; ++f) {
+            src.rootPositions[f * 3] = 0.3f * f;
+            src.rootPositions[f * 3 + 1] = 0.9f - 0.02f * f;
+        }
+        studio::Animation out;
+        std::string err;
+        checkSynth(studio::Retargeter::retarget(src, *ue, map, opts, out, err),
+                   "walk pose retarget runs");
+        bool clean = true;
+        for (int k = 0; k < out.frames * out.joints * 4; ++k) {
+            if (!std::isfinite(out.localRotationsXyzw[k])) {
+                clean = false;
+            }
+        }
+        for (int t = 0; t < out.joints; ++t) {
+            const float* q = out.localRotationsXyzw.data() + t * 4;
+            const float n =
+                std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+            if (!std::isfinite(n) || std::abs(n - 1.0f) > 1e-3f) {
+                clean = false;
+            }
+        }
+        checkSynth(clean, "walk pose finite and normalized, no NaN/Inf");
+        const int hd = synthIndex(out, "head");
+        const int fl = synthIndex(out, "foot_l");
+        const int fr = synthIndex(out, "foot_r");
+        const int th = synthIndex(out, "thigh_l");
+        const int ca = synthIndex(out, "calf_l");
+        const int pe = synthIndex(out, "pelvis");
+        std::vector<Vector3> pos;
+        std::vector<Quaternion> rot;
+        fkFrame(out, 2, pos, rot);
+        const float clearance =
+            pos[hd].y - 0.5f * (pos[fl].y + pos[fr].y);
+        const bool order = pos[pe].y > pos[th].y && pos[th].y > pos[ca].y &&
+                           pos[ca].y > pos[fl].y;
+        std::printf("selftest-chains: walk clearance=%.3f order=%d\n", clearance,
+                    order ? 1 : 0);
+        checkSynth(clearance > 0.8f, "walk pose upright");
+        checkSynth(order, "walk pose limbs not inverted");
+        const float* qr = out.localRotationsXyzw.data() + 2 * out.joints * 4;
+        const float tyaw = yawOfArr(qr) * 360.0f / (2.0f * 3.14159265f);
+        checkSynth(std::abs(tyaw - 10.0f) < 5.0f, "walk pose no facing flip");
     }
 
     // Calibration: scale 0 holds rest, 0.5 halves motion.
