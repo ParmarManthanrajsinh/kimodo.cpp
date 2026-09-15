@@ -268,21 +268,32 @@ bool AnimationLibrary::loadAnimation(const LibraryEntry& entry, Animation& out) 
         out = std::move(soma);
         return true;
     }
+    // v2 layout (must match saveAnimation): version, frames, joints, fps,
+    // joint names, parents, offsets, rotations, root positions.
     uint32_t version = 0;
+    uint32_t frames = 0, joints = 0;
+    float fps = 30.0f;
     if (!readU32(bin, version) || version != 2) {
         return false;
     }
-    if (!readAnimData(bin, out)) {
+    bin.read(reinterpret_cast<char*>(&frames), sizeof(frames));
+    bin.read(reinterpret_cast<char*>(&joints), sizeof(joints));
+    bin.read(reinterpret_cast<char*>(&fps), sizeof(fps));
+    if (!bin || frames == 0 || joints == 0 || frames > 100000 || joints > 512 ||
+        fps <= 0 || fps > 1000) {
         return false;
     }
+    out.frames = static_cast<int>(frames);
+    out.joints = static_cast<int>(joints);
+    out.fps = fps;
     uint32_t count = 0;
-    if (!readU32(bin, count) || count > 512) {
+    if (!readU32(bin, count) || count != joints) {
         return false;
     }
     out.jointNames.resize(count);
     for (uint32_t i = 0; i < count; ++i) {
         uint32_t len = 0;
-        if (!readU32(bin, len) || len > 256) {
+        if (!readU32(bin, len) || len == 0 || len > 256) {
             return false;
         }
         out.jointNames[i].resize(len);
@@ -291,7 +302,7 @@ bool AnimationLibrary::loadAnimation(const LibraryEntry& entry, Animation& out) 
             return false;
         }
     }
-    if (!readU32(bin, count) || count > 512) {
+    if (!readU32(bin, count) || count != joints) {
         return false;
     }
     out.parents.resize(count);
@@ -303,7 +314,7 @@ bool AnimationLibrary::loadAnimation(const LibraryEntry& entry, Animation& out) 
         }
         out.parents[i] = v;
     }
-    if (!readU32(bin, count) || count > 512) {
+    if (!readU32(bin, count) || count != joints) {
         return false;
     }
     out.offsets.resize(count);
@@ -314,6 +325,16 @@ bool AnimationLibrary::loadAnimation(const LibraryEntry& entry, Animation& out) 
             return false;
         }
     }
+    out.localRotationsXyzw.resize(static_cast<size_t>(frames) * joints * 4);
+    out.rootPositions.resize(static_cast<size_t>(frames) * 3);
+    bin.read(reinterpret_cast<char*>(out.localRotationsXyzw.data()),
+             static_cast<std::streamsize>(out.localRotationsXyzw.size() * sizeof(float)));
+    bin.read(reinterpret_cast<char*>(out.rootPositions.data()),
+             static_cast<std::streamsize>(out.rootPositions.size() * sizeof(float)));
+    if (!bin) {
+        return false;
+    }
+    out.skeletonName = entry.skeleton;
     return true;
 }
 

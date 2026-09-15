@@ -11,6 +11,7 @@
 #include "huggingface/HFAuthenticator.h"
 #include "huggingface/HuggingFaceClient.h"
 #include "kimodo/KimodoAdapter.h"
+#include "library/AnimationLibrary.h"
 #include "models/ModelManager.h"
 #include "retarget/Retargeter.h"
 #include "retarget/SkeletonProfile.h"
@@ -20,6 +21,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -207,6 +209,60 @@ int selftest(const char* framesArg, const char* stepsArg) {
             std::printf("selftest: RETARGET FAILED: collapsed figure\n");
             return 1;
         }
+    }
+    // Library round-trip: the exact Open/retarget path (save, rescan fresh,
+    // load, compare, retarget the loaded copy).
+    {
+        const std::string base =
+            std::string(std::getenv("TEMP") ? std::getenv("TEMP") : ".") + "/lib-selftest";
+        std::error_code scopec;
+        std::filesystem::remove_all(base, scopec);
+        studio::AnimationLibrary lib;
+        lib.init(base);
+        studio::LibraryEntry saved;
+        if (!lib.saveAnimation("probe walk", "soma-rp-v1.1", anim, saved)) {
+            std::printf("selftest: LIB FAILED: save\n");
+            return 1;
+        }
+        studio::AnimationLibrary lib2;
+        lib2.init(base); // exercises metadata rescan parse
+        const auto entries = lib2.entries();
+        std::printf("selftest: lib entries=%llu\n",
+                    static_cast<unsigned long long>(entries.size()));
+        if (entries.size() != 1) {
+            std::printf("selftest: LIB FAILED: rescan count\n");
+            return 1;
+        }
+        studio::Animation reloaded;
+        if (!lib2.loadAnimation(entries[0], reloaded)) {
+            std::printf("selftest: LIB FAILED: load\n");
+            return 1;
+        }
+        bool same = reloaded.frames == anim.frames && reloaded.joints == anim.joints &&
+                    reloaded.fps == anim.fps &&
+                    reloaded.jointNames == anim.jointNames &&
+                    reloaded.parents == anim.parents &&
+                    reloaded.offsets == anim.offsets &&
+                    reloaded.localRotationsXyzw == anim.localRotationsXyzw &&
+                    reloaded.rootPositions == anim.rootPositions &&
+                    reloaded.skeletonName == anim.skeletonName;
+        std::printf("selftest: lib roundtrip=%d\n", same ? 1 : 0);
+        if (!same) {
+            std::printf("selftest: LIB FAILED: data mismatch\n");
+            return 1;
+        }
+        // Retarget the RELOADED copy (not the in-memory original).
+        studio::Animation out2;
+        std::string rerror2;
+        if (!studio::Retargeter::retarget(reloaded, *manny, map, ropts, out2, rerror2)) {
+            std::printf("selftest: LIB FAILED: retarget reloaded %s\n", rerror2.c_str());
+            return 1;
+        }
+        if (out2.joints != static_cast<int>(manny->joints.size())) {
+            std::printf("selftest: LIB FAILED: reloaded retarget dims\n");
+            return 1;
+        }
+        std::printf("selftest: lib retarget-reloaded OK\n");
     }
     // Export the Manny retarget through the Unreal preset (user's exact path).
     {
