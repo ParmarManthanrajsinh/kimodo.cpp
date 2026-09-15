@@ -62,6 +62,67 @@ nix develop path:. --command env \
 Leak detection is disabled because Vulkan loader/driver allocations are global
 to the process. The GGUF parser fuzzer requires Clang.
 
+## Build on Windows
+
+Prerequisites: Git, Python 3.10+ with `huggingface_hub`, Visual Studio 2022
+with C++ tools, CMake 3.25+, and (for GPU inference) the Vulkan SDK with
+`VULKAN_SDK` set and `Bin\glslc.exe` present. Go is only needed for the
+browser demo. `install_kimodo_cpp.bat` installs all of this via winget, or
+install each manually.
+
+GGML is a pinned Git submodule:
+
+```powershell
+cd E:\kimodo.cpp
+git submodule update --init --recursive
+```
+
+Configure with the VS 2022 generator (Vulkan ON for GPU, OFF for CPU-only):
+
+```powershell
+# GPU
+cmake -DKIMODO_BUILD_TESTS=OFF -DKIMODO_ENABLE_VULKAN=ON -DGGML_VULKAN=ON `
+  -B build -G "Visual Studio 17 2022" -A x64
+# CPU-only (no Vulkan SDK needed)
+cmake -DKIMODO_BUILD_TESTS=OFF -DKIMODO_ENABLE_VULKAN=OFF -DGGML_VULKAN=OFF `
+  -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Release --parallel
+```
+
+This produces `build\Release\kmd-generate.exe` (plus `kmd-inspect.exe`,
+`kmd-encode.exe`) with runtime DLLs in `build\bin\Release\`. Both directories
+must be on `PATH` when running the exe directly; `generate.ps1` and
+`demo.ps1` already do this.
+
+Download weights (motion model is ungated, text bundle is gated):
+
+```powershell
+# motion weights only (~1.1 GB, no login needed)
+python scripts/download_gguf_weights.py --model soma-rp-v1.1 --output . --motion-only
+# full bundle incl. Llama-3 text encoder (~8 GB, login + licence needed)
+hf auth login
+python scripts/download_gguf_weights.py --model soma-rp-v1.1 --output .
+```
+
+The gated text bundle requires accepting
+[LocalAI-io/Llama-3-Kimodo-GGML](https://huggingface.co/LocalAI-io/Llama-3-Kimodo-GGML)
+with a free Hugging Face account before `hf auth login`. After the full
+download, `generated\llm2vec-text-bundle\` must contain 35 `.gguf` files
+(`tokenizer.gguf`, `embedding.gguf`, `final-norm.gguf`,
+`layer-00.gguf` … `layer-31.gguf`).
+
+Generate and demo:
+
+```powershell
+.\generate.ps1 "a person walking forward enthusiastically and waving their right hand"
+.\demo.bat   # http://localhost:8094
+```
+
+Troubleshooting: `sequence: exit status 1: text model must be a component
+directory` means `generated\llm2vec-text-bundle` is missing or incomplete
+(`src/llm_text_encoder.cpp` requires that component directory). Complete the
+gated text-bundle download above and restart the demo.
+
 ## API
 
 `include/kimodo/kimodo_capi.h` is the C API. Model loading checks the motion
