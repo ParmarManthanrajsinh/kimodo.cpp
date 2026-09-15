@@ -71,9 +71,36 @@ void Viewport::recomputeCamera() const {
     camera_.projection = CAMERA_PERSPECTIVE;
 }
 
+void Viewport::drawPose(const std::vector<Vector3>& pose,
+                        const std::vector<int>& parents, const Vector3& offset,
+                        Color joint, Color bone) {
+    const int J = static_cast<int>(pose.size());
+    if (J == 0 || parents.size() != pose.size()) {
+        return;
+    }
+    for (int j = 0; j < J; ++j) {
+        const int p = parents[j];
+        if (p >= 0 && p < J) {
+            DrawCapsule(Vector3Add(pose[p], offset), Vector3Add(pose[j], offset),
+                        0.035f, 6, 6, bone);
+        }
+    }
+    for (int j = 0; j < J; ++j) {
+        DrawSphere(Vector3Add(pose[j], offset), j == 0 ? 0.09f : 0.055f,
+                   j == 0 ? YELLOW : joint);
+    }
+}
+
 void Viewport::draw3D() const {
     BeginMode3D(camera_);
     grid_.draw();
+    if (!debug_.empty()) {
+        for (const DebugPose& d : debug_) {
+            drawPose(d.pos, d.parents, d.offset, d.joint, d.bone);
+        }
+        EndMode3D();
+        return;
+    }
     const int J = static_cast<int>(pose_.size());
     if (J > 0 && poseParents_.size() == pose_.size()) {
         for (int j = 0; j < J; ++j) {

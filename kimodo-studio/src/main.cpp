@@ -167,12 +167,16 @@ int selftest(const char* framesArg, const char* stepsArg) {
                                                 prof->offsets, pos, rot);
         int hi = -1, fi = -1;
         for (size_t k = 0; k < prof->joints.size(); ++k) {
-            if (prof->joints[k] == "Head") {
+            if (prof->joints[k] == "head" || prof->joints[k] == "Head") {
                 hi = static_cast<int>(k);
             }
-            if (prof->joints[k] == "LeftFoot") {
+            if (prof->joints[k] == "foot_l" || prof->joints[k] == "LeftFoot") {
                 fi = static_cast<int>(k);
             }
+        }
+        if (hi < 0 || fi < 0) {
+            std::printf("selftest: RETARGET FAILED: no head/foot joint\n");
+            return 1;
         }
         const float span = pos[hi].y - pos[fi].y;
         std::printf("selftest: rest-pose headY=%.3f footY=%.3f span=%.3f\n", pos[hi].y,
@@ -227,9 +231,11 @@ int selftest(const char* framesArg, const char* stepsArg) {
             return 1;
         }
     }
-    // Hips offset must be the true Manny value (~0.959m), not SOMA's.
+    // Pelvis offset must be the true Manny value (~0.959m), not SOMA's.
+    // (UE5 hierarchy: root index 0 is the ground-level translation carrier;
+    // pelvis index 1 carries the height.)
     {
-        const float hipsY = out.offsets[0][1];
+        const float hipsY = out.offsets[1][1];
         std::printf("selftest: retarget hipsOffY=%.4f\n", hipsY);
         if (std::abs(hipsY - 0.9590f) > 0.01f) {
             std::printf("selftest: RETARGET FAILED: offsets\n");
@@ -241,13 +247,13 @@ int selftest(const char* framesArg, const char* stepsArg) {
     {
         int headIdx = -1, footL = -1, footR = -1;
         for (int k = 0; k < out.joints; ++k) {
-            if (out.jointNames[k] == "Head") {
+            if (out.jointNames[k] == "head" || out.jointNames[k] == "Head") {
                 headIdx = k;
             }
-            if (out.jointNames[k] == "LeftFoot") {
+            if (out.jointNames[k] == "foot_l" || out.jointNames[k] == "LeftFoot") {
                 footL = k;
             }
-            if (out.jointNames[k] == "RightFoot") {
+            if (out.jointNames[k] == "foot_r" || out.jointNames[k] == "RightFoot") {
                 footR = k;
             }
         }
@@ -638,6 +644,432 @@ int selftestExport(const char* keepPath = nullptr) {
     return 0;
 }
 
+namespace {
+
+int synthFails = 0;
+
+void checkSynth(bool ok, const char* name) {
+    std::printf("selftest-chains: %s %s\n", ok ? "PASS" : "FAIL", name);
+    if (!ok) {
+        ++synthFails;
+    }
+}
+
+int synthIndex(const studio::Animation& a, const char* name) {
+    for (size_t i = 0; i < a.jointNames.size(); ++i) {
+        if (a.jointNames[i] == name) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
+studio::Animation makeSynthSoma(int frames = 3) {
+    studio::Animation a;
+    a.frames = frames;
+    a.joints = studio::kSomaJoints;
+    a.fps = 30.0f;
+    a.skeletonName = "soma30";
+    a.jointNames.assign(studio::Soma30Spec::names.begin(),
+                        studio::Soma30Spec::names.end());
+    a.parents.assign(studio::Soma30Spec::parents.begin(),
+                     studio::Soma30Spec::parents.end());
+    a.offsets.assign(studio::Soma30Spec::offsets.begin(),
+                     studio::Soma30Spec::offsets.end());
+    a.localRotationsXyzw.assign(static_cast<size_t>(frames) * 30 * 4, 0.0f);
+    for (int k = 0; k < frames * 30; ++k) {
+        a.localRotationsXyzw[k * 4 + 3] = 1.0f;
+    }
+    a.rootPositions.assign(static_cast<size_t>(frames) * 3, 0.0f);
+    for (int f = 0; f < frames; ++f) {
+        a.rootPositions[f * 3 + 1] = 0.9f;
+    }
+    return a;
+}
+
+void setSynthLocal(studio::Animation& a, const char* name, float x, float y, float z,
+                   float w) {
+    const int j = synthIndex(a, name);
+    for (int f = 0; f < a.frames; ++f) {
+        float* q = a.localRotationsXyzw.data() + (f * a.joints + j) * 4;
+        q[0] = x;
+        q[1] = y;
+        q[2] = z;
+        q[3] = w;
+    }
+}
+
+float quatAngle(float ax, float ay, float az, float aw, float bx, float by, float bz,
+                float bw) {
+    float d = std::abs(ax * bx + ay * by + az * bz + aw * bw);
+    d = std::min(1.0f, d);
+    return 2.0f * std::acos(d);
+}
+
+float quatAngleArr(const float* a, const float* b) {
+    return quatAngle(a[0], a[1], a[2], a[3], b[0], b[1], b[2], b[3]);
+}
+
+float yawOfArr(const float* q) {
+    return std::atan2(2.0f * (q[3] * q[1] + q[0] * q[2]),
+                      1.0f - 2.0f * (q[1] * q[1] + q[2] * q[2]));
+}
+
+int selftestChains() {
+    // Report header (req 15 inputs).
+    const studio::SkeletonProfile* ue = studio::findProfile("unreal-manny");
+    if (!ue) {
+        std::printf("selftest-chains: FAIL no ue5 profile\n");
+        return 1;
+    }
+    studio::BoneMap map = studio::Retargeter::autoMap(*ue);
+    studio::Retargeter::Options opts;
+    std::printf("selftest-chains: source soma30 joints=30\n");
+    std::printf("selftest-chains: target %s joints=%llu chains=%llu\n", ue->id.c_str(),
+                static_cast<unsigned long long>(ue->joints.size()),
+                static_cast<unsigned long long>(ue->chains.size()));
+    std::printf("selftest-chains: hasBind=%d off0=(%.3f %.3f %.3f) off1=(%.3f %.3f %.3f)\n",
+                ue->hasBind ? 1 : 0, ue->offsets[0][0], ue->offsets[0][1],
+                ue->offsets[0][2], ue->offsets[1][0], ue->offsets[1][1],
+                ue->offsets[1][2]);
+    int mappedChains = 0;
+    for (const studio::ChainDef& c : ue->chains) {
+        size_t m = 0;
+        for (const std::string& t : c.target) {
+            const auto it = map.find(t);
+            if (it != map.end() && !it->second.empty() && it->second != "(none)") {
+                ++m;
+            }
+        }
+        std::printf("selftest-chains: chain %s mapped %llu/%llu\n", c.name.c_str(),
+                    static_cast<unsigned long long>(m),
+                    static_cast<unsigned long long>(c.target.size()));
+        for (const std::string& t : c.target) {
+            const auto it = map.find(t);
+            std::printf("selftest-chains:   %s -> %s\n", t.c_str(),
+                        it != map.end() ? it->second.c_str() : "(missing)");
+        }
+        if (m > 0) {
+            ++mappedChains;
+        }
+    }
+    std::printf("selftest-chains: unmapped joints=%llu\n",
+                static_cast<unsigned long long>(
+                    studio::Retargeter::unmapped(*ue, map).size()));
+
+    // Basis unit tests (req 3).
+    {
+        studio::BasisConvert id = studio::BasisConvert::identity();
+        const auto p = id.applyPos({1.0f, 2.0f, 3.0f}, 2.0f);
+        checkSynth(p[0] == 2.0f && p[1] == 4.0f && p[2] == 6.0f, "basis identity pos");
+        const auto q = id.applyQuat({0.0f, 0.0f, 0.0f, 1.0f});
+        checkSynth(q[3] == 1.0f, "basis identity quat");
+        studio::BasisConvert yz = studio::BasisConvert::yUpToZUp();
+        const auto p2 = yz.applyPos({0.0f, 1.0f, 0.0f}, 1.0f);
+        checkSynth(std::abs(p2[0]) < 1e-6f && std::abs(p2[1]) < 1e-6f &&
+                       std::abs(p2[2] + 1.0f) < 1e-6f,
+                   "basis yUpToZUp vector");
+        const auto q2 = yz.applyQuat({0.0f, 0.0f, 0.0f, 1.0f});
+        checkSynth(std::abs(q2[3] - 1.0f) < 1e-6f, "basis quat preserves identity");
+    }
+
+    // Identity source -> exact target rest (req 6 calibration baseline).
+    {
+        studio::Animation src = makeSynthSoma(2);
+        studio::Animation out;
+        std::string err;
+        checkSynth(studio::Retargeter::retarget(src, *ue, map, opts, out, err),
+                   "identity retarget runs");
+        float worst = 0.0f;
+        int worstJ = -1;
+        for (int t = 0; t < out.joints; ++t) {
+            if (ue->parents[t] < 0) {
+                continue; // root keeps source world by design
+            }
+            const float* q = out.localRotationsXyzw.data() + t * 4;
+            const auto& e = ue->restLocal[t];
+            const float d = std::abs(q[0] - e[0]) + std::abs(q[1] - e[1]) +
+                            std::abs(q[2] - e[2]) + std::abs(q[3] - e[3]);
+            if (d > worst) {
+                worst = d;
+                worstJ = t;
+            }
+        }
+        std::printf("selftest-chains: identity worst=%.6f joint=%s\n", worst,
+                    worstJ >= 0 ? out.jointNames[worstJ].c_str() : "(none)");
+        checkSynth(worst < 1e-4f, "identity reproduces target rest");
+    }
+
+    // Pure root yaw 30deg -> target root yaw ~30deg (req 8 facing).
+    {
+        studio::Animation src = makeSynthSoma(2);
+        const float h = 30.0f * 3.14159265f / 360.0f;
+        setSynthLocal(src, "Hips", 0.0f, std::sin(h), 0.0f, std::cos(h));
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *ue, map, opts, out, err);
+        const float* q = out.localRotationsXyzw.data(); // root local == world
+        const float yaw = yawOfArr(q) * 360.0f / (2.0f * 3.14159265f);
+        checkSynth(std::abs(yaw - 30.0f) < 2.0f, "root yaw tracks source");
+    }
+
+    // Knee flex 45deg about X -> calf world delta ~45deg.
+    {
+        studio::Animation src = makeSynthSoma(2);
+        const float h = 45.0f * 3.14159265f / 360.0f;
+        setSynthLocal(src, "LeftShin", std::sin(h), 0.0f, 0.0f, std::cos(h));
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *ue, map, opts, out, err);
+        const int calf = synthIndex(out, "calf_l");
+        // Calf world vs rest world angle should mirror the 45deg input.
+        std::vector<Vector3> pos;
+        std::vector<Quaternion> rot;
+        const float org[3] = {0, 0, 0};
+        studio::Skeleton::forwardKinematicsFull(out.localRotationsXyzw.data(), org,
+                                                out.parents, out.offsets, pos, rot);
+        // Rest world of calf from profile.
+        std::vector<float> rf(out.joints * 4);
+        for (int t = 0; t < out.joints; ++t) {
+            rf[t * 4] = ue->restLocal[t][0];
+            rf[t * 4 + 1] = ue->restLocal[t][1];
+            rf[t * 4 + 2] = ue->restLocal[t][2];
+            rf[t * 4 + 3] = ue->restLocal[t][3];
+        }
+        std::vector<Vector3> rp;
+        std::vector<Quaternion> rr;
+        studio::Skeleton::forwardKinematicsFull(rf.data(), org, out.parents,
+                                                out.offsets, rp, rr);
+        const Quaternion& a = rot[calf];
+        const Quaternion& b = rr[calf];
+        const float ang =
+            quatAngle(a.x, a.y, a.z, a.w, b.x, b.y, b.z, b.w) * 360.0f /
+            (2.0f * 3.14159265f);
+        checkSynth(std::abs(ang - 45.0f) < 5.0f, "knee flex transfers");
+    }
+
+    // Arm swing 30deg about Z -> upperarm world delta ~30deg.
+    {
+        studio::Animation src = makeSynthSoma(2);
+        const float h = 30.0f * 3.14159265f / 360.0f;
+        setSynthLocal(src, "LeftArm", 0.0f, 0.0f, std::sin(h), std::cos(h));
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *ue, map, opts, out, err);
+        const int ua = synthIndex(out, "upperarm_l");
+        std::vector<Vector3> pos;
+        std::vector<Quaternion> rot;
+        const float org[3] = {0, 0, 0};
+        studio::Skeleton::forwardKinematicsFull(out.localRotationsXyzw.data(), org,
+                                                out.parents, out.offsets, pos, rot);
+        std::vector<float> rf(out.joints * 4);
+        for (int t = 0; t < out.joints; ++t) {
+            rf[t * 4] = ue->restLocal[t][0];
+            rf[t * 4 + 1] = ue->restLocal[t][1];
+            rf[t * 4 + 2] = ue->restLocal[t][2];
+            rf[t * 4 + 3] = ue->restLocal[t][3];
+        }
+        std::vector<Vector3> rp;
+        std::vector<Quaternion> rr;
+        studio::Skeleton::forwardKinematicsFull(rf.data(), org, out.parents,
+                                                out.offsets, rp, rr);
+        const Quaternion& a = rot[ua];
+        const Quaternion& b = rr[ua];
+        const float ang =
+            quatAngle(a.x, a.y, a.z, a.w, b.x, b.y, b.z, b.w) * 360.0f /
+            (2.0f * 3.14159265f);
+        checkSynth(std::abs(ang - 30.0f) < 5.0f, "arm swing transfers");
+    }
+
+    // Spine: Chest-only 30deg input must distribute over the shared span
+    // (spine_04 + spine_05 world deltas sum to ~30, neither duplicates the
+    // full rotation, neither drops to rest).
+    {
+        studio::Animation src = makeSynthSoma(2);
+        const float h = 30.0f * 3.14159265f / 360.0f;
+        setSynthLocal(src, "Chest", std::sin(h), 0.0f, 0.0f, std::cos(h));
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *ue, map, opts, out, err);
+        const int s4 = synthIndex(out, "spine_04");
+        const int s5 = synthIndex(out, "spine_05");
+        std::vector<Vector3> pos;
+        std::vector<Quaternion> rot;
+        const float org[3] = {0, 0, 0};
+        studio::Skeleton::forwardKinematicsFull(out.localRotationsXyzw.data(), org,
+                                                out.parents, out.offsets, pos, rot);
+        std::vector<float> rf(out.joints * 4);
+        for (int t = 0; t < out.joints; ++t) {
+            rf[t * 4] = ue->restLocal[t][0];
+            rf[t * 4 + 1] = ue->restLocal[t][1];
+            rf[t * 4 + 2] = ue->restLocal[t][2];
+            rf[t * 4 + 3] = ue->restLocal[t][3];
+        }
+        std::vector<Vector3> rp;
+        std::vector<Quaternion> rr;
+        studio::Skeleton::forwardKinematicsFull(rf.data(), org, out.parents,
+                                                out.offsets, rp, rr);
+        auto wdeg = [&](int t) {
+            const Quaternion& a = rot[t];
+            const Quaternion& b = rr[t];
+            return quatAngle(a.x, a.y, a.z, a.w, b.x, b.y, b.z, b.w) * 360.0f /
+                   (2.0f * 3.14159265f);
+        };
+        const float d4 = wdeg(s4), d5 = wdeg(s5), d3 = wdeg(synthIndex(out, "spine_03"));
+        std::printf("selftest-chains: spine s03=%.1f s04=%.1f s05=%.1f sum45=%.1f\n",
+                    d3, d4, d5, d4 + d5);
+        checkSynth(d3 < 2.0f, "spine unmapped source stays rest");
+        checkSynth(d4 < 25.0f && d5 < 25.0f, "spine no full duplication");
+        checkSynth(d4 > 3.0f && d5 > 3.0f, "spine span shared, none dropped");
+        checkSynth(std::abs(d4 + d5 - 30.0f) < 4.0f, "spine motion conserved");
+    }
+
+    // Calibration: scale 0 holds rest, 0.5 halves motion.
+    {
+        studio::Animation src = makeSynthSoma(2);
+        const float h = 30.0f * 3.14159265f / 360.0f;
+        setSynthLocal(src, "LeftArm", 0.0f, 0.0f, std::sin(h), std::cos(h));
+        studio::Retargeter::Options o0 = opts;
+        o0.legIK = false;
+        o0.chains["LeftArm"] = studio::ChainParams{true, 0.0f};
+        studio::Animation out0;
+        std::string e0;
+        studio::Retargeter::retarget(src, *ue, map, o0, out0, e0);
+        const int ua = synthIndex(out0, "upperarm_l");
+        const float* q0 = out0.localRotationsXyzw.data() + ua * 4;
+        const auto& e = ue->restLocal[ua];
+        // Component-wise: angle() is ill-conditioned near zero (acos
+        // amplifies float noise); q0==e to 1e-7 here is exact hold.
+        const float d0 = std::abs(q0[0] - e[0]) + std::abs(q0[1] - e[1]) +
+                         std::abs(q0[2] - e[2]) + std::abs(q0[3] - e[3]);
+        studio::Retargeter::Options o5 = opts;
+        o5.chains["LeftArm"] = studio::ChainParams{true, 0.5f};
+        studio::Animation out5;
+        std::string e5;
+        studio::Retargeter::retarget(src, *ue, map, o5, out5, e5);
+        const float* q5 = out5.localRotationsXyzw.data() + ua * 4;
+        const float d5 = quatAngle(q5[0], q5[1], q5[2], q5[3], e[0], e[1], e[2], e[3]);
+        checkSynth(d0 < 1e-4f, "calibration scale 0 holds rest");
+        checkSynth(std::abs(d5 - 15.0f * 3.14159265f / 180.0f) < 0.06f,
+                   "calibration scale 0.5 halves motion");
+    }
+
+    // Mirrored limbs: identical inputs -> equal-magnitude outputs.
+    {
+        studio::Animation src = makeSynthSoma(2);
+        const float h = 20.0f * 3.14159265f / 360.0f;
+        setSynthLocal(src, "LeftArm", 0.0f, 0.0f, std::sin(h), std::cos(h));
+        setSynthLocal(src, "RightArm", 0.0f, 0.0f, std::sin(h), std::cos(h));
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *ue, map, opts, out, err);
+        const int ul = synthIndex(out, "upperarm_l");
+        const int ur = synthIndex(out, "upperarm_r");
+        const float* ql = out.localRotationsXyzw.data() + ul * 4;
+        const float* qr = out.localRotationsXyzw.data() + ur * 4;
+        const auto& el = ue->restLocal[ul];
+        const auto& er = ue->restLocal[ur];
+        const float dl = quatAngle(ql[0], ql[1], ql[2], ql[3], el[0], el[1], el[2], el[3]);
+        const float dr = quatAngle(qr[0], qr[1], qr[2], qr[3], er[0], er[1], er[2], er[3]);
+        bool finite = true;
+        for (int k = 0; k < out.joints * 4; ++k) {
+            if (!std::isfinite(out.localRotationsXyzw[k])) {
+                finite = false;
+            }
+        }
+        // Normalized check on a few joints.
+        for (int t : {0, ul, ur}) {
+            const float* q = out.localRotationsXyzw.data() + t * 4;
+            const float n =
+                std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+            if (!std::isfinite(n) || std::abs(n - 1.0f) > 1e-3f) {
+                finite = false;
+            }
+        }
+        checkSynth(finite, "outputs finite and normalized");
+        checkSynth(std::abs(dl - dr) < 1e-3f, "mirrored limbs symmetric");
+    }
+
+    // Foot contact + IK: frame 0 stands (the rest reference, as in real
+    // clips), frame 1 crouches with bent source knees and a dropped root;
+    // target feet must stay near plant while knees flex.
+    {
+        studio::Animation src = makeSynthSoma(2);
+        const float h = 30.0f * 3.14159265f / 360.0f;
+        float* f1 = src.localRotationsXyzw.data() + 30 * 4;
+        const int lsh = synthIndex(src, "LeftShin");
+        const int rsh = synthIndex(src, "RightShin");
+        f1[(lsh) * 4] = std::sin(h);
+        f1[(lsh) * 4 + 3] = std::cos(h);
+        f1[(rsh) * 4] = std::sin(h);
+        f1[(rsh) * 4 + 3] = std::cos(h);
+        src.rootPositions[3 + 1] = 0.83f; // frame 1 root drops 7cm
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *ue, map, opts, out, err);
+        const int fl = synthIndex(out, "foot_l");
+        const int calf = synthIndex(out, "calf_l");
+        std::vector<Vector3> pos;
+        std::vector<Quaternion> rot;
+        const float org[3] = {0, 0, 0};
+        // FK at frame 1 with its root.
+        studio::Skeleton::forwardKinematicsFull(
+            out.localRotationsXyzw.data() + out.joints * 4,
+            out.rootPositions.data() + 3, out.parents, out.offsets, pos, rot);
+        // Rest foot height reference.
+        std::vector<float> rf(out.joints * 4);
+        for (int t = 0; t < out.joints; ++t) {
+            rf[t * 4] = ue->restLocal[t][0];
+            rf[t * 4 + 1] = ue->restLocal[t][1];
+            rf[t * 4 + 2] = ue->restLocal[t][2];
+            rf[t * 4 + 3] = ue->restLocal[t][3];
+        }
+        std::vector<Vector3> rp;
+        std::vector<Quaternion> rr;
+        const float rorg[3] = {0, 0.9f, 0};
+        studio::Skeleton::forwardKinematicsFull(rf.data(), rorg, out.parents,
+                                                out.offsets, rp, rr);
+        const float dy = std::abs(pos[fl].y - rp[fl].y);
+        const Quaternion& a = rot[calf];
+        const Quaternion& b = rr[calf];
+        const float flex = quatAngle(a.x, a.y, a.z, a.w, b.x, b.y, b.z, b.w);
+        std::printf("selftest-chains: crouch footDy=%.3f kneeFlex=%.1fdeg\n", dy,
+                    flex * 360.0f / (2.0f * 3.14159265f));
+        checkSynth(dy < 0.06f, "IK keeps foot contact on crouch");
+        checkSynth(flex > 0.09f, "IK flexes knee on crouch");
+    }
+
+    // Root scale doubles translations.
+    {
+        studio::Animation src = makeSynthSoma(2);
+        src.rootPositions[3] = 1.0f;
+        src.rootPositions[5] = 2.0f;
+        studio::Retargeter::Options o2 = opts;
+        o2.rootScale = 2.0f;
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *ue, map, o2, out, err);
+        checkSynth(std::abs(out.rootPositions[3] - 2.0f) < 1e-5f &&
+                       std::abs(out.rootPositions[5] - 4.0f) < 1e-5f,
+                   "root translation scale");
+    }
+
+    // Missing chain reports exactly (req 12).
+    {
+        studio::BoneMap bad;
+        studio::Animation out;
+        std::string err;
+        const bool ok = studio::Retargeter::retarget(makeSynthSoma(2), *ue, bad, opts, out, err);
+        checkSynth(!ok && err.find("LeftLeg") != std::string::npos, "missing chain error");
+    }
+
+    std::printf("selftest-chains: %s (%d failures)\n", synthFails == 0 ? "OK" : "FAILED",
+                synthFails);
+    return synthFails == 0 ? 0 : 1;
+}
+
+} // namespace
+
 int main(int argc, char** argv) {
     if (argc >= 2 && std::string(argv[1]) == "--version") {
         std::printf("Kimodo Studio %s (%s) built %s\n", KIMODO_STUDIO_VERSION,
@@ -654,6 +1086,9 @@ int main(int argc, char** argv) {
     }
     if (argc >= 2 && std::string(argv[1]) == "--selftest-export") {
         return selftestExport(argc >= 3 ? argv[2] : nullptr);
+    }
+    if (argc >= 2 && std::string(argv[1]) == "--selftest-chains") {
+        return selftestChains();
     }
     studio::Application app;
     if (!app.init()) {

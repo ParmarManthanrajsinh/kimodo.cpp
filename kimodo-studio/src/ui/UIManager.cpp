@@ -1,6 +1,7 @@
 #include "ui/UIManager.h"
 
 #include "animation/AnimationPlayer.h"
+#include "animation/Skeleton.h"
 #include "huggingface/HFAuthenticator.h"
 #include "imgui.h"
 #include "kimodo/KimodoEngine.h"
@@ -19,6 +20,7 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <map>
 #include <mutex>
 #include <thread>
 
@@ -280,7 +282,7 @@ void drawModels(AppState& state, ModelManager& models, KimodoEngine& engine,
 }
 
 void drawRetarget(AppState& state, AnimationLibrary& library, AnimationPlayer& player,
-                  Toasts& toasts) {
+                  Toasts& toasts, Viewport& viewport) {
     const std::vector<LibraryEntry> entries = library.entries();
     if (entries.empty()) {
         ImGui::TextDisabled("Library empty. Generate an animation first.");
@@ -358,6 +360,8 @@ void drawRetarget(AppState& state, AnimationLibrary& library, AnimationPlayer& p
     }
 
     const std::vector<std::string> missing = Retargeter::unmapped(profile, map);
+    const std::vector<std::string> missingChains =
+        Retargeter::missingChains(profile, map);
     ImGui::Text("Source skeleton: %s", sourceAnim.skeletonName.c_str());
     if (!missing.empty()) {
         ImGui::TextColored(ImVec4(0.95f, 0.75f, 0.25f, 1.0f), "%llu joints need manual mapping",
@@ -365,11 +369,49 @@ void drawRetarget(AppState& state, AnimationLibrary& library, AnimationPlayer& p
     } else {
         ImGui::TextDisabled("All joints mapped.");
     }
+    for (const std::string& m : missingChains) {
+        ImGui::TextColored(ImVec4(0.95f, 0.35f, 0.35f, 1.0f), "Missing %s", m.c_str());
+    }
     if (ImGui::Button("Auto Map")) {
         map = Retargeter::autoMap(profile);
     }
     ImGui::SameLine();
     ImGui::SliderFloat("Root scale", &rootScale, 0.5f, 1.5f);
+
+    // Chains: calibration separate from bone mapping.
+    ImGui::Separator();
+    ImGui::Text("Chains");
+    static std::string chainProfile;
+    static std::map<std::string, ChainParams> chainUi;
+    static bool legIK = true;
+    static bool debugView = false;
+    if (chainProfile != profile.id) {
+        chainProfile = profile.id;
+        chainUi.clear();
+        debugView = false;
+    }
+    for (const ChainDef& chain : profile.chains) {
+        ImGui::PushID(chain.name.c_str());
+        ChainParams& cp = chainUi[chain.name]; // defaults enabled/scale 1
+        size_t mapped = 0;
+        for (const std::string& t : chain.target) {
+            const auto it = map.find(t);
+            if (it != map.end() && !it->second.empty() && it->second != "(none)") {
+                ++mapped;
+            }
+        }
+        ImGui::Checkbox("##en", &cp.enabled);
+        ImGui::SameLine();
+        ImGui::Text("%s (%llu/%llu)", chain.name.c_str(),
+                    static_cast<unsigned long long>(mapped),
+                    static_cast<unsigned long long>(chain.target.size()));
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(120.0f);
+        ImGui::SliderFloat("##scale", &cp.motionScale, 0.0f, 1.5f, "x%.2f");
+        ImGui::PopID();
+    }
+    ImGui::Checkbox("Leg IK (feet keep contact)", &legIK);
+    ImGui::Checkbox("Debug triple view (source/rest/live)", &debugView);
 
     ImGui::Separator();
     ImGui::Text("Mapping");
@@ -400,13 +442,22 @@ void drawRetarget(AppState& state, AnimationLibrary& library, AnimationPlayer& p
     }
 
     ImGui::Separator();
+    auto buildOpts = [&]() {
+        Retargeter::Options opts;
+        opts.rootScale = rootScale;
+        opts.legIK = legIK;
+        opts.chains = chainUi;
+        return opts;
+    };
+    static std::string lastReport;
     if (ImGui::Button("Preview")) {
         Animation out;
         std::string error;
-        Retargeter::Options opts;
-        opts.rootScale = rootScale;
-        if (Retargeter::retarget(sourceAnim, profile, map, opts, out, error)) {
+        RetargetReport rep;
+        if (Retargeter::retarget(sourceAnim, profile, map, buildOpts(), out, error,
+                                 &rep)) {
             player.load(out);
+            lastReport = rep.text;
             toasts.push("Retarget preview loaded", ToastKind::Success);
         } else {
             toasts.push("Retarget failed: " + error, ToastKind::Error);
@@ -416,9 +467,10 @@ void drawRetarget(AppState& state, AnimationLibrary& library, AnimationPlayer& p
     if (ImGui::Button("Apply (save)")) {
         Animation out;
         std::string error;
-        Retargeter::Options opts;
-        opts.rootScale = rootScale;
-        if (Retargeter::retarget(sourceAnim, profile, map, opts, out, error)) {
+        RetargetReport rep;
+        if (Retargeter::retarget(sourceAnim, profile, map, buildOpts(), out, error,
+                                 &rep)) {
+            lastReport = rep.text;
             LibraryEntry saved;
             if (library.saveAnimation(src.prompt + " [" + profile.id + "]", src.model,
                                       out, saved)) {
@@ -429,6 +481,70 @@ void drawRetarget(AppState& state, AnimationLibrary& library, AnimationPlayer& p
         } else {
             toasts.push("Retarget failed: " + error, ToastKind::Error);
         }
+    }
+
+    // Req-15 report: chains/weights/IK errors/basis/missing (copyable).
+    if (!lastReport.empty() &&
+        ImGui::CollapsingHeader("Retarget report", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::InputTextMultiline("##retargetReport", lastReport.data(),
+                                   lastReport.size() + 1,
+                                   ImVec2(-FLT_MIN, 220.0f),
+                                   ImGuiInputTextFlags_ReadOnly);
+    }
+
+    // Diagnostic triple view: source | rest | live, side by side.
+    if (debugView) {
+        static AnimationPlayer srcPlayer;
+        static std::string srcPlayerId;
+        if (srcPlayerId != src.id) {
+            srcPlayer.load(sourceAnim);
+            srcPlayerId = src.id;
+        }
+        srcPlayer.scrub(player.time());
+        std::vector<Viewport::DebugPose> poses;
+        {
+            Viewport::DebugPose p;
+            p.pos = srcPlayer.worldPositions();
+            p.parents = sourceAnim.parents;
+            p.offset = {-2.5f, 0.0f, 0.0f};
+            p.joint = {140, 140, 150, 255};
+            p.bone = {110, 110, 125, 255};
+            poses.push_back(std::move(p));
+        }
+        {
+            // Target rest pose from profile data.
+            std::vector<float> restFlat(profile.restLocal.size() * 4, 0.0f);
+            for (size_t k = 0; k < profile.restLocal.size(); ++k) {
+                restFlat[k * 4] = profile.restLocal[k][0];
+                restFlat[k * 4 + 1] = profile.restLocal[k][1];
+                restFlat[k * 4 + 2] = profile.restLocal[k][2];
+                restFlat[k * 4 + 3] = profile.restLocal[k][3];
+            }
+            std::vector<Vector3> rp;
+            std::vector<Quaternion> rr;
+            const float org[3] = {0, 0, 0};
+            Skeleton::forwardKinematicsFull(restFlat.data(), org, profile.parents,
+                                            profile.offsets, rp, rr);
+            Viewport::DebugPose p;
+            p.pos = std::move(rp);
+            p.parents = profile.parents;
+            p.offset = {0, 0, 0};
+            p.joint = {80, 180, 120, 255};
+            p.bone = {70, 150, 110, 255};
+            poses.push_back(std::move(p));
+        }
+        {
+            Viewport::DebugPose p;
+            p.pos = player.worldPositions();
+            p.parents = player.poseParents();
+            p.offset = {2.5f, 0, 0};
+            p.joint = SKYBLUE;
+            p.bone = {120, 170, 255, 255};
+            poses.push_back(std::move(p));
+        }
+        viewport.setDebugPoses(std::move(poses));
+    } else {
+        viewport.clearDebug();
     }
 }
 
@@ -854,7 +970,7 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         case Screen::Library:
             drawLibrary(this, state, library, player, toasts, capture);
             break;
-        case Screen::Retarget: drawRetarget(state, library, player, toasts); break;
+        case Screen::Retarget: drawRetarget(state, library, player, toasts, viewport); break;
         case Screen::Settings: drawSettings(state, engine, toasts); break;
     }
     ImGui::Spacing();

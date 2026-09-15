@@ -21,7 +21,23 @@ public:
     }
     bool hasPose() const { return !pose_.empty(); }
 
+    struct DebugPose {
+        std::vector<Vector3> pos;
+        std::vector<int> parents;
+        Vector3 offset = {0, 0, 0};
+        Color joint = {140, 140, 150, 255};
+        Color bone = {110, 110, 125, 255};
+    };
+    // Side-by-side diagnostic figures (source / rest / retargeted).
+    // Empty = normal single-pose rendering.
+    void setDebugPoses(std::vector<DebugPose> poses) { debug_ = std::move(poses); }
+    void clearDebug() { debug_.clear(); }
+    bool hasDebug() const { return !debug_.empty(); }
+
 private:
+    static void drawPose(const std::vector<Vector3>& pose,
+                         const std::vector<int>& parents, const Vector3& offset,
+                         Color joint, Color bone);
     void recomputeCamera() const;
 
     Vector3 target_ = {0, 1, 0};
@@ -32,6 +48,7 @@ private:
     GridRenderer grid_;
     std::vector<Vector3> pose_;
     std::vector<int> poseParents_;
+    std::vector<DebugPose> debug_;
 };
 
 } // namespace studio
