@@ -562,6 +562,11 @@ int selftestExport(const char* keepPath = nullptr) {
 }
 
 int main(int argc, char** argv) {
+    if (argc >= 2 && std::string(argv[1]) == "--version") {
+        std::printf("Kimodo Studio %s (%s) built %s\n", KIMODO_STUDIO_VERSION,
+                    KIMODO_STUDIO_GIT_HASH, KIMODO_STUDIO_BUILD_DATE);
+        return 0;
+    }
     if (argc >= 2 && std::string(argv[1]) == "--selftest") {
         const char* frames = argc >= 3 ? argv[2] : nullptr;
         const char* steps = argc >= 4 ? argv[3] : nullptr;

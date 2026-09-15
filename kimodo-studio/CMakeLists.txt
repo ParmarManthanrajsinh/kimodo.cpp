@@ -124,3 +124,48 @@ else()
     target_compile_options(kimodo_studio PRIVATE -Wall -Wextra -Wpedantic)
     target_compile_options(studio_imgui PRIVATE -w)
 endif()
+
+# --- Version stamp (Phase 13) ---
+set(KIMODO_STUDIO_VERSION "0.1.0")
+find_package(Git QUIET)
+if(GIT_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE KIMODO_STUDIO_GIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+endif()
+if(NOT KIMODO_STUDIO_GIT_HASH)
+    set(KIMODO_STUDIO_GIT_HASH "unknown")
+endif()
+string(TIMESTAMP KIMODO_STUDIO_BUILD_DATE "%Y%m%d")
+target_compile_definitions(kimodo_studio PRIVATE
+    KIMODO_STUDIO_VERSION="${KIMODO_STUDIO_VERSION}"
+    KIMODO_STUDIO_GIT_HASH="${KIMODO_STUDIO_GIT_HASH}"
+    KIMODO_STUDIO_BUILD_DATE="${KIMODO_STUDIO_BUILD_DATE}")
+
+if(MSVC)
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/packaging/version.rc.in"
+                   "${CMAKE_CURRENT_BINARY_DIR}/version.rc" @ONLY)
+    target_sources(kimodo_studio PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/version.rc")
+endif()
+
+# --- Portable package (Phase 13): exe + runtime DLLs + config.
+# Models are NEVER bundled (license): user installs via Model Setup Wizard.
+# Component-scoped so third-party (raylib) install rules stay out.
+set(CPACK_GENERATOR "ZIP")
+set(CPACK_PACKAGE_NAME "KimodoStudio")
+set(CPACK_PACKAGE_VERSION "${KIMODO_STUDIO_VERSION}")
+set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
+set(CPACK_COMPONENTS_ALL studio)
+set(CPACK_ARCHIVE_STUDIO_FILE_NAME
+    "KimodoStudio-${KIMODO_STUDIO_VERSION}-${KIMODO_STUDIO_GIT_HASH}-windows-x64")
+install(TARGETS kimodo_studio RUNTIME DESTINATION . COMPONENT studio)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/config" DESTINATION . COMPONENT studio)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/README.md" DESTINATION . COMPONENT studio)
+if(MSVC AND EXISTS "${KIMODO_ROOT}/build/bin/Release")
+    install(DIRECTORY "${KIMODO_ROOT}/build/bin/Release/" DESTINATION . COMPONENT studio
+            FILES_MATCHING PATTERN "*.dll")
+endif()
+include(CPack)

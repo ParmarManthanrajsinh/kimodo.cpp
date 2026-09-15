@@ -10,10 +10,13 @@ namespace studio {
 
 bool Application::init() {
     Logger::instance().init(Logger::defaultLogFile());
-    Logger::instance().info("Kimodo Studio starting");
+    Logger::instance().info(std::string("Kimodo Studio ") + KIMODO_STUDIO_VERSION +
+                            " (" + KIMODO_STUDIO_GIT_HASH + ") built " +
+                            KIMODO_STUDIO_BUILD_DATE);
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
-    InitWindow(1280, 800, "Kimodo Studio");
+    InitWindow(1280, 800,
+               "Kimodo Studio " KIMODO_STUDIO_VERSION " (" KIMODO_STUDIO_GIT_HASH ")");
     if (!IsWindowReady()) {
         Logger::instance().error("Raylib window init failed");
         return false;
