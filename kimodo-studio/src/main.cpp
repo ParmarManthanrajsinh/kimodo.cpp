@@ -1,4 +1,4 @@
-﻿#include "animation/Animation.h"
+#include "animation/Animation.h"
 #include "animation/AnimationPlayer.h"
 #include "animation/Skeleton.h"
 #include "app/Application.h"
@@ -628,16 +628,161 @@ int selftestExport(const char* keepPath = nullptr) {
                          row.rfind("0 0.97 0 0 -0 ", 0) == 0);
         std::printf("selftest-glb: bvh hier=%d root=%d motion=%d euler0=%d\n", bH, bR, bM,
                     bE);
-        if (keepPath) {
-            const std::string kept = std::string(keepPath) + ".check.bvh";
-            std::ifstream bsrc(bopts.path, std::ios::binary);
-            std::ofstream bdst(kept, std::ios::binary | std::ios::trunc);
-            bdst << bsrc.rdbuf();
-            std::printf("selftest-glb: kept %s\n", kept.c_str());
-        }
         if (!bH || !bR || !bM || !bF || !bE) {
             std::printf("selftest-glb: FAILED: bvh content\n");
             return 1;
+        }
+        // BVH validation: hierarchy/joints/frames/channels/numerics/root.
+        {
+            // Count JOINT + ROOT declarations; End Sites present.
+            size_t joints = 0, pos = 0;
+            while ((pos = bvhText.find("JOINT ", pos)) != std::string::npos) {
+                ++joints;
+                ++pos;
+            }
+            const bool hasRoot = bvhText.find("ROOT ") != std::string::npos;
+            const bool hasEnd = bvhText.find("End Site") != std::string::npos;
+            const bool hasChan6 =
+                bvhText.find("CHANNELS 6 Xposition Yposition Zposition") !=
+                std::string::npos;
+            const bool hasChan3 = bvhText.find("CHANNELS 3 Xrotation") != std::string::npos;
+            // joints+root must equal SOMA count (30).
+            const bool jCount = hasRoot && (joints + 1 == 30);
+            // Frame rows: 5 rows, each 30*3+3 floats, all finite.
+            const size_t mpos = bvhText.find("MOTION\n");
+            std::istringstream ms(bvhText.substr(mpos));
+            std::string line;
+            int framesSeen = 0;
+            bool rowsFinite = true, colsOk = true;
+            float rootX0 = 0, rootY0 = 0, rootZ0 = 0;
+            while (std::getline(ms, line)) {
+                if (line.rfind("Frames:", 0) == 0 || line.rfind("Frame Time:", 0) == 0 ||
+                    line.rfind("MOTION", 0) == 0 || line.empty()) {
+                    continue;
+                }
+                if (line.rfind("HIERARCHY", 0) == 0 || line.find("ROOT") != std::string::npos ||
+                    line.find("JOINT") != std::string::npos ||
+                    line.find("{") != std::string::npos || line.find("}") != std::string::npos ||
+                    line.find("OFFSET") != std::string::npos ||
+                    line.find("CHANNELS") != std::string::npos ||
+                    line.find("End Site") != std::string::npos) {
+                    continue;
+                }
+                std::istringstream rs(line);
+                std::vector<float> vals;
+                float v = 0;
+                while (rs >> v) {
+                    vals.push_back(v);
+                }
+                if (vals.empty()) {
+                    continue;
+                }
+                ++framesSeen;
+                if (static_cast<int>(vals.size()) != 30 * 3 + 3) {
+                    colsOk = false;
+                }
+                for (float fv : vals) {
+                    if (!std::isfinite(fv)) {
+                        rowsFinite = false;
+                    }
+                }
+                if (framesSeen == 1) {
+                    rootX0 = vals[0];
+                    rootY0 = vals[1];
+                    rootZ0 = vals[2];
+                }
+            }
+            const bool rootOk =
+                std::abs(rootX0 - 0.0f) < 1e-4f && std::abs(rootY0 - 0.97f) < 1e-4f;
+            std::printf(
+                "selftest-glb: bvh validate joints=%llu end=%d ch6=%d ch3=%d "
+                "frames=%d cols=%d finite=%d root=(%.3f %.3f %.3f)\n",
+                static_cast<unsigned long long>(joints), hasEnd ? 1 : 0,
+                hasChan6 ? 1 : 0, hasChan3 ? 1 : 0, framesSeen, colsOk ? 1 : 0,
+                rowsFinite ? 1 : 0, rootX0, rootY0, rootZ0);
+            if (!hasEnd || !hasChan6 || !hasChan3 || !jCount || framesSeen != 5 ||
+                !colsOk || !rowsFinite || !rootOk) {
+                std::printf("selftest-glb: FAILED: bvh validation\n");
+                return 1;
+            }
+            // Euler round-trip: quat -> XYZ Euler -> quat within tolerance.
+            // R = Rz*Ry*Rx (standard BVH XYZ). Identity + 90deg X/Y/Z +
+            // combined + near-gimbal.
+            auto eulerXYZToQuat = [](float exd, float eyd, float ezd) {
+                const float k = 3.14159265f / 180.0f;
+                const float cx = std::cos(exd * k * 0.5f), sx = std::sin(exd * k * 0.5f);
+                const float cy = std::cos(eyd * k * 0.5f), sy = std::sin(eyd * k * 0.5f);
+                const float cz = std::cos(ezd * k * 0.5f), sz = std::sin(ezd * k * 0.5f);
+                // q = qz * qy * qx.
+                // qy*qx:
+                const float q1x = cy * sx;
+                const float q1y = sy * cx;
+                const float q1z = -sy * sx;
+                const float q1w = cy * cx;
+                // qz*q1:
+                const float x = cz * q1x - sz * q1y;
+                const float y = sz * q1x + cz * q1y;
+                const float z = cz * q1z + sz * q1w;
+                const float w = -sz * q1z + cz * q1w;
+                return std::array<float, 4>{x, y, z, w};
+            };
+            auto quatToEuler = [](float x, float y, float z, float w) {
+                const float n = std::sqrt(x * x + y * y + z * z + w * w);
+                x /= n;
+                y /= n;
+                z /= n;
+                w /= n;
+                const float m20 = 2 * (x * z - w * y);
+                const float m21 = 2 * (y * z + w * x);
+                const float m22 = 1 - 2 * (x * x + y * y);
+                const float m10 = 2 * (x * y + w * z);
+                const float m00 = 1 - 2 * (y * y + z * z);
+                const float m12 = 2 * (y * z - w * x);
+                const float m11 = 1 - 2 * (x * x + z * z);
+                constexpr float kDeg = 57.29577951308232f;
+                float ex, ey, ez;
+                ey = std::asin(std::min(1.0f, std::max(-1.0f, -m20))) * kDeg;
+                if (std::abs(m20) < 0.99999f) {
+                    ex = std::atan2(m21, m22) * kDeg;
+                    ez = std::atan2(m10, m00) * kDeg;
+                } else {
+                    ex = std::atan2(-m12, m11) * kDeg;
+                    ez = 0.0f;
+                }
+                return std::array<float, 3>{ex, ey, ez};
+            };
+            const float h = 0.70710678f;
+            const std::array<std::array<float, 4>, 6> cases = {
+                std::array<float, 4>{0, 0, 0, 1},
+                std::array<float, 4>{h, 0, 0, h},
+                std::array<float, 4>{0, h, 0, h},
+                std::array<float, 4>{0, 0, h, h},
+                std::array<float, 4>{0.5f, 0.5f, 0.5f, 0.5f},
+                std::array<float, 4>{0.0f, 0.99999f, 0.0f, 0.004472f},
+            };
+            float worst = 0.0f;
+            for (const auto& q : cases) {
+                const auto e = quatToEuler(q[0], q[1], q[2], q[3]);
+                const auto qb = eulerXYZToQuat(e[0], e[1], e[2]);
+                float d = std::abs(q[0] * qb[0] + q[1] * qb[1] + q[2] * qb[2] +
+                                   q[3] * qb[3]);
+                d = std::min(1.0f, d);
+                const float ang = 2.0f * std::acos(d);
+                worst = std::max(worst, ang);
+            }
+            std::printf("selftest-glb: euler roundtrip worst=%.6f rad\n", worst);
+            if (!(worst < 1e-3f)) {
+                std::printf("selftest-glb: FAILED: euler roundtrip\n");
+                return 1;
+            }
+            // Root motion: root-only rotation keeps child locals, checked
+            // via prepareExport Preserve (no zeroing).
+            if (keepPath) {
+                const std::string kept = std::string(keepPath) + ".check.bvh";
+                std::ofstream bdst(kept, std::ios::binary | std::ios::trunc);
+                bdst << bvhText;
+                std::printf("selftest-glb: kept %s\n", kept.c_str());
+            }
         }
     }
     std::printf("selftest-glb: OK\n");
@@ -934,18 +1079,22 @@ int selftestChains() {
         const float dw =
             quatAngle(a.x, a.y, a.z, a.w, b[0], b[1], b[2], b[3]) * 360.0f /
             (2.0f * 3.14159265f);
-        // spine_01 WORLD must hold rest: its local counter-rotates against
-        // the moved parent, which is correct (motion lives in pelvis world,
-        // not duplicated as extra spine bend).
+        // spine_01 WORLD must rigidly follow pelvis (own source delta is
+        // identity): inherited anchor delta carries parent motion through.
+        // Its LOCAL stays near rest: motion lives in pelvis world once,
+        // never duplicated as extra spine bend.
         const Quaternion& c = rot[s1];
         const auto& d = tgtRef.worldRot[s1];
         const float dw1 =
             quatAngle(c.x, c.y, c.z, c.w, d[0], d[1], d[2], d[3]) * 360.0f /
             (2.0f * 3.14159265f);
-        std::printf("selftest-chains: pelvis worldDelta=%.1f spine01 worldHold=%.2f\n",
+        // Local must counter-rotate (conjugation of twisted rest); exact
+        // follow above already proves no extra bend was added.
+        std::printf("selftest-chains: pelvis worldDelta=%.1f spine01 follow=%.1f\n",
                     dw, dw1);
         checkSynth(std::abs(dw - 20.0f) < 2.0f, "pelvis rotation transfers");
-        checkSynth(dw1 < 2.0f, "pelvis motion not duplicated into spine");
+        checkSynth(std::abs(dw1 - 20.0f) < 2.0f,
+                   "spine follows rigid parent, no duplicated bend");
     }
 
     // Knee flex 45deg about X -> calf world delta ~45deg.
@@ -1016,9 +1165,10 @@ int selftestChains() {
         checkSynth(std::abs(ang - 30.0f) < 5.0f, "arm swing transfers");
     }
 
-    // Spine: Chest-only 30deg input must distribute over the shared span
-    // (spine_04 + spine_05 world deltas sum to ~30, neither duplicates the
-    // full rotation, neither drops to rest).
+    // Spine: Chest-only 30deg input distributes over the shared span with
+    // CUMULATIVE weights (spine_04 ~15 world, spine_05 ~30 world). Members
+    // in series compose by multiplication, so running totals preserve the
+    // full 30deg bend; per-member fractions would telescope away.
     {
         studio::Animation src = makeSynthSoma(2);
         const float h = 30.0f * 3.14159265f / 360.0f;
@@ -1051,12 +1201,12 @@ int selftestChains() {
                    (2.0f * 3.14159265f);
         };
         const float d4 = wdeg(s4), d5 = wdeg(s5), d3 = wdeg(synthIndex(out, "spine_03"));
-        std::printf("selftest-chains: spine s03=%.1f s04=%.1f s05=%.1f sum45=%.1f\n",
-                    d3, d4, d5, d4 + d5);
+        std::printf("selftest-chains: spine s03=%.1f s04=%.1f s05=%.1f\n", d3, d4,
+                    d5);
         checkSynth(d3 < 2.0f, "spine unmapped source stays rest");
-        checkSynth(d4 < 25.0f && d5 < 25.0f, "spine no full duplication");
-        checkSynth(d4 > 3.0f && d5 > 3.0f, "spine span shared, none dropped");
-        checkSynth(std::abs(d4 + d5 - 30.0f) < 4.0f, "spine motion conserved");
+        checkSynth(std::abs(d4 - 15.0f) < 3.0f, "spine cumulative mid-span");
+        checkSynth(std::abs(d5 - 30.0f) < 3.0f, "spine tip carries full delta");
+        checkSynth(std::abs(d4 - d5) > 5.0f, "spine span distributed, not duplicated");
     }
 
     // Right arm: 20deg Z on RightArm -> upperarm_r world delta ~20deg.
@@ -1161,6 +1311,58 @@ int selftestChains() {
         const float* qr = out.localRotationsXyzw.data() + 2 * out.joints * 4;
         const float tyaw = yawOfArr(qr) * 360.0f / (2.0f * 3.14159265f);
         checkSynth(std::abs(tyaw - 10.0f) < 5.0f, "walk pose no facing flip");
+    }
+
+    // Nested spine motion: Spine1 10 + Spine2 20 + Chest 30 (same axis).
+    // Invariants: tip (spine_05) world carries the full 60deg source tip
+    // delta (nothing lost); base members carry ~5deg each; no member
+    // exceeds 35deg (no duplication). Raw local transfer collapses the
+    // tip to ~30deg (parent subtraction); this discriminates the fix.
+    // (Twisted Mixamo-derived rests make mid-chain locals inexact by a
+    // few degrees via conjugation; tip world is the exact invariant.)
+    {
+        studio::Animation src = makeSynthSoma(2);
+        auto degX = [](float deg) {
+            const float h = deg * 3.14159265f / 360.0f;
+            return std::array<float, 4>{std::sin(h), 0.0f, 0.0f, std::cos(h)};
+        };
+        const auto q1 = degX(10.0f), q2 = degX(20.0f), q3 = degX(30.0f);
+        setSynthLocal(src, "Spine1", q1[0], q1[1], q1[2], q1[3]);
+        setSynthLocal(src, "Spine2", q2[0], q2[1], q2[2], q2[3]);
+        setSynthLocal(src, "Chest", q3[0], q3[1], q3[2], q3[3]);
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *ue, map, noIK, out, err);
+        std::vector<Vector3> pos;
+        std::vector<Quaternion> rot;
+        const float org[3] = {0, 0, 0};
+        studio::Skeleton::forwardKinematicsFull(out.localRotationsXyzw.data(), org,
+                                                out.parents, out.offsets, pos, rot);
+        auto wdeg = [&](const char* n) {
+            const int t = synthIndex(out, n);
+            const Quaternion& a = rot[t];
+            const auto& b = tgtRef.worldRot[t];
+            return quatAngle(a.x, a.y, a.z, a.w, b[0], b[1], b[2], b[3]) *
+                   360.0f / (2.0f * 3.14159265f);
+        };
+        auto ldeg = [&](const char* n) {
+            const int t = synthIndex(out, n);
+            const float* q = out.localRotationsXyzw.data() + t * 4;
+            const auto& e = ue->restLocal[t];
+            return quatAngle(q[0], q[1], q[2], q[3], e[0], e[1], e[2], e[3]) *
+                   360.0f / (2.0f * 3.14159265f);
+        };
+        const float tip = wdeg("spine_05");
+        const float b1 = ldeg("spine_01"), b2 = ldeg("spine_02");
+        const float m3 = ldeg("spine_03"), m4 = ldeg("spine_04"),
+                    m5 = ldeg("spine_05");
+        std::printf("selftest-chains: nest tip=%.1f base=%.1f/%.1f mid=%.1f/%.1f/%.1f\n",
+                    tip, b1, b2, m3, m4, m5);
+        checkSynth(std::abs(tip - 60.0f) < 4.0f, "nested tip carries full motion");
+        checkSynth(std::abs(b1 - 5.0f) < 2.0f && std::abs(b2 - 5.0f) < 2.0f,
+                   "nested base distributes");
+        checkSynth(m3 < 35.0f && m4 < 35.0f && m5 < 35.0f,
+                   "nested no duplicated full rotations");
     }
 
     // Calibration: scale 0 holds rest, 0.5 halves motion.
@@ -1307,6 +1509,289 @@ int selftestChains() {
     return synthFails == 0 ? 0 : 1;
 }
 
+// Blender-generic regression suite (Phase 1/9): direct local copy
+// semantics. Every check compares exact local equality — any parent
+// world derivation (the regression) fails these immediately.
+int selftestBlender() {
+    int fails = 0;
+    auto check = [&](bool ok, const char* name) {
+        std::printf("selftest-blender: %s %s\n", ok ? "PASS" : "FAIL", name);
+        if (!ok) {
+            ++fails;
+        }
+    };
+    const studio::SkeletonProfile* bl = studio::findProfile("blender-generic");
+    if (!bl) {
+        std::printf("selftest-blender: FAIL no profile\n");
+        return 1;
+    }
+    check(bl->mode == studio::RetargetMode::GenericLocal, "mode is GenericLocal");
+    studio::BoneMap map = studio::Retargeter::autoMap(*bl);
+    studio::Retargeter::Options opts;
+    opts.legIK = false;
+
+    // 1. identity: locals bit-copied, offsets from mapped source.
+    {
+        studio::Animation src = makeSynthSoma(2);
+        studio::Animation out;
+        std::string err;
+        check(studio::Retargeter::retarget(src, *bl, map, opts, out, err),
+              "identity runs");
+        bool exact = true;
+        for (int t = 0; t < out.joints; ++t) {
+            const auto it = map.find(out.jointNames[t]);
+            if (it == map.end() || it->second == "(none)") {
+                continue;
+            }
+            const int s = synthIndex(src, it->second.c_str());
+            const float* q = out.localRotationsXyzw.data() + t * 4;
+            const float* e = src.localRotationsXyzw.data() + s * 4;
+            for (int k = 0; k < 4; ++k) {
+                if (q[k] != e[k]) {
+                    exact = false;
+                }
+            }
+            for (int k = 0; k < 3; ++k) {
+                if (out.offsets[t][k] != src.offsets[s][k]) {
+                    exact = false;
+                }
+            }
+        }
+        check(exact, "identity locals+offsets copied");
+    }
+
+    // 2-8. single joints: local must equal source local exactly, even
+    // with rotated ancestors (no parent-motion duplication).
+    struct JointCase {
+        const char* src;
+        const char* tgt;
+        float deg;
+        float ax;
+        float ay;
+        float az;
+    };
+    const JointCase cases[] = {
+        {"Hips", "Hips", 30.0f, 0.0f, 1.0f, 0.0f},
+        {"Spine1", "Spine1", 20.0f, 1.0f, 0.0f, 0.0f},
+        {"Chest", "Chest", -15.0f, 1.0f, 0.0f, 0.0f},
+        {"LeftArm", "LeftArm", 25.0f, 0.0f, 0.0f, 1.0f},
+        {"RightArm", "RightArm", 25.0f, 0.0f, 0.0f, 1.0f},
+        {"LeftShin", "LeftShin", 30.0f, 1.0f, 0.0f, 0.0f},
+        {"RightShin", "RightShin", 30.0f, 1.0f, 0.0f, 0.0f},
+    };
+    for (const JointCase& c : cases) {
+        studio::Animation src = makeSynthSoma(2);
+        const float h = c.deg * 3.14159265f / 360.0f;
+        // Rotate ancestors too: copy semantics must survive nesting.
+        setSynthLocal(src, "Spine1", std::sin(h * 0.5f), 0.0f, 0.0f,
+                      std::cos(h * 0.5f));
+        setSynthLocal(src, c.src, c.ax * std::sin(h), c.ay * std::sin(h),
+                      c.az * std::sin(h), std::cos(h));
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *bl, map, opts, out, err);
+        const int t = synthIndex(out, c.tgt);
+        const int s = synthIndex(src, c.src);
+        const float* q = out.localRotationsXyzw.data() + t * 4;
+        const float* e = src.localRotationsXyzw.data() + s * 4;
+        bool exact = true;
+        for (int k = 0; k < 4; ++k) {
+            if (std::abs(q[k] - e[k]) > 1e-6f) {
+                exact = false;
+            }
+        }
+        char nm[64];
+        std::snprintf(nm, sizeof(nm), "joint %s exact", c.tgt);
+        check(exact, nm);
+    }
+
+    // Diagnostic (Phase 10): source vs blender-target reference worlds.
+    {
+        studio::Animation src = makeSynthSoma(1);
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *bl, map, opts, out, err);
+        std::vector<Vector3> sp;
+        std::vector<Quaternion> sr;
+        const float sroot[3] = {0.0f, 0.9f, 0.0f};
+        std::vector<float> sident(static_cast<size_t>(src.joints) * 4, 0.0f);
+        for (int k = 0; k < src.joints; ++k) {
+            sident[k * 4 + 3] = 1.0f;
+        }
+        studio::Skeleton::forwardKinematicsFull(sident.data(), sroot, src.parents,
+                                                src.offsets, sp, sr);
+        std::vector<Vector3> tp;
+        std::vector<Quaternion> tr;
+        studio::Skeleton::forwardKinematicsFull(
+            out.localRotationsXyzw.data(), sroot, out.parents, out.offsets, tp,
+            tr);
+        const char* bones[] = {"Hips",     "Spine1",   "Spine2",    "Chest",
+                               "LeftShoulder", "LeftArm",    "LeftForeArm", "LeftFoot",
+                               "RightFoot"};
+        for (const char* b : bones) {
+            const int si = synthIndex(src, b);
+            const int ti = synthIndex(out, b);
+            const Vector3& p0 = sp[si];
+            const Quaternion& r0 = sr[si];
+            const Vector3& p1 = tp[ti];
+            const Quaternion& r1 = tr[ti];
+            std::printf("selftest-blender: ref %s S=(%.3f %.3f %.3f)/(%.3f %.3f %.3f %.3f) T=(%.3f %.3f %.3f)/(%.3f %.3f %.3f %.3f)\n",
+                        b, p0.x, p0.y, p0.z, r0.x, r0.y, r0.z, r0.w, p1.x, p1.y,
+                        p1.z, r1.x, r1.y, r1.z, r1.w);
+        }
+        check(true, "reference diagnostic printed");
+    }
+
+    // 9. walking animation: finite, normalized, upright, travels, faces.
+    {
+        studio::Animation src = makeSynthSoma(4);
+        auto degAxis = [](float deg, float x, float y, float z) {
+            const float h = deg * 3.14159265f / 360.0f;
+            return std::array<float, 4>{x * std::sin(h), y * std::sin(h),
+                                        z * std::sin(h), std::cos(h)};
+        };
+        const auto swL = degAxis(20.0f, 0.0f, 0.0f, 1.0f);
+        const auto swR = degAxis(-20.0f, 0.0f, 0.0f, 1.0f);
+        const auto knee = degAxis(30.0f, 1.0f, 0.0f, 0.0f);
+        setSynthLocal(src, "LeftArm", swL[0], swL[1], swL[2], swL[3]);
+        setSynthLocal(src, "RightArm", swR[0], swR[1], swR[2], swR[3]);
+        setSynthLocal(src, "LeftShin", knee[0], knee[1], knee[2], knee[3]);
+        for (int f = 0; f < 4; ++f) {
+            src.rootPositions[f * 3] = 0.4f * f;
+        }
+        studio::Animation out;
+        std::string err;
+        check(studio::Retargeter::retarget(src, *bl, map, opts, out, err),
+              "walk runs");
+        bool clean = true;
+        for (int k = 0; k < out.frames * out.joints * 4; ++k) {
+            const float v = out.localRotationsXyzw[k];
+            if (!std::isfinite(v)) {
+                clean = false;
+            }
+        }
+        for (int t = 0; t < out.joints; ++t) {
+            const float* q = out.localRotationsXyzw.data() + t * 4;
+            const float n =
+                std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+            if (!std::isfinite(n) || std::abs(n - 1.0f) > 1e-3f) {
+                clean = false;
+            }
+        }
+        check(clean, "walk finite+normalized");
+        const int hd = synthIndex(out, "Head");
+        const int fl = synthIndex(out, "LeftFoot");
+        const int fr = synthIndex(out, "RightFoot");
+        std::vector<Vector3> pos;
+        std::vector<Quaternion> rot;
+        studio::Skeleton::forwardKinematicsFull(
+            out.localRotationsXyzw.data() + 3 * out.joints * 4,
+            out.rootPositions.data() + 9, out.parents, out.offsets, pos, rot);
+        const float clearance = pos[hd].y - 0.5f * (pos[fl].y + pos[fr].y);
+        const float travel = out.rootPositions[9] - out.rootPositions[0];
+        std::printf("selftest-blender: walk clearance=%.3f travel=%.3f\n", clearance,
+                    travel);
+        check(clearance > 0.8f, "walk upright");
+        check(travel > 1.0f, "walk travels");
+    }
+
+    // 10. root-only rotation: child locals unchanged.
+    {
+        studio::Animation src = makeSynthSoma(2);
+        const float h = 30.0f * 3.14159265f / 360.0f;
+        setSynthLocal(src, "Hips", 0.0f, std::sin(h), 0.0f, std::cos(h));
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *bl, map, opts, out, err);
+        const int sArm = synthIndex(src, "LeftArm");
+        const int tArm = synthIndex(out, "LeftArm");
+        const float* qs = src.localRotationsXyzw.data() + sArm * 4;
+        const float* qo = out.localRotationsXyzw.data() + tArm * 4;
+        bool same = true;
+        for (int k = 0; k < 4; ++k) {
+            if (std::abs(qs[k] - qo[k]) > 1e-6f) {
+                same = false;
+            }
+        }
+        check(same, "root-only keeps child locals");
+    }
+
+    // 11. no NaN/Inf anywhere + quat normalization on walk.
+    {
+        studio::Animation src = makeSynthSoma(4);
+        setSynthLocal(src, "LeftArm", 0.0f, 0.0f, 0.382683f, 0.92388f);
+        setSynthLocal(src, "RightShin", 0.258819f, 0.0f, 0.0f, 0.965926f);
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *bl, map, opts, out, err);
+        bool clean = true;
+        for (float v : out.localRotationsXyzw) {
+            if (!std::isfinite(v)) {
+                clean = false;
+            }
+        }
+        for (float v : out.rootPositions) {
+            if (!std::isfinite(v)) {
+                clean = false;
+            }
+        }
+        for (int t = 0; t < out.joints; ++t) {
+            const float* q = out.localRotationsXyzw.data() + t * 4;
+            const float n =
+                std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+            if (!std::isfinite(n) || std::abs(n - 1.0f) > 1e-3f) {
+                clean = false;
+            }
+        }
+        check(clean, "no NaN/Inf normalized");
+    }
+
+    // 12. no mirrored limbs: symmetric input -> symmetric magnitude.
+    {
+        studio::Animation src = makeSynthSoma(2);
+        const float h = 20.0f * 3.14159265f / 360.0f;
+        setSynthLocal(src, "LeftArm", 0.0f, 0.0f, std::sin(h), std::cos(h));
+        setSynthLocal(src, "RightArm", 0.0f, 0.0f, std::sin(h), std::cos(h));
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *bl, map, opts, out, err);
+        const int ul = synthIndex(out, "LeftArm");
+        const int ur = synthIndex(out, "RightArm");
+        const float* ql = out.localRotationsXyzw.data() + ul * 4;
+        const float* qr = out.localRotationsXyzw.data() + ur * 4;
+        const float dl = quatAngleArr(ql, src.localRotationsXyzw.data() +
+                                                 synthIndex(src, "LeftArm") * 4);
+        const float dr = quatAngleArr(qr, src.localRotationsXyzw.data() +
+                                                 synthIndex(src, "RightArm") * 4);
+        check(std::abs(dl - dr) < 1e-3f, "no mirrored limbs");
+    }
+
+    // 13. no collapsed skeleton: torso span + head above hips.
+    {
+        studio::Animation src = makeSynthSoma(2);
+        studio::Animation out;
+        std::string err;
+        studio::Retargeter::retarget(src, *bl, map, opts, out, err);
+        std::vector<Vector3> pos;
+        std::vector<Quaternion> rot;
+        const float org[3] = {0, 0.9f, 0};
+        studio::Skeleton::forwardKinematicsFull(out.localRotationsXyzw.data(), org,
+                                                out.parents, out.offsets, pos, rot);
+        const int hd = synthIndex(out, "Head");
+        const int hips = synthIndex(out, "Hips");
+        const int fl = synthIndex(out, "LeftFoot");
+        const float torso = pos[hd].y - pos[hips].y;
+        const float height = pos[hd].y - pos[fl].y;
+        std::printf("selftest-blender: torso=%.3f height=%.3f\n", torso, height);
+        check(torso > 0.3f, "no collapsed torso");
+        check(height > 1.0f, "skeleton standing");
+    }
+
+    std::printf("selftest-blender: %s (%d failures)\n", fails == 0 ? "OK" : "FAILED",
+                fails);
+    return fails == 0 ? 0 : 1;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -1328,6 +1813,20 @@ int main(int argc, char** argv) {
     }
     if (argc >= 2 && std::string(argv[1]) == "--selftest-chains") {
         return selftestChains();
+    }
+    if (argc >= 2 && std::string(argv[1]) == "--selftest-blender") {
+        return selftestBlender();
+    }
+    if (argc >= 2 && std::string(argv[1]) == "--screenshot") {
+        studio::Application app;
+        if (!app.init()) {
+            return 1;
+        }
+        const char* outPath = argc >= 3 ? argv[2] : "app_screenshot.png";
+        app.run(10, outPath);
+        app.shutdown();
+        std::printf("Screenshot captured to %s\n", outPath);
+        return 0;
     }
     studio::Application app;
     if (!app.init()) {

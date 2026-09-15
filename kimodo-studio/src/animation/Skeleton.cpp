@@ -68,6 +68,12 @@ void Skeleton::forwardKinematicsFull(
     const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& outPos,
     std::vector<Quaternion>& outRot) {
     const int J = static_cast<int>(parents.size());
+    if (localXyzw == nullptr || root == nullptr ||
+        static_cast<int>(offsets.size()) != J) {
+        outPos.clear();
+        outRot.clear();
+        return;
+    }
     outPos.resize(J);
     outRot.resize(J);
     for (int j = 0; j < J; ++j) {

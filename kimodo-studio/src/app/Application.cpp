@@ -1,12 +1,88 @@
 #include "app/Application.h"
 
+#include "animation/Skeleton.h"
 #include "imgui.h"
 #include "raylib.h"
 #include "rlImGui.h"
+#include "ui/Icons.h"
 #include "ui/Theme.h"
 #include "utils/Logger.h"
 
+#include <filesystem>
+
 namespace studio {
+namespace {
+
+// Font loader for rlImGui: invoked inside rlImGuiSetup AFTER the ImGui
+// context exists. Never touch ImGui::GetIO() before this runs (null
+// context = crash on launch). Default font always loaded; FA Solid
+// merged when the TTF is found, else text fallback.
+void loadStudioFonts() {
+    ImGuiIO& io = ImGui::GetIO();
+
+    // 1. Text font: Roboto-Regular.ttf
+    const char* robotoCandidates[] = {
+        KIMODO_STUDIO_SOURCE_DIR "/fonts/Roboto-Regular.ttf",
+        "fonts/Roboto-Regular.ttf",
+        "../fonts/Roboto-Regular.ttf",
+    };
+    const char* foundRoboto = nullptr;
+    for (const char* c : robotoCandidates) {
+        std::error_code ec;
+        if (std::filesystem::is_regular_file(c, ec) && !ec) {
+            foundRoboto = c;
+            break;
+        }
+    }
+
+    if (foundRoboto) {
+        ImFontConfig textCfg{};
+        textCfg.PixelSnapH = true;
+        textCfg.OversampleH = 2;
+        textCfg.OversampleV = 2;
+        static const ImWchar textRanges[] = {
+            0x0020, 0x00FF, // Basic Latin + Latin Supplement
+            0x2000, 0x206F, // General Punctuation
+            0x25A0, 0x25FF, // Geometric Shapes
+            0,
+        };
+        io.Fonts->AddFontFromFileTTF(foundRoboto, 14.0f, &textCfg, textRanges);
+        Logger::instance().info(std::string("Text font (Roboto): ") + foundRoboto);
+    } else {
+        io.Fonts->AddFontDefault();
+        Logger::instance().info("Text font: default fallback");
+    }
+
+    // 2. Symbol font: Font Awesome Solid (fa-solid-900.ttf) merged for icon codepoints
+    const char* faCandidates[] = {
+        KIMODO_STUDIO_SOURCE_DIR "/fonts/fa-solid-900.ttf",
+        "fonts/fa-solid-900.ttf",
+        "../fonts/fa-solid-900.ttf",
+    };
+    const char* foundFA = nullptr;
+    for (const char* c : faCandidates) {
+        std::error_code ec;
+        if (std::filesystem::is_regular_file(c, ec) && !ec) {
+            foundFA = c;
+            break;
+        }
+    }
+
+    if (foundFA) {
+        ImFontConfig cfg{};
+        cfg.MergeMode = true;
+        cfg.PixelSnapH = true;
+        cfg.OversampleH = 2;
+        cfg.OversampleV = 2;
+        static const ImWchar ranges[] = {0xf000, 0xf8ff, 0};
+        io.Fonts->AddFontFromFileTTF(foundFA, 13.0f, &cfg, ranges);
+        Logger::instance().info(std::string("FA icons: ") + foundFA);
+    } else {
+        Logger::instance().info("FA icons: font missing, text fallback");
+    }
+}
+
+} // namespace
 
 bool Application::init() {
     Logger::instance().init(Logger::defaultLogFile());
@@ -23,10 +99,11 @@ bool Application::init() {
     }
     SetTargetFPS(60);
 
+    rlImGuiSetLoadFontsCallback(loadStudioFonts);
     rlImGuiSetup(true);
     Theme::apply();
 
-    state_.gpuName = "default GPU";
+    state_.gpuName = "RTX 4060";
     models_.init(std::string(KIMODO_STUDIO_SOURCE_DIR) + "/config/models.json",
                  "E:/kimodo.cpp/models", state_.textBundle);
     // Active registry model wins over baked-in defaults.
@@ -39,6 +116,15 @@ bool Application::init() {
     engine_.setPaths(state_.motionPath, state_.textBundle);
     library_.init(AnimationLibrary::defaultBaseDir());
     viewport_.reset();
+    {
+        std::vector<float> ident(kSomaJoints * 4, 0.0f);
+        for (int i = 0; i < kSomaJoints; ++i) ident[i * 4 + 3] = 1.0f;
+        float root[3] = {0.0f, 0.95f, 0.0f};
+        std::vector<Vector3> restPos;
+        Skeleton::forwardKinematics(ident.data(), root, restPos);
+        std::vector<int> parents(Soma30Spec::parents.begin(), Soma30Spec::parents.end());
+        viewport_.setPose(std::move(restPos), std::move(parents));
+    }
     Logger::instance().info("Window + ImGui ready");
     running_ = true;
     return true;
@@ -82,8 +168,10 @@ void Application::captureThumbFile(const LibraryEntry& entry) {
     toasts_.push("Thumbnail captured", ToastKind::Success);
 }
 
-void Application::run() {
+void Application::run(int maxFrames, const char* screenshotPath) {
+    int frameCount = 0;
     while (running_ && !WindowShouldClose()) {
+        frameCount++;
         state_.fps = GetFPS();
         pollEngine();
         player_.update(GetFrameTime());
@@ -92,7 +180,7 @@ void Application::run() {
         }
 
         BeginDrawing();
-        ClearBackground(Color{18, 18, 22, 255});
+        ClearBackground(Color{14, 14, 18, 255});
         rlImGuiBegin(); // fresh IO: WantCaptureMouse valid below
         viewport_.update(ImGui::GetIO().WantCaptureMouse);
         // Manager task completion surfaces as a toast (edge-triggered).
@@ -138,6 +226,13 @@ void Application::run() {
                  [this](const LibraryEntry& e) { captureThumbFile(e); });
         toasts_.draw();
         rlImGuiEnd();
+        if (maxFrames > 0 && frameCount >= maxFrames) {
+            if (screenshotPath) {
+                TakeScreenshot(screenshotPath);
+            }
+            EndDrawing();
+            break;
+        }
         EndDrawing();
     }
 }

@@ -39,27 +39,27 @@ Models are never bundled with the app (license). They live in
 
 ## Retargeting
 
-Retarget screen maps SOMA motion onto game skeletons with the standard
-rest-offset formulation (`target_world = source_world * target_rest`,
-root keeps source world so facing/travel match the source clip):
+Target: Blender Generic (default). Direct local copy, stable.
+Source: current animation. Mapping: Auto Map. Preview / Apply.
 
-- **Manny Mixamo (UE)** — true 25-joint core profile extracted from a real
-  FBX (names, parents, offsets, rest orientations). Fingers, twist bones
-  and end nubs excluded (no SOMA source joints).
-- **Unity Humanoid**, **Blender generic** — rotation transfer profiles.
-- Unmapped joints hold rest. Root motion: preserve / in-place / extract.
+- **Blender generic** — first-class, direct local copy. No UE logic.
+- **Unity Humanoid** — GenericLocal rotation transfer.
+- **UE5 Manny (deprecated)** — internal chain/IK path kept for compat
+  only. Do NOT use for new work.
 
-Old `[unreal-manny]` saves from before the true profile are heap-broken
-(wrong math baked in) — regenerate them.
+New architecture: Export motion from Kimodo, use Unreal Engine IK
+Retargeter for final UE skeleton retargeting. See
+`docs/unreal-bvh-workflow.md`.
 
 ## Export
 
-Library → Export opens a modal: preset (Blender / Unity / Unreal /
-Generic), format (GLB / BVH), FPS resample, unit scale, root motion.
-Unreal preset converts to Z-up centimeters with the Manny profile.
-GLB files import verified in Blender 4.1 (objects, actions, fcurves,
-root travel). BVH imports as a 30-bone armature. FBX is intentionally
-not vendored (proprietary SDK) — convert via Blender/Unreal/Unity.
+Library → Export: Format BVH, Preset Humanoid, FPS, Scale, Root Motion,
+Rotation XYZ. Main UE pipeline = BVH Humanoid export.
+
+BVH: Y-up right-handed meters, XYZ Euler degrees, ROOT translation +
+rotation, children rotation only. Old Unreal preset deprecated, kept
+for compat. GLB stable path preserved. FBX not vendored — convert via
+Blender/Unreal/Unity.
 
 ## Package
 

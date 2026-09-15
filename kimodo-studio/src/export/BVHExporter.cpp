@@ -9,10 +9,26 @@
 namespace studio {
 namespace {
 
-// XYZ Euler (degrees) from unit quat, matching Xrotation Yrotation Zrotation
-// channel order.
+// XYZ Euler (degrees) from quat, matching Xrotation Yrotation Zrotation
+// channel order with R = Rz*Ry*Rx (standard BVH XYZ). Normalizes input,
+// guards non-finite, stable near gimbal (|m20|>=0.99999). Deterministic.
 void quatToEulerXYZ(float x, float y, float z, float w, float& ex, float& ey,
                     float& ez) {
+    if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) ||
+        !std::isfinite(w)) {
+        ex = ey = ez = 0.0f;
+        return;
+    }
+    const float n = std::sqrt(x * x + y * y + z * z + w * w);
+    if (n > 1e-9f) {
+        x /= n;
+        y /= n;
+        z /= n;
+        w /= n;
+    } else {
+        ex = ey = ez = 0.0f;
+        return;
+    }
     const float xx = x * x, yy = y * y, zz = z * z;
     const float xy = x * y, xz = x * z, yz = y * z;
     const float wx = w * x, wy = w * y, wz = w * z;
@@ -21,13 +37,16 @@ void quatToEulerXYZ(float x, float y, float z, float w, float& ex, float& ey,
     const float m22 = 1 - 2 * (xx + yy);
     const float m10 = 2 * (xy + wz);
     const float m00 = 1 - 2 * (yy + zz);
+    const float m12 = 2 * (yz - wx);
+    const float m11 = 1 - 2 * (xx + zz);
     constexpr float kDeg = 57.29577951308232f;
     ey = std::asin(std::min(1.0f, std::max(-1.0f, -m20))) * kDeg;
     if (std::abs(m20) < 0.99999f) {
         ex = std::atan2(m21, m22) * kDeg;
         ez = std::atan2(m10, m00) * kDeg;
     } else {
-        ex = std::atan2(-m21, m22) * kDeg;
+        // Gimbal: ez=0, ex carries roll (R = Rz*Ry*Rx convention).
+        ex = std::atan2(-m12, m11) * kDeg;
         ez = 0.0f;
     }
     (void)zz;

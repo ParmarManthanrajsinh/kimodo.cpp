@@ -80,7 +80,9 @@ public:
                                    const BoneMap& map, const Options& opts,
                                    float footErrL, float footErrR);
 
-    // Per-target span weights for one chain: (target, source, weight).
+    // Per-target applied span weights: (target, source, cumulative W).
+    // Cumulative across each shared-source group (last member = full
+    // delta) so series composition preserves total motion.
     static std::vector<std::tuple<std::string, std::string, float>>
     chainSpanWeights(const SkeletonProfile& target, const ChainDef& chain,
                      const BoneMap& map, const Options& opts);

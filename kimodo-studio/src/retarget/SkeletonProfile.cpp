@@ -269,13 +269,15 @@ const std::vector<SkeletonProfile>& targetProfiles() {
         };
         out.push_back(std::move(manny));
 
-        // UE5 Manny topology (root/pelvis/spine_01..05, neck/head,
-        // full limb chains). Rest shape resampled from the Mixamo rest data
-        // above (same ~180cm humanoid); see provenance note in builder.
+        // DEPRECATED unreal-manny: kept for backward compat only.
+        // Do not use for new work. UE pipeline = BVH Humanoid export +
+        // Unreal IK Retargeter. Topology root/pelvis/spine_01..05 etc.
+        // Rest resampled from Mixamo data, NOT native UE5 bind.
         {
             SkeletonProfile ue;
             ue.id = "unreal-manny";
-            ue.name = "UE5 Manny";
+            ue.name = "UE5 Manny (deprecated: use BVH Humanoid)";
+            ue.mode = RetargetMode::ChainReferencePose;
             ue.hasBind = true;
             ue.bindProvenance = "mixamo-measured-topology-ue5";
             buildUe5Manny(ue);

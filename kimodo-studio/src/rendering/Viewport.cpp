@@ -91,9 +91,19 @@ void Viewport::drawPose(const std::vector<Vector3>& pose,
     }
 }
 
+void Viewport::cameraBasis(Vector3& right, Vector3& up) const {
+    Vector3 fwd = Vector3Normalize(Vector3Subtract(target_, camera_.position));
+    right = Vector3Normalize(Vector3CrossProduct(fwd, Vector3{0, 1, 0}));
+    up = Vector3CrossProduct(right, fwd);
+}
+
 void Viewport::draw3D() const {
     BeginMode3D(camera_);
-    grid_.draw();
+    if (floorDraw_) {
+        // Floor plane subtle backdrop
+        DrawPlane(Vector3{0, -0.005f, 0}, Vector2{40.0f, 40.0f}, Color{14, 14, 18, 180});
+    }
+    grid_.draw(gridDraw_, axesDraw_);
     if (!debug_.empty()) {
         for (const DebugPose& d : debug_) {
             drawPose(d.pos, d.parents, d.offset, d.joint, d.bone);
@@ -101,24 +111,28 @@ void Viewport::draw3D() const {
         EndMode3D();
         return;
     }
-    const int J = static_cast<int>(pose_.size());
-    if (J > 0 && poseParents_.size() == pose_.size()) {
-        for (int j = 0; j < J; ++j) {
-            const int p = poseParents_[j];
-            if (p >= 0 && p < J) {
-                DrawCapsule(pose_[p], pose_[j], 0.035f, 6, 6,
-                            Color{120, 170, 255, 255});
+    if (skeletonDraw_) {
+        const int J = static_cast<int>(pose_.size());
+        const Color colBone = Color{75, 163, 227, 255};   // Vibrant blue/cyan bones #4ba3e3
+        const Color colJoint = Color{56, 168, 232, 255};  // Cyan-blue joints #38a8e8
+        const Color colRoot = Color{245, 215, 45, 255};   // Bright yellow pelvis/root joint #f5d72d
+        if (J > 0 && poseParents_.size() == pose_.size()) {
+            for (int j = 0; j < J; ++j) {
+                const int p = poseParents_[j];
+                if (p >= 0 && p < J) {
+                    DrawCapsule(pose_[p], pose_[j], 0.038f, 8, 8, colBone);
+                }
             }
+            for (int j = 0; j < J; ++j) {
+                DrawSphere(pose_[j], j == 0 ? 0.095f : 0.055f,
+                           j == 0 ? colRoot : colJoint);
+            }
+        } else {
+            // Standby origin rig stub
+            DrawSphere(Vector3{0, 1.0f, 0}, 0.095f, colRoot);
+            DrawSphere(Vector3{0, 1.6f, 0}, 0.055f, colJoint);
+            DrawCapsule(Vector3{0, 0.4f, 0}, Vector3{0, 1.6f, 0}, 0.038f, 8, 8, colBone);
         }
-        for (int j = 0; j < J; ++j) {
-            DrawSphere(pose_[j], j == 0 ? 0.09f : 0.055f,
-                       j == 0 ? YELLOW : SKYBLUE);
-        }
-    } else {
-        // No animation yet: origin rig stub.
-        DrawSphere(Vector3{0, 1, 0}, 0.12f, SKYBLUE);
-        DrawCapsule(Vector3{0, 0.4f, 0}, Vector3{0, 1.6f, 0}, 0.08f, 8, 8,
-                    Color{120, 170, 255, 255});
     }
     EndMode3D();
 }

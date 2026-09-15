@@ -33,6 +33,16 @@ public:
     void setDebugPoses(std::vector<DebugPose> poses) { debug_ = std::move(poses); }
     void clearDebug() { debug_.clear(); }
     bool hasDebug() const { return !debug_.empty(); }
+    void setGrid(bool v) { gridDraw_ = v; }
+    void setAxes(bool v) { axesDraw_ = v; }
+    void setFloor(bool v) { floorDraw_ = v; }
+    void setSkeleton(bool v) { skeletonDraw_ = v; }
+    bool showGrid() const { return gridDraw_; }
+    bool showAxes() const { return axesDraw_; }
+    bool showFloor() const { return floorDraw_; }
+    bool showSkeleton() const { return skeletonDraw_; }
+    // Camera right/up in world space, for axis gizmo projection.
+    void cameraBasis(Vector3& right, Vector3& up) const;
 
 private:
     static void drawPose(const std::vector<Vector3>& pose,
@@ -46,6 +56,12 @@ private:
     float dist_ = 8.0f;
     mutable Camera3D camera_ = {};
     GridRenderer grid_;
+    bool gridDraw_ = true;
+    bool axesDraw_ = true;
+    bool floorDraw_ = true;
+    bool skeletonDraw_ = true;
+    bool grid() const { return gridDraw_; }
+    bool axes() const { return axesDraw_; }
     std::vector<Vector3> pose_;
     std::vector<int> poseParents_;
     std::vector<DebugPose> debug_;

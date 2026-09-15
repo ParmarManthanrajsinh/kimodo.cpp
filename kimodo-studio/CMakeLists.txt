@@ -117,7 +117,7 @@ if(MSVC)
 endif()
 
 if(MSVC)
-    target_compile_options(kimodo_studio PRIVATE /W4 /permissive-)
+    target_compile_options(kimodo_studio PRIVATE /W4 /permissive- /utf-8)
     target_compile_definitions(kimodo_studio PRIVATE _CRT_SECURE_NO_WARNINGS)
     target_compile_options(studio_imgui PRIVATE /W0)
 else()
@@ -163,7 +163,14 @@ set(CPACK_ARCHIVE_STUDIO_FILE_NAME
     "KimodoStudio-${KIMODO_STUDIO_VERSION}-${KIMODO_STUDIO_GIT_HASH}-windows-x64")
 install(TARGETS kimodo_studio RUNTIME DESTINATION . COMPONENT studio)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/config" DESTINATION . COMPONENT studio)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fonts" DESTINATION . COMPONENT studio)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/README.md" DESTINATION . COMPONENT studio)
+# FA icons must sit next to exe at runtime (dev + package).
+add_custom_command(TARGET kimodo_studio POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/fonts"
+        "$<TARGET_FILE_DIR:kimodo_studio>/fonts"
+)
 if(MSVC AND EXISTS "${KIMODO_ROOT}/build/bin/Release")
     install(DIRECTORY "${KIMODO_ROOT}/build/bin/Release/" DESTINATION . COMPONENT studio
             FILES_MATCHING PATTERN "*.dll")

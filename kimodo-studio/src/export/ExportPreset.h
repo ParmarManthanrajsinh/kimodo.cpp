@@ -27,14 +27,16 @@ Quat quatNormalize(Quat q);
 enum class RootMotion { Preserve, InPlace, Extract };
 
 struct ExportPreset {
-    std::string id;        // "unreal"
-    std::string name;      // "Unreal Engine"
+    std::string id;        // "bvh-humanoid", "blender", "unreal" (deprecated), "generic"
+    std::string name;      // "BVH Humanoid", "Blender", "Unreal Engine (deprecated: use BVH)"
     std::string profile;   // retarget profile id ("" = keep source skeleton)
     float fps = 30.0f;
     float scale = 1.0f;    // unit scale into target (Unreal cm = 100)
     Mat3 basis;            // applied to positions; rotations via C*R*C'
     RootMotion rootMotion = RootMotion::Preserve;
     std::string format = "GLB";
+    // BVH coordinate convention (single place: prepareExport + BVHExporter):
+    // Y-up, right-handed, meters, XYZ Euler degrees. See BVHExporter.h.
 };
 
 const std::vector<ExportPreset>& exportPresets();

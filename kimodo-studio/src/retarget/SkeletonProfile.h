@@ -22,9 +22,26 @@ struct ChainDef {
     std::vector<std::string> source;  // ordered root -> tip (SOMA names)
 };
 
+// Explicit profile capability (Phase 2). Never inferred from incidental
+// fields (hasBind, chains non-empty, joint names).
+enum class RetargetMode {
+    // Direct local copy: out local = source local, offsets from mapped
+    // source, unmapped hold identity. No bind data, no basis conversion,
+    // no spans, no IK. blender-generic, unity-humanoid. Stable path.
+    // Blender regression cause (fixed): ChainReferencePose math leaked
+    // into GenericLocal via shared parent-world derivation. Fix: early
+    // return byte-exact local copy, no UE bind/span/IK/root corrections.
+    GenericLocal,
+    // DEPRECATED: Reference-pose chains for unreal-manny only. Kept for
+    // backward compat. New code: export BVH Humanoid, retarget in UE
+    // IK Retargeter. Do not extend.
+    ChainReferencePose,
+};
+
 struct SkeletonProfile {
     std::string id;   // "ue5-manny"
     std::string name; // "UE5 Manny"
+    RetargetMode mode = RetargetMode::GenericLocal;
     std::vector<std::string> joints;
     std::vector<int> parents;
     // Default source joint per target joint (alias table, explicit).
@@ -32,7 +49,7 @@ struct SkeletonProfile {
     bool hasBind = false;
     std::vector<std::array<float, 3>> offsets; // rest offsets (meters)
     std::vector<std::array<float, 4>> restLocal; // rest-local quats xyzw
-    std::vector<ChainDef> chains; // empty = legacy per-bone copy path
+    std::vector<ChainDef> chains; // ChainReferencePose only
     // Bind provenance: where restLocal/offsets actually came from.
     // "ue5-native" = measured from UE5 Manny skeleton. Anything else is
     // NOT a true UE5 bind pose, even if the topology is UE5-style.

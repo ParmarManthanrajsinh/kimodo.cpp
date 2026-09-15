@@ -159,7 +159,7 @@ namespace {
 // One target bone's motion assignment for a frame batch.
 struct TargetPlan {
     int src = -1;      // source joint index (-1 = hold rest)
-    float weight = 1;  // span fraction (slerp from identity)
+    float weight = 1;  // cumulative span slerp fraction
     int chain = -1;    // chain index, -1 = legacy/direct
     bool holdRest = true;
 };
@@ -192,18 +192,6 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
         error = "empty topology";
         return false;
     }
-    const std::vector<std::string> missing = missingChains(target, map);
-    if (!missing.empty()) {
-        error = "unmapped chains: ";
-        for (size_t i = 0; i < missing.size(); ++i) {
-            if (i > 0) {
-                error += "; ";
-            }
-            error += missing[i];
-        }
-        return false;
-    }
-
     auto srcIndex = [&source](const std::string& name) -> int {
         return findIndex(source.jointNames, name);
     };
@@ -219,18 +207,85 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
     result.localRotationsXyzw.assign(static_cast<size_t>(source.frames) * T * 4, 0.0f);
     result.rootPositions.resize(static_cast<size_t>(source.frames) * 3);
 
+    // GenericLocal path (Phase 1): byte-exact pre-UE5 semantics (d140097).
+    // Direct local copy, mapped source offsets, unmapped hold identity,
+    // root translation scaled without basis conversion. No bind data, no
+    // spans, no normalization, no IK. Blender/Unity correctness lives here.
+    if (target.mode == RetargetMode::GenericLocal) {
+        std::vector<int> tgtToSrc(T, -1);
+        for (int t = 0; t < T; ++t) {
+            const auto it = map.find(target.joints[t]);
+            if (it != map.end() && !it->second.empty() && it->second != "(none)") {
+                tgtToSrc[t] = srcIndex(it->second);
+            }
+        }
+        for (int t = 0; t < T; ++t) {
+            const int s = tgtToSrc[t];
+            if (s >= 0 && static_cast<size_t>(s) < source.offsets.size()) {
+                result.offsets[t] = source.offsets[s];
+            }
+        }
+        for (int f = 0; f < source.frames; ++f) {
+            const float* srcRots =
+                source.localRotationsXyzw.data() + static_cast<size_t>(f) * S * 4;
+            const float* srcRoot =
+                source.rootPositions.data() + static_cast<size_t>(f) * 3;
+            float* dstRots =
+                result.localRotationsXyzw.data() + static_cast<size_t>(f) * T * 4;
+            for (int t = 0; t < T; ++t) {
+                const int s = tgtToSrc[t];
+                float* q = dstRots + t * 4;
+                if (s >= 0) {
+                    q[0] = srcRots[s * 4];
+                    q[1] = srcRots[s * 4 + 1];
+                    q[2] = srcRots[s * 4 + 2];
+                    q[3] = srcRots[s * 4 + 3];
+                } else {
+                    q[0] = 0;
+                    q[1] = 0;
+                    q[2] = 0;
+                    q[3] = 1; // identity bind
+                }
+            }
+            float* dstRoot =
+                result.rootPositions.data() + static_cast<size_t>(f) * 3;
+            dstRoot[0] = srcRoot[0] * opts.rootScale;
+            dstRoot[1] = srcRoot[1] * opts.rootScale;
+            dstRoot[2] = srcRoot[2] * opts.rootScale;
+        }
+        out = std::move(result);
+        if (report) {
+            report->text = buildReport(target, map, opts, -1.0f, -1.0f);
+        }
+        return true;
+    }
+
+    // DEPRECATED UE path below (ChainReferencePose + leg IK). Kept for
+    // backward compat. New UE pipeline = BVH Humanoid + UE IK Retargeter.
+    const std::vector<std::string> missing = missingChains(target, map);
+    if (!missing.empty()) {
+        error = "unmapped chains: ";
+        for (size_t i = 0; i < missing.size(); ++i) {
+            if (i > 0) {
+                error += "; ";
+            }
+            error += missing[i];
+        }
+        return false;
+    }
+
     const bool useBind = target.hasBind && static_cast<int>(target.offsets.size()) == T &&
                          static_cast<int>(target.restLocal.size()) == T;
     if (useBind) {
         result.offsets = target.offsets;
     }
 
-    // Target reference (STEP 1/2): one shared bind pose, validated UE5
-    // hierarchy. No yaw normalization, no ad-hoc rest edits (STEP 5):
+    // Target reference (Phase 3): one shared bind pose, validated UE5
+    // hierarchy. No normalization, no ad-hoc rest edits (Phase 7):
     // the bind pose stays exactly as measured.
     TargetReference tgtRef;
     std::vector<Quaternion> tgtRestWorld(T, {0, 0, 0, 1});
-    if (useBind && !target.chains.empty()) {
+    if (useBind) {
         if (!buildTargetReference(target, tgtRef, error)) {
             return false;
         }
@@ -238,6 +293,22 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
             tgtRestWorld[t] = {tgtRef.worldRot[t][0], tgtRef.worldRot[t][1],
                                tgtRef.worldRot[t][2], tgtRef.worldRot[t][3]};
         }
+    }
+
+    // Source reference worlds (Phase 4/5): FK over identity local
+    // reference rotations. Rotation-only; root translation irrelevant.
+    // With identity reference this equals identity everywhere, but the
+    // subtraction below is explicit, never assumed.
+    std::vector<Quaternion> srcRefWorld(S, {0, 0, 0, 1});
+    {
+        std::vector<float> ident(static_cast<size_t>(S) * 4, 0.0f);
+        for (int s = 0; s < S; ++s) {
+            ident[s * 4 + 3] = 1.0f;
+        }
+        const float org[3] = {0, 0, 0};
+        std::vector<Vector3> dummy;
+        Skeleton::forwardKinematicsFull(ident.data(), org, source.parents,
+                                        source.offsets, dummy, srcRefWorld);
     }
 
     // Build per-target motion plan: chain spans share source motion by
@@ -288,15 +359,22 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
             for (size_t m = k; m <= e; ++m) {
                 total += useBind ? restLength(result.offsets[order[m]]) : 1.0f;
             }
+            // Cumulative span weights (Phase 6): members in series compose
+            // by multiplication, so each member carries the running total
+            // of fractions (last member = full delta). Per-member fractions
+            // would telescope: only the last fraction would survive in the
+            // composed chain motion. 1:1 joints: cumulative = full.
+            float cum = 0.0f;
             for (size_t m = k; m <= e; ++m) {
                 const int t = order[m];
-                float w = 1.0f;
+                float frac = 1.0f;
                 if (e > k) {
                     const float len =
                         useBind ? restLength(result.offsets[t]) : 1.0f;
-                    w = (total > 1e-9f) ? len / total : 1.0f / (e - k + 1);
+                    frac = (total > 1e-9f) ? len / total : 1.0f / (e - k + 1);
                 }
-                w *= params.motionScale;
+                cum += frac;
+                float w = cum * params.motionScale;
                 if (w < 0.0f) {
                     w = 0.0f;
                 }
@@ -327,21 +405,6 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
             }
         }
     }
-    // Legacy fallback for joints in no chain (unity/blender profiles).
-    if (target.chains.empty()) {
-        for (int t = 0; t < T; ++t) {
-            const auto it = map.find(target.joints[t]);
-            if (it != map.end() && !it->second.empty() && it->second != "(none)") {
-                const int s = srcIndex(it->second);
-                if (s >= 0) {
-                    plan[t].src = s;
-                    plan[t].weight = 1.0f;
-                    plan[t].holdRest = false;
-                }
-            }
-        }
-    }
-
     std::vector<Vector3> srcPos;
     std::vector<Quaternion> srcWorld;
     std::vector<Quaternion> outWorld(T);
@@ -352,18 +415,20 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
             source.rootPositions.data() + static_cast<size_t>(f) * 3;
         float* dstRots =
             result.localRotationsXyzw.data() + static_cast<size_t>(f) * T * 4;
-        const bool needWorld = useBind || !target.chains.empty();
-        if (needWorld) {
-            Skeleton::forwardKinematicsFull(srcRots, srcRoot, source.parents,
-                                            source.offsets, srcPos, srcWorld);
-        }
+        // Chain path always needs source worlds (reference-relative deltas).
+        Skeleton::forwardKinematicsFull(srcRots, srcRoot, source.parents,
+                                        source.offsets, srcPos, srcWorld);
         for (int t = 0; t < T; ++t) {
             const TargetPlan& pl = plan[t];
             const bool isRoot = target.parents[t] < 0;
             float* q = dstRots + t * 4;
             Quaternion tw;
             if (isRoot) {
-                // Root keeps converted source world: exact facing/travel.
+                // Root split (Phase 8): translation handled below
+                // (basis + rootScale); orientation keeps converted source
+                // world for heading/travel. Pelvis carries the same Hips
+                // motion once in world space (compensating local), so no
+                // joint rotates twice.
                 if (pl.src >= 0 && pl.src < S &&
                     pl.src < static_cast<int>(srcWorld.size())) {
                     const auto& s = srcWorld[pl.src];
@@ -374,31 +439,47 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
                 } else {
                     tw = {0, 0, 0, 1};
                 }
-            } else if (!pl.holdRest && pl.src >= 0 && pl.src < S) {
-                // Reference-relative delta (STEP 4/6/7):
-                //   sourceDelta = L_anim * inv(L_ref), L_ref = identity
-                //     (SOMA convention: Kimodo emits absolute locals, no
-                //     baked rest rotations; asserted by construction).
-                //   tw = targetWorldRef * C(sourceDelta), span-fractioned.
-                // Local (not world) deltas: a child world contains parent
-                // motion, which would cancel against the transferred parent
-                // and drop span motion. Root excluded (unmapped carrier,
-                // keeps converted source world for facing/travel).
-                const float* sl = srcRots + pl.src * 4;
-                Quaternion delta{sl[0], sl[1], sl[2], sl[3]};
-                // inv(L_ref) with L_ref = identity: explicit no-op documenting
-                // the convention; replace with real ref when core provides one.
-                delta = qNorm(delta);
-                const auto cl = opts.basis.applyQuat(
-                    {delta.x, delta.y, delta.z, delta.w});
+            } else if (!pl.holdRest && pl.src >= 0 && pl.src < S &&
+                       pl.src < static_cast<int>(srcWorld.size())) {
+                // Reference-relative WORLD delta (Phase 5/6):
+                //   WDelta(s) = W_anim(s) * inv(W_ref(s))
+                //   own(s) = WDelta(s) * inv(WDelta(srcParent(s)))
+                //   tw = restW * C(WDelta(srcParent(s)))
+                //        * C(slerp(own(s), W_cumulative))
+                // Parent world motion passes UNFRACTIONED (rigid follow);
+                // only the joint's OWN incremental motion is span-
+                // fractionated, so series composition preserves total
+                // motion. Deltas are pure motion, never conjugated by
+                // twisted rests. Root excluded (unmapped carrier).
+                const auto& wa = srcWorld[pl.src];
+                const auto& wr = srcRefWorld[pl.src];
+                Quaternion wdelta = qNorm(
+                    QuaternionMultiply(wa, QuaternionInvert(wr)));
+                const int srcP = source.parents[pl.src];
+                Quaternion wpar{0, 0, 0, 1};
+                if (srcP >= 0 && srcP < S && srcP < static_cast<int>(srcWorld.size()) &&
+                    srcP < static_cast<int>(srcRefWorld.size())) {
+                    const auto& wpa = srcWorld[srcP];
+                    const auto& wrp = srcRefWorld[srcP];
+                    wpar = qNorm(
+                        QuaternionMultiply(wpa, QuaternionInvert(wrp)));
+                }
+                Quaternion own = qNorm(QuaternionMultiply(
+                    wdelta, QuaternionInvert(wpar)));
+                const auto cp = opts.basis.applyQuat(
+                    {wpar.x, wpar.y, wpar.z, wpar.w});
+                const auto co = opts.basis.applyQuat(
+                    {own.x, own.y, own.z, own.w});
                 Quaternion moved =
-                    qSlerpFrac({cl[0], cl[1], cl[2], cl[3]}, pl.weight);
+                    qSlerpFrac({co[0], co[1], co[2], co[3]}, pl.weight);
+                Quaternion pinherit{cp[0], cp[1], cp[2], cp[3]};
                 if (useBind) {
-                    tw = QuaternionNormalize(
-                        QuaternionMultiply(tgtRestWorld[t], moved));
+                    tw = QuaternionNormalize(QuaternionMultiply(
+                        QuaternionMultiply(tgtRestWorld[t], pinherit), moved));
                 } else {
-                    // Legacy copy path (no bind data): converted source local.
-                    tw = QuaternionNormalize(moved);
+                    // No bind data: inherited + own motion, no rest frame.
+                    tw = QuaternionNormalize(
+                        QuaternionMultiply(pinherit, moved));
                 }
             } else if (useBind) {
                 tw = tgtRestWorld[t]; // hold rest
@@ -627,14 +708,22 @@ Retargeter::chainSpanWeights(const SkeletonProfile& target, const ChainDef& chai
         for (size_t m = k; m <= e; ++m) {
             total += useBind ? restLength(target.offsets[order[m]]) : 1.0f;
         }
+        float cum = 0.0f;
         for (size_t m = k; m <= e; ++m) {
-            float w = 1.0f;
+            float frac = 1.0f;
             if (e > k) {
                 const float len =
                     useBind ? restLength(target.offsets[order[m]]) : 1.0f;
-                w = (total > 1e-9f) ? len / total : 1.0f / (e - k + 1);
+                frac = (total > 1e-9f) ? len / total : 1.0f / (e - k + 1);
             }
-            w *= params.motionScale;
+            cum += frac;
+            float w = cum * params.motionScale;
+            if (w < 0.0f) {
+                w = 0.0f;
+            }
+            if (w > 1.5f) {
+                w = 1.5f;
+            }
             weights.emplace_back(target.joints[order[m]], srcOf[k], w);
         }
         k = e + 1;
@@ -685,7 +774,9 @@ std::string Retargeter::buildReport(const SkeletonProfile& target,
             }
         }
     }
-    if (opts.legIK) {
+    if (footErrL < 0.0f && footErrR < 0.0f) {
+        std::snprintf(buf, sizeof(buf), "ik not run\n");
+    } else if (opts.legIK) {
         std::snprintf(buf, sizeof(buf), "ik LeftLeg footErr=%.4f RightLeg footErr=%.4f\n",
                       footErrL, footErrR);
     } else {

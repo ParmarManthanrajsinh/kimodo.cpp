@@ -101,6 +101,19 @@ const std::vector<ExportPreset>& exportPresets() {
         blender.basis = identity;
         out.push_back(blender);
 
+        // First-class UE pipeline: generic humanoid BVH. Import into UE,
+        // build IK Rig + IK Retargeter there. No Manny-specific encoding.
+        ExportPreset bvhHumanoid;
+        bvhHumanoid.id = "bvh-humanoid";
+        bvhHumanoid.name = "BVH Humanoid";
+        bvhHumanoid.profile = "";
+        bvhHumanoid.fps = 30.0f;
+        bvhHumanoid.scale = 1.0f;
+        bvhHumanoid.basis = identity;
+        bvhHumanoid.rootMotion = RootMotion::Preserve;
+        bvhHumanoid.format = "BVH";
+        out.push_back(bvhHumanoid);
+
         // Unity: Y-up left-handed. Mirror Z (matches UniGLTF-style import).
         ExportPreset unity;
         unity.id = "unity";
@@ -111,10 +124,12 @@ const std::vector<ExportPreset>& exportPresets() {
         unity.basis = Mat3{{{1, 0, 0}, {0, 1, 0}, {0, 0, -1}}};
         out.push_back(unity);
 
+        // Deprecated: internal UE Manny retarget removed. Use bvh-humanoid
+        // + UE IK Retargeter instead. Kept for backward compat only.
         // Unreal: Z-up left-handed, centimeters. glTF (x,y,z) -> UE (z,x,y).
         ExportPreset unreal;
         unreal.id = "unreal";
-        unreal.name = "Unreal Engine";
+        unreal.name = "Unreal Engine (deprecated: use BVH Humanoid)";
         unreal.profile = "unreal-manny";
         unreal.fps = 30.0f;
         unreal.scale = 100.0f; // meters -> cm
