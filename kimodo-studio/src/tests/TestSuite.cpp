@@ -152,6 +152,14 @@ int TestSuite::runCharacterAndSkinning() {
             fails++;
         }
 
+        std::printf("  [DEBUG] Character has %zu bones, %zu vertices\n", character.bones().size(), character.skinningData().vertices.size());
+        for (size_t b = 0; b < character.bones().size(); ++b) {
+            const auto& bn = character.bones()[b];
+            std::printf("    Bone %zu: '%s', parent=%d, restPos=(%.2f, %.2f, %.2f), map='%s'\n",
+                        b, bn.name.c_str(), bn.parent, bn.restPosition.x, bn.restPosition.y, bn.restPosition.z,
+                        mapping.count(bn.name) ? mapping[bn.name].c_str() : "none");
+        }
+
         // Test Skin Matrix Evaluation
         std::vector<Matrix> skinMats;
         if (!CharacterMapper::evaluateSkinMatrices(character, anim, 0, mapping, skinMats)) {
