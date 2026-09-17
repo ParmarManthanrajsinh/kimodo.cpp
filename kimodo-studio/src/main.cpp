@@ -28,14 +28,16 @@ int main(int argc, char** argv) {
             return studio::TestSuite::runBlenderRetargeting();
         }
         if (arg == "--screenshot") {
+            const char* outPath = (argc >= 3) ? argv[2] : "app_screenshot.png";
+            int w = (argc >= 5) ? std::atoi(argv[3]) : 1280;
+            int h = (argc >= 5) ? std::atoi(argv[4]) : 800;
             studio::Application app;
-            if (!app.init()) {
+            if (!app.init(w, h)) {
                 return 1;
             }
-            const char* outPath = (argc >= 3) ? argv[2] : "app_screenshot.png";
             app.run(15, outPath);
             app.shutdown();
-            std::printf("Screenshot captured to %s\n", outPath);
+            std::printf("Screenshot captured to %s (%dx%d)\n", outPath, w, h);
             return 0;
         }
     }

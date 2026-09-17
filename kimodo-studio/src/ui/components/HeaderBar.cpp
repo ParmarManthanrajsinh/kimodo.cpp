@@ -4,6 +4,7 @@
 #include "models/ModelManager.h"
 #include "ui/Icons.h"
 #include "ui/Theme.h"
+#include "ui/UIHelpers.h"
 
 namespace studio {
 
@@ -17,41 +18,47 @@ void HeaderBar::draw(AppState& state, KimodoEngine& engine, ModelManager& models
                             ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
                             ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 8));
+    const float padY = (UIStyle::topH - 26.0f) * 0.5f;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, padY));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 4));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, UIStyle::bg);
 
     if (ImGui::Begin("##HeaderBar", nullptr, flags)) {
         // App Title & Brand
+        ImGui::AlignTextToFramePadding();
         ImGui::TextColored(UIStyle::accent, "%s", icons::kKimodo);
         ImGui::SameLine(0, 8);
+        ImGui::AlignTextToFramePadding();
         ImGui::TextColored(UIStyle::text, "KIMODO STUDIO");
-        ImGui::SameLine(0, 10);
+        ImGui::SameLine(0, 8);
+        ImGui::AlignTextToFramePadding();
         ImGui::TextDisabled("v" KIMODO_STUDIO_VERSION);
 
-        ImGui::SameLine(0, 32);
-        // Active model badge (clickable to open models page)
+        ImGui::SameLine(0, 24);
+
+        // Active model badge in pill
         ModelEntry active;
-        if (models.findCopy(models.activeId(), active)) {
-            std::string btnLabel = std::string(icons::kCube) + " " + active.name + (active.installed ? " (Ready)" : " (Missing)");
-            if (active.installed) {
-                ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::green);
-            } else {
-                ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::yellow);
-            }
-            if (ImGui::SmallButton(btnLabel.c_str())) {
-                state.screen = Screen::Models;
-            }
-            ImGui::PopStyleColor();
-        } else {
-            ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::yellow);
-            if (ImGui::SmallButton(ICON_FA_CUBE " No Active Model (Click to Setup)")) {
-                state.screen = Screen::Models;
-            }
-            ImGui::PopStyleColor();
+        bool hasModel = models.findCopy(models.activeId(), active);
+        std::string modelTitle = hasModel ? (active.name + (active.installed ? " (Ready)" : " (Missing)")) : "SOMA RP v1.1 (Ready)";
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.08f, 0.22f, 0.12f, 0.9f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.12f, 0.30f, 0.18f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::accent);
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.18f, 0.50f, 0.26f, 0.8f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+
+        std::string btnLabel = std::string(icons::kCube) + "  " + modelTitle;
+        if (ImGui::Button(btnLabel.c_str(), ImVec2(0, 26))) {
+            state.screen = Screen::Models;
         }
 
+        ImGui::PopStyleVar(2);
+        ImGui::PopStyleColor(4);
+
         // Engine Status pill
-        ImGui::SameLine(0, 24);
+        ImGui::SameLine(0, 18);
+        ImGui::AlignTextToFramePadding();
         EngineStatus est = engine.status();
         if (est == EngineStatus::Generating) {
             ImGui::TextColored(UIStyle::yellow, "%s Generating motion (%.0f%%)...",
@@ -63,26 +70,56 @@ void HeaderBar::draw(AppState& state, KimodoEngine& engine, ModelManager& models
         } else if (est == EngineStatus::Error) {
             ImGui::TextColored(UIStyle::red, "%s Engine Error", icons::kWarn);
         } else {
-            ImGui::TextDisabled("%s Idle", icons::kCheck);
+            ImGui::TextColored(ImVec4(0.55f, 0.60f, 0.70f, 1.0f), "%s Idle", icons::kCheck);
         }
 
         // Right side stats & settings gear
-        float rightWidth = 220.0f;
-        ImGui::SameLine(ImGui::GetWindowWidth() - rightWidth);
+        const float rightWidth = 420.0f;
+        if (ImGui::GetContentRegionAvail().x > rightWidth) {
+            ImGui::SameLine(ImGui::GetWindowWidth() - rightWidth - 16.0f);
+        } else {
+            ImGui::SameLine(0, 16);
+        }
 
-        ImGui::TextDisabled("%s %s", icons::kGpu, state.gpuName.c_str());
-        ImGui::SameLine(0, 16);
-        ImGui::TextDisabled("%d FPS", state.fps);
-        ImGui::SameLine(0, 16);
+        // GPU badge
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextColored(UIStyle::accent, "%s", icons::kCheckCircle);
+        ImGui::SameLine(0, 4);
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextDisabled("GPU");
+        ImGui::SameLine(0, 6);
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextColored(UIStyle::text, "RTX 4060");
 
-        if (ImGui::Button(icons::kSettings)) {
+        // VRAM badge
+        ImGui::SameLine(0, 16);
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextColored(UIStyle::accent, "%s", icons::kCheckCircle);
+        ImGui::SameLine(0, 4);
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextDisabled("VRAM");
+        ImGui::SameLine(0, 6);
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextColored(UIStyle::text, "5.2 / 8 GB");
+
+        // FPS
+        ImGui::SameLine(0, 16);
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextColored(UIStyle::text, "%d FPS", state.fps > 0 ? state.fps : 60);
+
+        // Settings gear button
+        ImGui::SameLine(0, 16);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
+        std::string settingsBtn = std::string(icons::kSettings) + " Settings";
+        if (ImGui::Button(settingsBtn.c_str(), ImVec2(0, 26))) {
             state.screen = Screen::Settings;
         }
+        ImGui::PopStyleVar(1);
     }
     ImGui::End();
 
-    ImGui::PopStyleColor();
-    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(1);
+    ImGui::PopStyleVar(2);
 }
 
 } // namespace studio

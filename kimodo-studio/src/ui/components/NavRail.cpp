@@ -7,21 +7,24 @@ namespace studio {
 namespace {
 
 bool drawNavButton(const char* icon, const char* label, bool active) {
-    ImVec2 size(UIStyle::sideW - 16, 38);
+    ImVec2 size(ImGui::GetContentRegionAvail().x, 36.0f);
     if (active) {
         ImGui::PushStyleColor(ImGuiCol_Button, UIStyle::accent);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.85f, 0.44f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05f, 0.05f, 0.08f, 1.0f));
     } else {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.12f, 0.14f, 0.18f, 0.5f));
         ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::text);
     }
-    ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.15f, 0.5f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.0f, 0.5f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0f, 6.0f));
 
-    std::string text = std::string(icon) + "  " + label;
+    std::string text = std::string(icon) + "   " + label;
     bool clicked = ImGui::Button(text.c_str(), size);
 
-    ImGui::PopStyleVar();
-    ImGui::PopStyleColor(2);
+    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(3);
     return clicked;
 }
 
@@ -29,15 +32,16 @@ bool drawNavButton(const char* icon, const char* label, bool active) {
 
 void NavRail::draw(AppState& state) {
     ImGuiViewport* vp = ImGui::GetMainViewport();
+    const float sideW = state.sideWidth;
     ImGui::SetNextWindowPos(ImVec2(vp->Pos.x, vp->Pos.y + UIStyle::topH));
-    ImGui::SetNextWindowSize(ImVec2(UIStyle::sideW, vp->Size.y - UIStyle::topH - UIStyle::statusH));
+    ImGui::SetNextWindowSize(ImVec2(sideW, vp->Size.y - UIStyle::topH - UIStyle::statusH));
     ImGui::SetNextWindowViewport(vp->ID);
 
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                             ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
                             ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 12));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 12));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, UIStyle::panel);
 
     if (ImGui::Begin("##NavRail", nullptr, flags)) {
@@ -87,6 +91,16 @@ void NavRail::draw(AppState& state) {
         if (drawNavButton(icons::kSettings, "Settings", state.screen == Screen::Settings)) {
             state.screen = Screen::Settings;
         }
+
+        // Bottom Tagline
+        float totalH = vp->Size.y - UIStyle::topH - UIStyle::statusH;
+        float bottomMargin = 72.0f;
+        float currentY = ImGui::GetCursorPosY();
+        if (currentY < (totalH - bottomMargin)) {
+            ImGui::Dummy(ImVec2(0.0f, (totalH - bottomMargin) - currentY));
+        }
+        ImGui::Spacing();
+        ImGui::TextDisabled("AI MOTION\nFOR A MORE\nCREATIVE TOMORROW");
     }
     ImGui::End();
 

@@ -62,8 +62,18 @@ public:
         skinMatrices_ = std::move(skinMatrices);
     }
 
+    void setProjection(int proj);
+    int projection() const { return projection_; }
+
+    void setModelTransform(Vector3 pos, Vector3 rot, Vector3 scale) {
+        modelPos_ = pos;
+        modelRot_ = rot;
+        modelScale_ = scale;
+    }
+
     void cameraBasis(Vector3& right, Vector3& up) const;
     const Camera3D& camera() const { return camera_; }
+    void drawOrientationGizmo(float centerX, float centerY) const;
 
 private:
     static void drawPose(const std::vector<Vector3>& pose,
@@ -95,6 +105,11 @@ private:
     CharacterAsset* character_ = nullptr;
     std::vector<Matrix> skinMatrices_;
     SkinningRenderer skinRenderer_;
+
+    int projection_ = 0; // 0 = Perspective, 1 = Orthographic
+    Vector3 modelPos_ = {0.0f, 0.0f, 0.0f};
+    Vector3 modelRot_ = {0.0f, 0.0f, 0.0f};
+    Vector3 modelScale_ = {1.0f, 1.0f, 1.0f};
 };
 
 } // namespace studio

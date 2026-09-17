@@ -38,6 +38,14 @@ void CharacterLibrary::registerDefaultCharacters() {
 
     const std::filesystem::path cesiumPath = AppPaths::resolveAsset("assets/characters/CesiumMan.glb");
     std::error_code ec;
+    const std::vector<std::string> dummySource = {
+        "Hips", "Spine1", "Spine2", "Chest", "Neck1", "Head",
+        "LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand",
+        "RightShoulder", "RightArm", "RightForeArm", "RightHand",
+        "LeftLeg", "LeftShin", "LeftFoot", "LeftToeBase",
+        "RightLeg", "RightShin", "RightFoot", "RightToeBase"
+    };
+
     if (std::filesystem::is_regular_file(cesiumPath, ec) && !ec) {
         if (it == entries_.end()) {
             CharacterAsset temp;
@@ -52,16 +60,18 @@ void CharacterLibrary::registerDefaultCharacters() {
                 entry.boneCount = static_cast<int>(temp.bones().size());
                 entry.vertexCount = static_cast<int>(temp.skinningData().vertices.size());
                 entry.scale = 1.0f;
-                // Auto-map with default SOMA joints
-                const std::vector<std::string> dummySource = {
-                    "Hips", "Spine1", "Spine2", "Chest", "Neck1", "Head",
-                    "LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand",
-                    "RightShoulder", "RightArm", "RightForeArm", "RightHand",
-                    "LeftLeg", "LeftShin", "LeftFoot", "LeftToeBase",
-                    "RightLeg", "RightShin", "RightFoot", "RightToeBase"
-                };
                 entry.mapping = CharacterMapper::autoMap(temp, dummySource);
                 entries_.push_back(std::move(entry));
+                saveRegistry();
+            }
+        } else {
+            // Re-evaluate mapping in case alias tables improved
+            CharacterAsset temp;
+            std::string err;
+            if (CharacterLoader::loadGLB(cesiumPath.string(), temp, err)) {
+                it->mapping = CharacterMapper::autoMap(temp, dummySource);
+                it->boneCount = static_cast<int>(temp.bones().size());
+                it->vertexCount = static_cast<int>(temp.skinningData().vertices.size());
                 saveRegistry();
             }
         }

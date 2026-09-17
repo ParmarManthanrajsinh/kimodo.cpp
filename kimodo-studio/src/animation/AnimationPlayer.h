@@ -26,6 +26,9 @@ public:
     void update(float dt);
     void scrub(float timeSec);
     void stepFrame(int delta);
+    void seekFrame(int f) {
+        if (anim_.fps > 0.0f) scrub(static_cast<float>(f) / anim_.fps);
+    }
 
     bool hasAnimation() const { return !anim_.empty(); }
     const Animation& animation() const { return anim_; }

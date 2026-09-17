@@ -3,15 +3,16 @@
 #include "raymath.h"
 #include "rlgl.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace studio {
 
 void Viewport::reset() {
-    target_ = {0, 1.0f, 0};
-    yaw_ = 0.7f;
-    pitch_ = 0.35f;
-    dist_ = 3.5f;
+    target_ = {0, 0.76f, 0};
+    yaw_ = 1.57f;
+    pitch_ = 0.05f;
+    dist_ = 2.85f;
     recomputeCamera();
 }
 
@@ -68,6 +69,11 @@ void Viewport::update(bool mouseOverUi) {
     recomputeCamera();
 }
 
+void Viewport::setProjection(int proj) {
+    projection_ = proj;
+    recomputeCamera();
+}
+
 void Viewport::recomputeCamera() const {
     const float cp = std::cos(pitch_);
     camera_.position = {
@@ -78,7 +84,7 @@ void Viewport::recomputeCamera() const {
     camera_.target = target_;
     camera_.up = {0, 1, 0};
     camera_.fovy = 45.0f;
-    camera_.projection = CAMERA_PERSPECTIVE;
+    camera_.projection = (projection_ == 1) ? CAMERA_ORTHOGRAPHIC : CAMERA_PERSPECTIVE;
 }
 
 void Viewport::drawPose(const std::vector<Vector3>& pose,
@@ -137,34 +143,61 @@ void Viewport::draw3D() {
         return;
     }
 
+    // Model transform application
+    bool hasModelTransform = (modelPos_.x != 0.0f || modelPos_.y != 0.0f || modelPos_.z != 0.0f ||
+                              modelRot_.x != 0.0f || modelRot_.y != 0.0f || modelRot_.z != 0.0f ||
+                              modelScale_.x != 1.0f || modelScale_.y != 1.0f || modelScale_.z != 1.0f);
+    if (hasModelTransform) {
+        rlPushMatrix();
+        rlTranslatef(modelPos_.x, modelPos_.y, modelPos_.z);
+        rlRotatef(modelRot_.x, 1, 0, 0);
+        rlRotatef(modelRot_.y, 0, 1, 0);
+        rlRotatef(modelRot_.z, 0, 0, 1);
+        rlScalef(modelScale_.x, modelScale_.y, modelScale_.z);
+    }
+
     // 1. Draw Skinned 3D Character Mesh
     if (characterDraw_ && character_ && character_->isLoaded()) {
         skinRenderer_.drawCharacter(*character_, skinMatrices_, wireframeDraw_);
     }
 
-    // 2. Draw Skeleton Bones & Joints
+    // 2. Draw Skeleton Bones & Joints (X-Ray overlay through mesh matching Image 2)
     if (skeletonDraw_) {
         const int J = static_cast<int>(pose_.size());
-        const Color colBone = Color{75, 163, 227, 230};
-        const Color colJoint = Color{56, 168, 232, 255};
-        const Color colRoot = Color{245, 215, 45, 255};
+        const Color colBoneGhost = Color{95, 175, 235, 140};
+        const Color colJointGhost = Color{145, 195, 245, 180};
+        const Color colBoneSolid = Color{95, 175, 235, 240};
+        const Color colJointSolid = Color{145, 195, 245, 255};
 
         if (J > 0 && poseParents_.size() == pose_.size()) {
+            // Pass 1: X-Ray overlay visible through character mesh
+            rlDisableDepthTest();
             for (int j = 0; j < J; ++j) {
                 const int p = poseParents_[j];
                 if (p >= 0 && p < J) {
-                    DrawCapsule(pose_[p], pose_[j], 0.028f, 8, 8, colBone);
+                    DrawCapsule(pose_[p], pose_[j], 0.018f, 8, 8, colBoneGhost);
                 }
             }
             for (int j = 0; j < J; ++j) {
-                DrawSphere(pose_[j], j == 0 ? 0.055f : 0.032f,
-                           j == 0 ? colRoot : colJoint);
+                DrawSphere(pose_[j], 0.024f, colJointGhost);
+            }
+            rlEnableDepthTest();
+
+            // Pass 2: Solid depth-tested pass
+            for (int j = 0; j < J; ++j) {
+                const int p = poseParents_[j];
+                if (p >= 0 && p < J) {
+                    DrawCapsule(pose_[p], pose_[j], 0.018f, 8, 8, colBoneSolid);
+                }
+            }
+            for (int j = 0; j < J; ++j) {
+                DrawSphere(pose_[j], 0.024f, colJointSolid);
             }
         } else if (!characterDraw_ || !character_ || !character_->isLoaded()) {
             // Standby origin rig stub
-            DrawSphere(Vector3{0, 1.0f, 0}, 0.065f, colRoot);
-            DrawSphere(Vector3{0, 1.6f, 0}, 0.045f, colJoint);
-            DrawCapsule(Vector3{0, 0.4f, 0}, Vector3{0, 1.6f, 0}, 0.028f, 8, 8, colBone);
+            DrawSphere(Vector3{0, 1.0f, 0}, 0.045f, colJointSolid);
+            DrawSphere(Vector3{0, 1.6f, 0}, 0.035f, colJointSolid);
+            DrawCapsule(Vector3{0, 0.4f, 0}, Vector3{0, 1.6f, 0}, 0.018f, 8, 8, colBoneSolid);
         }
     }
 
@@ -173,7 +206,42 @@ void Viewport::draw3D() {
         drawBoneNames(camera_);
     }
 
+    if (hasModelTransform) {
+        rlPopMatrix();
+    }
+
     EndMode3D();
+}
+
+void Viewport::drawOrientationGizmo(float centerX, float centerY) const {
+    Vector3 fwd = Vector3Normalize(Vector3Subtract(target_, camera_.position));
+    Vector3 right = Vector3Normalize(Vector3CrossProduct(fwd, Vector3{0, 1, 0}));
+    Vector3 up = Vector3CrossProduct(right, fwd);
+
+    struct AxisInfo {
+        char label;
+        Vector3 dir;
+        Color col;
+        float depth;
+    };
+    std::vector<AxisInfo> axes = {
+        {'X', Vector3{1, 0, 0}, Color{235, 60, 60, 255}, Vector3DotProduct(fwd, Vector3{1, 0, 0})},
+        {'Y', Vector3{0, 1, 0}, Color{45, 200, 85, 255}, Vector3DotProduct(fwd, Vector3{0, 1, 0})},
+        {'Z', Vector3{0, 0, 1}, Color{60, 130, 245, 255}, Vector3DotProduct(fwd, Vector3{0, 0, 1})}
+    };
+    std::sort(axes.begin(), axes.end(), [](const AxisInfo& a, const AxisInfo& b) {
+        return a.depth < b.depth;
+    });
+
+    const float axisLength = 22.0f;
+    for (const auto& ax : axes) {
+        float sx = Vector3DotProduct(ax.dir, right) * axisLength;
+        float sy = -Vector3DotProduct(ax.dir, up) * axisLength;
+        Vector2 endPt = {centerX + sx, centerY + sy};
+        DrawLineEx(Vector2{centerX, centerY}, endPt, 2.0f, ax.col);
+        char str[2] = {ax.label, '\0'};
+        DrawText(str, static_cast<int>(endPt.x + (sx >= 0 ? 3 : -8)), static_cast<int>(endPt.y + (sy >= 0 ? 2 : -10)), 12, ax.col);
+    }
 }
 
 } // namespace studio

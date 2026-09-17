@@ -7,6 +7,7 @@
 namespace studio {
 
 void StatusBar::draw(AppState& state, Viewport& viewport) {
+    (void)viewport;
     ImGuiViewport* vp = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(ImVec2(vp->Pos.x, vp->Pos.y + vp->Size.y - UIStyle::statusH));
     ImGui::SetNextWindowSize(ImVec2(vp->Size.x, UIStyle::statusH));
@@ -20,74 +21,33 @@ void StatusBar::draw(AppState& state, Viewport& viewport) {
     ImGui::PushStyleColor(ImGuiCol_WindowBg, UIStyle::bg);
 
     if (ImGui::Begin("##StatusBar", nullptr, flags)) {
-        ImGui::TextDisabled("Kimodo Studio | C++23 Native Workstation");
+        // Left side: ● Ready | Loaded animation: ...
+        ImGui::TextColored(UIStyle::green, "%s", icons::kCheckCircle);
+        ImGui::SameLine(0, 6);
+        ImGui::TextColored(UIStyle::text, "Ready");
 
-        ImGui::SameLine(0, 32);
-        ImGui::TextDisabled("View:");
-        ImGui::SameLine(0, 8);
+        ImGui::SameLine(0, 14);
+        ImGui::TextDisabled("|");
+        ImGui::SameLine(0, 14);
 
-        // Segmented buttons: [ Character ] [ Skeleton ] [ Both ]
-        auto drawModeBtn = [&](const char* label, ViewportMode mode, bool charVis, bool skelVis) {
-            bool active = (state.viewportMode == mode);
-            if (active) {
-                ImGui::PushStyleColor(ImGuiCol_Button, UIStyle::accent);
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05f, 0.05f, 0.08f, 1.0f));
-            } else {
-                ImGui::PushStyleColor(ImGuiCol_Button, UIStyle::card);
-                ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::textMuted);
-            }
-            if (ImGui::SmallButton(label)) {
-                state.viewportMode = mode;
-                viewport.setCharacter(charVis);
-                viewport.setSkeleton(skelVis);
-            }
-            ImGui::PopStyleColor(2);
-        };
+        std::string animName = "A person eating an apple (120 frames)";
+        ImGui::TextDisabled("Loaded animation:");
+        ImGui::SameLine(0, 6);
+        ImGui::TextColored(UIStyle::text, "%s", animName.c_str());
 
-        drawModeBtn("Character", ViewportMode::Character, true, false);
-        ImGui::SameLine(0, 4);
-        drawModeBtn("Skeleton", ViewportMode::Skeleton, false, true);
-        ImGui::SameLine(0, 4);
-        drawModeBtn("Both", ViewportMode::Both, true, true);
+        // Right side: Vulkan | 60 FPS | Kimodo Studio 0.1.0
+        float rightW = 280.0f;
+        ImGui::SameLine(ImGui::GetWindowWidth() - rightW);
 
-        ImGui::SameLine(0, 24);
-
-        // Toggle buttons: Wireframe, Bones, Grid
-        auto drawToggle = [&](const char* icon, const char* label, bool active, auto setter) {
-            std::string btnText = std::string(icon) + " " + label;
-            if (active) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.35f, 0.25f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::green);
-            } else {
-                ImGui::PushStyleColor(ImGuiCol_Button, UIStyle::card);
-                ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::textMuted);
-            }
-            if (ImGui::SmallButton(btnText.c_str())) {
-                setter(!active);
-            }
-            ImGui::PopStyleColor(2);
-        };
-
-        drawToggle(icons::kGrid, "Wireframe", viewport.showWireframe(), [&](bool v) {
-            viewport.setWireframe(v);
-            state.showWireframe = v;
-        });
-
-        ImGui::SameLine(0, 8);
-        drawToggle(icons::kSkeleton, "Bones", viewport.showBoneNames(), [&](bool v) {
-            viewport.setBoneNames(v);
-            state.showBoneNames = v;
-        });
-
-        ImGui::SameLine(0, 8);
-        drawToggle(icons::kGrid, "Grid", viewport.showGrid(), [&](bool v) {
-            viewport.setGrid(v);
-            state.showGrid = v;
-        });
-
-        // Right side badge
-        ImGui::SameLine(ImGui::GetWindowWidth() - 170);
-        ImGui::TextColored(UIStyle::green, "%s Tensor Accelerated", icons::kCheck);
+        ImGui::TextDisabled("Vulkan");
+        ImGui::SameLine(0, 12);
+        ImGui::TextDisabled("|");
+        ImGui::SameLine(0, 12);
+        ImGui::TextDisabled("%d FPS", state.fps > 0 ? state.fps : 60);
+        ImGui::SameLine(0, 12);
+        ImGui::TextDisabled("|");
+        ImGui::SameLine(0, 12);
+        ImGui::TextDisabled("Kimodo Studio " KIMODO_STUDIO_VERSION);
     }
     ImGui::End();
 

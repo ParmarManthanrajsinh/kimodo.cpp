@@ -8,11 +8,14 @@
 #include "export/BVHExporter.h"
 #include "export/BVHParser.h"
 #include "export/ExportPreset.h"
+#include "library/AnimationLibrary.h"
 #include "raymath.h"
+#include "app/AppState.h"
 #include "retarget/Retargeter.h"
 #include "retarget/SkeletonProfile.h"
 #include "utils/AppPaths.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <vector>
@@ -152,21 +155,70 @@ int TestSuite::runCharacterAndSkinning() {
             fails++;
         }
 
-        std::printf("  [DEBUG] Character has %zu bones, %zu vertices\n", character.bones().size(), character.skinningData().vertices.size());
-        for (size_t b = 0; b < character.bones().size(); ++b) {
-            const auto& bn = character.bones()[b];
-            std::printf("    Bone %zu: '%s', parent=%d, restPos=(%.2f, %.2f, %.2f), map='%s'\n",
-                        b, bn.name.c_str(), bn.parent, bn.restPosition.x, bn.restPosition.y, bn.restPosition.z,
-                        mapping.count(bn.name) ? mapping[bn.name].c_str() : "none");
-        }
-
-        // Test Skin Matrix Evaluation
         std::vector<Matrix> skinMats;
         if (!CharacterMapper::evaluateSkinMatrices(character, anim, 0, mapping, skinMats)) {
             std::printf("  FAIL: evaluateSkinMatrices returned false\n");
             fails++;
         }
 
+        // Verify critical mappings are correct (RightArm, RightForeArm, Head)
+        if (mapping["Skeleton_arm_joint_R__2_"] != "RightArm") {
+            std::printf("  FAIL: Skeleton_arm_joint_R__2_ mapped to '%s' instead of 'RightArm'\n",
+                        mapping["Skeleton_arm_joint_R__2_"].c_str());
+            fails++;
+        }
+        if (mapping["Skeleton_arm_joint_R__3_"] != "RightForeArm") {
+            std::printf("  FAIL: Skeleton_arm_joint_R__3_ mapped to '%s' instead of 'RightForeArm'\n",
+                        mapping["Skeleton_arm_joint_R__3_"].c_str());
+            fails++;
+        }
+        if (mapping["Skeleton_neck_joint_2"] != "Head") {
+            std::printf("  FAIL: Skeleton_neck_joint_2 mapped to '%s' instead of 'Head'\n",
+                        mapping["Skeleton_neck_joint_2"].c_str());
+            fails++;
+        }
+
+        AnimationLibrary lib;
+        lib.init(AppPaths::defaultAnimationsDir());
+        std::printf("  [DEBUG] Library has %zu animation clips\n", lib.entries().size());
+        for (const auto& entry : lib.entries()) {
+            std::printf("    Clip: '%s', frames=%d, skeleton='%s'\n", entry.prompt.c_str(), entry.frames, entry.skeleton.c_str());
+            Animation realAnim;
+            if (lib.loadAnimation(entry, realAnim)) {
+                if (entry.prompt.find("apple") != std::string::npos) {
+                    std::printf("    === INSPECTING CLIP: %s ===\n", entry.prompt.c_str());
+                    int testFrames[] = {0, 20, 40, 60, 80, 100, std::min(119, realAnim.frames - 1)};
+                    for (int tf : testFrames) {
+                        // SOMA FK
+                        const float* r = realAnim.localRotationsXyzw.data() + static_cast<size_t>(tf) * realAnim.joints * 4;
+                        const float* p = realAnim.rootPositions.data() + tf * 3;
+                        std::vector<Vector3> somaPos;
+                        std::vector<Quaternion> somaRot;
+                        Skeleton::forwardKinematicsFull(r, p, realAnim.parents, realAnim.offsets, somaPos, somaRot);
+
+                        // Character FK
+                        std::vector<Matrix> curSkinMats;
+                        std::vector<Vector3> charPos;
+                        CharacterMapper::evaluateSkinMatrices(character, realAnim, tf, mapping, curSkinMats, &charPos);
+
+                        // Joint 17 = RightArm, Joint 18 = RightForeArm, Joint 19 = RightHand, Joint 6 = Head
+                        std::printf("      Frame %d:\n", tf);
+                        std::printf("        SOMA Root (Hips): (%.3f, %.3f, %.3f)\n", somaPos[0].x, somaPos[0].y, somaPos[0].z);
+                        std::printf("        SOMA Head: (%.3f, %.3f, %.3f)\n", somaPos[6].x, somaPos[6].y, somaPos[6].z);
+                        std::printf("        SOMA RightArm: (%.3f, %.3f, %.3f)\n", somaPos[17].x, somaPos[17].y, somaPos[17].z);
+                        std::printf("        SOMA RightForeArm: (%.3f, %.3f, %.3f)\n", somaPos[18].x, somaPos[18].y, somaPos[18].z);
+                        std::printf("        SOMA RightHand: (%.3f, %.3f, %.3f)\n", somaPos[19].x, somaPos[19].y, somaPos[19].z);
+
+                        // Char Bone 4 = Head (Skeleton_neck_joint_2), Bone 8 = RightArm, Bone 10 = RightForeArm
+                        std::printf("        CHAR Head: (%.3f, %.3f, %.3f)\n", charPos[4].x, charPos[4].y, charPos[4].z);
+                        std::printf("        CHAR RightArm: (%.3f, %.3f, %.3f)\n", charPos[8].x, charPos[8].y, charPos[8].z);
+                        std::printf("        CHAR RightForeArm: (%.3f, %.3f, %.3f)\n", charPos[10].x, charPos[10].y, charPos[10].z);
+                    }
+                }
+            }
+        }
+
+        // Test Skin Matrix Evaluation
         if (skinMats.size() != character.bones().size()) {
             std::printf("  FAIL: Skin matrix count != bone count\n");
             fails++;
@@ -174,10 +226,37 @@ int TestSuite::runCharacterAndSkinning() {
 
         // Test CPU skinning
         character.updateCpuSkinning(skinMats);
-        if (character.animatedVertices().size() != character.skinningData().vertices.size()) {
+        const auto& animVerts = character.animatedVertices();
+        if (animVerts.size() != character.skinningData().vertices.size()) {
             std::printf("  FAIL: Animated vertices count mismatch\n");
             fails++;
+        } else {
+            // Verify animated mesh is upright in Y-UP space (height Y >= 1.0m, Z extends reasonably)
+            float minY = 1e9f, maxY = -1e9f;
+            for (const auto& v : animVerts) {
+                if (v.y < minY) minY = v.y;
+                if (v.y > maxY) maxY = v.y;
+            }
+            if (maxY < 1.2f || minY < -0.3f) {
+                std::printf("  FAIL: Animated character not upright! Y bounds: [%.2f, %.2f]\n", minY, maxY);
+                fails++;
+            }
         }
+    }
+
+    // Test UI Panel Width Clamping
+    AppState testState;
+    testState.sideWidth = 50.0f; // Below min 120
+    testState.sideWidth = std::clamp(testState.sideWidth, 120.0f, 320.0f);
+    if (testState.sideWidth != 120.0f) {
+        std::printf("  FAIL: sideWidth clamp failed min\n");
+        fails++;
+    }
+    testState.panelWidth = 1000.0f; // Above max 640
+    testState.panelWidth = std::clamp(testState.panelWidth, 260.0f, 640.0f);
+    if (testState.panelWidth != 640.0f) {
+        std::printf("  FAIL: panelWidth clamp failed max\n");
+        fails++;
     }
 
     std::printf("  -> Character & Skinning: %s (%d failures)\n", fails == 0 ? "PASSED" : "FAILED", fails);

@@ -56,7 +56,7 @@ void loadStudioFonts() {
 
 } // namespace
 
-bool Application::init() {
+bool Application::init(int width, int height) {
     Logger::instance().init(Logger::defaultLogFile());
     Logger::instance().info(std::string("Kimodo Studio ") + KIMODO_STUDIO_VERSION +
                             " (" + KIMODO_STUDIO_GIT_HASH + ") built " +
@@ -67,7 +67,7 @@ bool Application::init() {
     const auto& settings = SettingsManager::instance().settings();
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
-    InitWindow(1280, 800, "Kimodo Studio " KIMODO_STUDIO_VERSION);
+    InitWindow(width, height, "Kimodo Studio " KIMODO_STUDIO_VERSION);
     if (!IsWindowReady()) {
         Logger::instance().error("Raylib window init failed");
         return false;
@@ -123,8 +123,14 @@ bool Application::init() {
         viewport_.setCharacterAsset(characters_.activeAsset());
     }
 
-    // Initialize standby T-pose
-    {
+    // Initialize standby T-pose or load initial library animation
+    if (!library_.entries().empty()) {
+        Animation anim;
+        if (library_.loadAnimation(library_.entries().front(), anim)) {
+            player_.load(anim);
+            player_.play();
+        }
+    } else {
         std::vector<float> ident(kSomaJoints * 4, 0.0f);
         for (int i = 0; i < kSomaJoints; ++i) ident[i * 4 + 3] = 1.0f;
         float root[3] = {0.0f, 0.95f, 0.0f};
@@ -178,25 +184,47 @@ void Application::pollEngine() {
 
 void Application::updateAnimationAndSkinning() {
     float dt = GetFrameTime();
-    player_.update(dt);
+    player_.update(dt * state_.playbackSpeed);
+
+    // Synchronize viewport display and transform options from state
+    viewport_.setGrid(state_.showGrid);
+    viewport_.setAxes(state_.showAxes);
+    viewport_.setFloor(state_.showFloor);
+    viewport_.setSkeleton(state_.showSkeleton);
+    viewport_.setCharacter(state_.showCharacter);
+    viewport_.setWireframe(state_.showWireframe);
+    viewport_.setBoneNames(state_.showBoneNames);
+    viewport_.setProjection(state_.cameraProjection);
+    viewport_.setModelTransform(state_.modelPosition, state_.modelRotation, state_.modelScale);
 
     const Animation& curAnim = player_.animation();
     if (!curAnim.empty()) {
-        // 1. Update Skeleton FK positions for bone capsules & spheres
-        viewport_.setPose(player_.worldPositions(), curAnim.parents, curAnim.jointNames);
+        // 1. SKELETON VIEW: pristine original SOMA skeleton directly from AnimationPlayer
+        if (state_.showSkeleton) {
+            viewport_.setPose(player_.worldPositions(), curAnim.parents, curAnim.jointNames);
+        } else {
+            viewport_.setPose({}, {});
+        }
 
-        // 2. Update Character Skin Matrices
+        // 2. CHARACTER PREVIEW: view/consumer of animation, never mutates original motion
         CharacterAsset* charAsset = characters_.activeAsset();
-        if (charAsset && charAsset->isLoaded()) {
+        if (state_.showCharacter && charAsset && charAsset->isLoaded()) {
             CharacterEntry curEntry;
             if (characters_.findEntry(characters_.activeId(), curEntry)) {
                 std::vector<Matrix> skinMatrices;
                 if (CharacterMapper::evaluateSkinMatrices(*charAsset, curAnim, player_.frame(),
                                                          curEntry.mapping, skinMatrices)) {
                     viewport_.setCharacterSkinMatrices(std::move(skinMatrices));
+                } else {
+                    viewport_.setCharacterSkinMatrices({});
                 }
             }
+        } else {
+            viewport_.setCharacterSkinMatrices({});
         }
+    } else {
+        viewport_.setPose({}, {});
+        viewport_.setCharacterSkinMatrices({});
     }
 }
 
@@ -218,7 +246,12 @@ void Application::run(int maxFrames, const char* screenshotPath) {
         // 1. Draw 3D Viewport
         viewport_.draw3D();
 
-        // 2. Draw ImGui UI Overlays
+        // 2. Draw 3D Coordinate Orientation Gizmo at bottom-left
+        float gizmoX = state_.sideWidth + 38.0f;
+        float gizmoY = static_cast<float>(GetScreenHeight()) - 130.0f;
+        viewport_.drawOrientationGizmo(gizmoX, gizmoY);
+
+        // 3. Draw ImGui UI Overlays
         rlImGuiBegin();
         ui_.draw(state_, viewport_, engine_, player_, library_, characters_, models_, toasts_);
         rlImGuiEnd();

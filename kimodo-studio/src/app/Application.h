@@ -14,7 +14,7 @@ namespace studio {
 
 class Application {
 public:
-    bool init();
+    bool init(int width = 1280, int height = 800);
     void run(int maxFrames = 0, const char* screenshotPath = nullptr);
     void shutdown();
 

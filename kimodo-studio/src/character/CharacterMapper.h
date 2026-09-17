@@ -20,11 +20,13 @@ public:
                                     const std::vector<std::string>& sourceJoints);
 
     // Compute skin matrices (globalBoneTransform * inverseBindMatrix) for an animation frame
+    // Optionally outputs evaluated animated bone world positions for 1:1 skeleton alignment
     static bool evaluateSkinMatrices(const CharacterAsset& asset,
                                      const Animation& anim,
                                      int frame,
                                      const CharacterBoneMap& mapping,
-                                     std::vector<Matrix>& outSkinMatrices);
+                                     std::vector<Matrix>& outSkinMatrices,
+                                     std::vector<Vector3>* outBonePositions = nullptr);
 };
 
 } // namespace studio
