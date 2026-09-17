@@ -111,8 +111,8 @@ void TimelineBar::draw(AppState& state, AnimationPlayer& player, float panelWidt
                       curMins, curSecs, maxMins, maxSecs);
         ImGui::TextDisabled("Time: %s", timeBuf);
 
-        // Right-side controls (FPS dropdown, Playback speed, Expand)
-        const float rightControlsWidth = 230.0f;
+        // Right-side controls (FPS dropdown, Playback speed)
+        const float rightControlsWidth = 160.0f;
         if (ImGui::GetContentRegionAvail().x > rightControlsWidth) {
             ImGui::SameLine(ImGui::GetWindowWidth() - rightControlsWidth - 14.0f);
         }
@@ -139,11 +139,6 @@ void TimelineBar::draw(AppState& state, AnimationPlayer& player, float panelWidt
         }
         if (ImGui::Combo("##SpeedCombo", &speedIdx, speedLabels, IM_ARRAYSIZE(speedLabels))) {
             state.playbackSpeed = speedValues[speedIdx];
-        }
-
-        ImGui::SameLine();
-        if (ImGui::Button(icons::kExpand, ImVec2(26, ctrlH))) {
-            // Expand / fullscreen viewport
         }
 
         // ==========================================

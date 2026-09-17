@@ -131,8 +131,10 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
                 ImGui::SameLine(0, 5);
                 ImGui::TextColored(UIStyle::text, "Loaded");
 
-                ImGui::TextDisabled("Source:  KhronosGroup");
-                ImGui::TextDisabled("Format:  glTF 2.0 (.glb)");
+                if (active && active->isLoaded()) {
+                    ImGui::TextDisabled("Bones:   %zu", active->bones().size());
+                    ImGui::TextDisabled("Status:  Ready");
+                }
             }
             ImGui::EndGroup();
 
@@ -482,26 +484,24 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
                 }
             };
 
-            int vCount = 12842;
-            int bCount = 30;
             if (active && active->isLoaded()) {
                 const auto& rep = active->validationReport();
-                vCount = rep.vertexCount;
-                bCount = rep.boneCount;
+                drawCheck("Geometry", rep.hasMesh, std::to_string(rep.vertexCount) + " verts");
+                drawCheck("Skeleton", rep.hasSkeleton, std::to_string(rep.boneCount) + " bones");
+                drawCheck("Skinning", rep.hasSkin, rep.hasSkin ? "Skin matrices valid" : "No skin");
+                drawCheck("Weights", rep.validWeights, rep.validWeights ? "Normalized" : "Check weights");
+                
+                char hBuf[32];
+                std::snprintf(hBuf, sizeof(hBuf), "Height: %.2fm", rep.height);
+                drawCheck("Rest Pose", rep.validRestPose, hBuf);
+
+                if (!rep.warnings.empty()) {
+                    ImGui::Spacing();
+                    ImGui::TextDisabled("Warnings: %zu", rep.warnings.size());
+                }
+            } else {
+                ImGui::TextDisabled("No active character asset loaded.");
             }
-
-            drawCheck("Geometry", true, std::to_string(vCount) + " verts");
-            drawCheck("Skeleton", true, std::to_string(bCount) + " bones");
-            drawCheck("Skin & IBMs", true, "Inverse bind matrices ok");
-            drawCheck("Weights", true, "Max 4 per vertex");
-            drawCheck("Rest Pose", true, "Height: 1.51m");
-
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-
-            ImGui::TextDisabled("Submeshes: 1");
-            ImGui::TextDisabled("Format: glTF 2.0 Binary");
         }
         endCard();
     }

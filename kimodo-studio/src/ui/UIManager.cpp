@@ -230,10 +230,6 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
                 toasts.push("Snapshot saved: " + snapPath, ToastKind::Success);
             }
             ImGui::SameLine(0, 4);
-            if (ImGui::Button(ICON_FA_CAMERA "##Snap2", ImVec2(28, itemH))) {
-                toasts.push("Camera keyframe saved", ToastKind::Success);
-            }
-            ImGui::SameLine(0, 4);
             if (ImGui::Button(ICON_FA_RESET " Reset", ImVec2(0, itemH))) {
                 viewport.reset();
             }

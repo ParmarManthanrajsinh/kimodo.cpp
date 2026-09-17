@@ -91,16 +91,6 @@ void NavRail::draw(AppState& state) {
         if (drawNavButton(icons::kSettings, "Settings", state.screen == Screen::Settings)) {
             state.screen = Screen::Settings;
         }
-
-        // Bottom Tagline
-        float totalH = vp->Size.y - UIStyle::topH - UIStyle::statusH;
-        float bottomMargin = 72.0f;
-        float currentY = ImGui::GetCursorPosY();
-        if (currentY < (totalH - bottomMargin)) {
-            ImGui::Dummy(ImVec2(0.0f, (totalH - bottomMargin) - currentY));
-        }
-        ImGui::Spacing();
-        ImGui::TextDisabled("AI MOTION\nFOR A MORE\nCREATIVE TOMORROW");
     }
     ImGui::End();
 

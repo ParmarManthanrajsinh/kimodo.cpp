@@ -30,16 +30,16 @@ void StatusBar::draw(AppState& state, Viewport& viewport) {
         ImGui::TextDisabled("|");
         ImGui::SameLine(0, 14);
 
-        std::string animName = "A person eating an apple (120 frames)";
+        std::string animName = !state.prompt.empty() ? state.prompt : "None";
         ImGui::TextDisabled("Loaded animation:");
         ImGui::SameLine(0, 6);
         ImGui::TextColored(UIStyle::text, "%s", animName.c_str());
 
-        // Right side: Vulkan | 60 FPS | Kimodo Studio 0.1.0
+        // Right side: OpenGL 3.3 | 60 FPS | Kimodo Studio 0.1.0
         float rightW = 280.0f;
         ImGui::SameLine(ImGui::GetWindowWidth() - rightW);
 
-        ImGui::TextDisabled("Vulkan");
+        ImGui::TextDisabled("OpenGL 3.3");
         ImGui::SameLine(0, 12);
         ImGui::TextDisabled("|");
         ImGui::SameLine(0, 12);

@@ -74,36 +74,14 @@ void HeaderBar::draw(AppState& state, KimodoEngine& engine, ModelManager& models
         }
 
         // Right side stats & settings gear
-        const float rightWidth = 420.0f;
+        const float rightWidth = 180.0f;
         if (ImGui::GetContentRegionAvail().x > rightWidth) {
             ImGui::SameLine(ImGui::GetWindowWidth() - rightWidth - 16.0f);
         } else {
             ImGui::SameLine(0, 16);
         }
 
-        // GPU badge
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextColored(UIStyle::accent, "%s", icons::kCheckCircle);
-        ImGui::SameLine(0, 4);
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextDisabled("GPU");
-        ImGui::SameLine(0, 6);
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextColored(UIStyle::text, "RTX 4060");
-
-        // VRAM badge
-        ImGui::SameLine(0, 16);
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextColored(UIStyle::accent, "%s", icons::kCheckCircle);
-        ImGui::SameLine(0, 4);
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextDisabled("VRAM");
-        ImGui::SameLine(0, 6);
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextColored(UIStyle::text, "5.2 / 8 GB");
-
         // FPS
-        ImGui::SameLine(0, 16);
         ImGui::AlignTextToFramePadding();
         ImGui::TextColored(UIStyle::text, "%d FPS", state.fps > 0 ? state.fps : 60);
 
