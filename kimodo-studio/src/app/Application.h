@@ -2,6 +2,7 @@
 
 #include "animation/AnimationPlayer.h"
 #include "app/AppState.h"
+#include "character/CharacterLibrary.h"
 #include "kimodo/KimodoEngine.h"
 #include "library/AnimationLibrary.h"
 #include "models/ModelManager.h"
@@ -19,6 +20,7 @@ public:
 
 private:
     void pollEngine();
+    void updateAnimationAndSkinning();
 
     AppState state_;
     Viewport viewport_;
@@ -26,14 +28,12 @@ private:
     KimodoEngine engine_;
     AnimationPlayer player_;
     AnimationLibrary library_;
+    CharacterLibrary characters_;
     ModelManager models_;
     Toasts toasts_;
-    EngineStatus lastEngineStatus_ = EngineStatus::Idle;
-    std::string lastActiveId_;
-    bool lastManagerBusy_ = false;
-    std::string pendingThumb_; // capture clean 3D frame to this path
 
-    void captureThumbFile(const LibraryEntry& entry);
+    EngineStatus lastEngineStatus_ = EngineStatus::Idle;
+    std::string pendingThumb_;
     bool running_ = false;
 };
 

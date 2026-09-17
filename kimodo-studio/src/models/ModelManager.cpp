@@ -135,10 +135,29 @@ const ModelEntry* findIn(const std::vector<ModelEntry>& entries, const std::stri
 
 void ModelManager::rescan() {
     std::lock_guard<std::mutex> lock(mutex_);
-    const std::vector<std::string> dirs = {
+    std::vector<std::string> dirs = {
         modelDir_,
         (appDataDir() / "models").string(),
+        (std::filesystem::current_path() / "models").string(),
     };
+
+#if defined(KIMODO_ROOT_DIR)
+    dirs.push_back((std::filesystem::path(KIMODO_ROOT_DIR) / "models").string());
+#endif
+#if defined(KIMODO_STUDIO_SOURCE_DIR)
+    dirs.push_back((std::filesystem::path(KIMODO_STUDIO_SOURCE_DIR) / "../models").string());
+    dirs.push_back((std::filesystem::path(KIMODO_STUDIO_SOURCE_DIR) / "models").string());
+#endif
+
+    // Walk up searching for models/
+    std::filesystem::path cur = std::filesystem::current_path();
+    for (int i = 0; i < 5; ++i) {
+        if (!cur.empty()) {
+            dirs.push_back((cur / "models").string());
+            cur = cur.parent_path();
+        }
+    }
+
     for (ModelEntry& e : entries_) {
         e.installed = false;
         e.localPath.clear();
@@ -150,7 +169,7 @@ void ModelManager::rescan() {
             std::error_code ec;
             const auto cand = std::filesystem::path(dir) / e.motionFile;
             const auto bytes = std::filesystem::file_size(cand, ec);
-            if (!ec) {
+            if (!ec && bytes > 0) {
                 e.installed = true;
                 e.localPath = cand.string();
                 e.localBytes = static_cast<uint64_t>(bytes);

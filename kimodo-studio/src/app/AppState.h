@@ -4,24 +4,53 @@
 
 namespace studio {
 
-enum class Screen { Home, Generate, Models, Library, Retarget, Export, Settings, Inspector };
+enum class Screen {
+    Home,
+    Generate,
+    Models,
+    Library,
+    Characters,
+    Retarget,
+    Export,
+    Settings,
+    Inspector
+};
+
+enum class ViewportMode {
+    Character = 0,
+    Skeleton = 1,
+    Both = 2
+};
 
 struct AppState {
-    Screen screen = Screen::Retarget;
-    Screen lastToolScreen = Screen::Retarget;
-    std::string gpuName = "RTX 4060";
+    Screen screen = Screen::Home;
+    Screen lastToolScreen = Screen::Generate;
+    std::string gpuName = "RTX GPU";
     int fps = 0;
     bool vulkanAvailable = false;
 
-    // Phase 2: generation inputs (local model, no downloads yet).
+    // Generation parameters
     std::string prompt = "A person walks forward.";
     int frames = 120;
     int steps = 50;
     unsigned long long seed = 42;
-    std::string motionPath = "E:/kimodo.cpp/models/kimodo-soma-rp-v1.1-f32.gguf";
-    std::string textBundle = "E:/kimodo.cpp/generated/llm2vec-text-bundle";
-    std::string hfUser; // verified Hugging Face account, empty = not connected
-    std::string retargetSource; // library id selected for retargeting
+    std::string motionPath;
+    std::string textBundle;
+    std::string hfUser;
+
+    // Selection state
+    std::string retargetSource;    // Library ID selected for retargeting / character preview
+    std::string activeCharacterId = "cesium-man"; // Character library ID
+    ViewportMode viewportMode = ViewportMode::Both;
+
+    // Viewport display flags
+    bool showWireframe = false;
+    bool showBoneNames = false;
+    bool showGrid = true;
+    bool showAxes = true;
+    bool showFloor = true;
+    bool showSkeleton = true;
+    bool showCharacter = true;
 };
 
 } // namespace studio

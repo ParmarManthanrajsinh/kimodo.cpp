@@ -92,20 +92,10 @@ const std::vector<ExportPreset>& exportPresets() {
         std::vector<ExportPreset> out;
         const Mat3 identity{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
 
-        ExportPreset blender;
-        blender.id = "blender";
-        blender.name = "Blender";
-        blender.profile = "blender-generic";
-        blender.fps = 30.0f;
-        blender.scale = 1.0f;
-        blender.basis = identity;
-        out.push_back(blender);
-
-        // First-class UE pipeline: generic humanoid BVH. Import into UE,
-        // build IK Rig + IK Retargeter there. No Manny-specific encoding.
+        // First-class BVH Humanoid Preset (Direct pipeline for Unreal Engine IK Rig / Retargeter)
         ExportPreset bvhHumanoid;
         bvhHumanoid.id = "bvh-humanoid";
-        bvhHumanoid.name = "BVH Humanoid";
+        bvhHumanoid.name = "BVH Humanoid (Export for Unreal / Maya)";
         bvhHumanoid.profile = "";
         bvhHumanoid.fps = 30.0f;
         bvhHumanoid.scale = 1.0f;
@@ -114,28 +104,19 @@ const std::vector<ExportPreset>& exportPresets() {
         bvhHumanoid.format = "BVH";
         out.push_back(bvhHumanoid);
 
-        // Unity: Y-up left-handed. Mirror Z (matches UniGLTF-style import).
-        ExportPreset unity;
-        unity.id = "unity";
-        unity.name = "Unity";
-        unity.profile = "unity-humanoid";
-        unity.fps = 30.0f;
-        unity.scale = 1.0f; // meters
-        unity.basis = Mat3{{{1, 0, 0}, {0, 1, 0}, {0, 0, -1}}};
-        out.push_back(unity);
+        // Blender Generic Humanoid GLB
+        ExportPreset blender;
+        blender.id = "blender";
+        blender.name = "Blender (generic GLB)";
+        blender.profile = "blender-generic";
+        blender.fps = 30.0f;
+        blender.scale = 1.0f;
+        blender.basis = identity;
+        blender.rootMotion = RootMotion::Preserve;
+        blender.format = "GLB";
+        out.push_back(blender);
 
-        // Deprecated: internal UE Manny retarget removed. Use bvh-humanoid
-        // + UE IK Retargeter instead. Kept for backward compat only.
-        // Unreal: Z-up left-handed, centimeters. glTF (x,y,z) -> UE (z,x,y).
-        ExportPreset unreal;
-        unreal.id = "unreal";
-        unreal.name = "Unreal Engine (deprecated: use BVH Humanoid)";
-        unreal.profile = "unreal-manny";
-        unreal.fps = 30.0f;
-        unreal.scale = 100.0f; // meters -> cm
-        unreal.basis = Mat3{{{0, 0, 1}, {1, 0, 0}, {0, 1, 0}}};
-        out.push_back(unreal);
-
+        // Generic Raw Animation
         ExportPreset generic;
         generic.id = "generic";
         generic.name = "Generic (as generated)";
@@ -143,6 +124,8 @@ const std::vector<ExportPreset>& exportPresets() {
         generic.fps = 30.0f;
         generic.scale = 1.0f;
         generic.basis = identity;
+        generic.rootMotion = RootMotion::Preserve;
+        generic.format = "GLB";
         out.push_back(generic);
 
         return out;
@@ -159,149 +142,124 @@ const ExportPreset* findPreset(const std::string& id) {
     return nullptr;
 }
 
-namespace {
-
-Quat slerp(Quat a, Quat b, float t) {
-    a = quatNormalize(a);
-    b = quatNormalize(b);
-    float dot = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
-    if (dot < 0) {
-        dot = -dot;
-        b.x = -b.x;
-        b.y = -b.y;
-        b.z = -b.z;
-        b.w = -b.w;
-    }
-    if (dot > 0.9995f) {
-        Quat r{a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t,
-               a.w + (b.w - a.w) * t};
-        return quatNormalize(r);
-    }
-    const float theta = std::acos(dot);
-    const float s = std::sin(theta);
-    const float wa = std::sin((1 - t) * theta) / s;
-    const float wb = std::sin(t * theta) / s;
-    Quat r{a.x * wa + b.x * wb, a.y * wa + b.y * wb, a.z * wa + b.z * wb,
-           a.w * wa + b.w * wb};
-    return quatNormalize(r);
-}
-
-Animation resampleAnim(const Animation& in, float fps) {
-    if (fps <= 0 || std::abs(fps - in.fps) < 1e-6f || in.frames < 2) {
-        return in;
-    }
-    const float dur = in.duration();
-    const int outFrames = std::max(2, static_cast<int>(std::round(dur * fps)));
+Animation prepareExport(const Animation& in, float targetFps, float scale,
+                        const Mat3& basis, RootMotion rootMotion,
+                        std::string& report) {
     Animation out = in;
-    out.fps = fps;
-    out.frames = outFrames;
-    out.localRotationsXyzw.assign(static_cast<size_t>(outFrames) * in.joints * 4, 0);
-    out.rootPositions.assign(static_cast<size_t>(outFrames) * 3, 0);
-    for (int f = 0; f < outFrames; ++f) {
-        const float t = std::min(dur, static_cast<float>(f) / fps);
-        const float srcF = t * in.fps;
-        const int i0 = std::min(static_cast<int>(srcF), in.frames - 1);
-        const int i1 = std::min(i0 + 1, in.frames - 1);
-        const float a = std::min(1.0f, std::max(0.0f, srcF - i0));
-        for (int j = 0; j < in.joints; ++j) {
-            const float* r0 = in.localRotationsXyzw.data() + (i0 * in.joints + j) * 4;
-            const float* r1 = in.localRotationsXyzw.data() + (i1 * in.joints + j) * 4;
-            Quat q = slerp({r0[0], r0[1], r0[2], r0[3]}, {r1[0], r1[1], r1[2], r1[3]}, a);
-            float* d = out.localRotationsXyzw.data() + (f * in.joints + j) * 4;
-            d[0] = q.x;
-            d[1] = q.y;
-            d[2] = q.z;
-            d[3] = q.w;
-        }
-        const float* p0 = in.rootPositions.data() + i0 * 3;
-        const float* p1 = in.rootPositions.data() + i1 * 3;
-        float* d = out.rootPositions.data() + f * 3;
-        for (int k = 0; k < 3; ++k) {
-            d[k] = p0[k] + (p1[k] - p0[k]) * a;
-        }
-    }
-    return out;
-}
+    out.fps = targetFps;
+    const int J = out.joints;
 
-} // namespace
+    // Resample frames if fps changed
+    if (std::abs(in.fps - targetFps) > 0.1f && in.fps > 0.0f && targetFps > 0.0f) {
+        const float duration = in.duration();
+        const int newFrames = std::max(1, static_cast<int>(std::round(duration * targetFps)));
+        out.frames = newFrames;
+        out.localRotationsXyzw.assign(static_cast<size_t>(newFrames) * J * 4, 0.0f);
+        out.rootPositions.assign(static_cast<size_t>(newFrames) * 3, 0.0f);
 
-Animation prepareExport(const Animation& in, float fps, float scale, Mat3 basis,
-                        RootMotion rootMotion, std::string& report) {
-    report.clear();
-    Animation work = resampleAnim(in, fps > 0 ? fps : in.fps);
-    const int F = work.frames;
-    const int J = work.joints;
+        for (int f = 0; f < newFrames; ++f) {
+            const float t = (newFrames > 1) ? (static_cast<float>(f) / (newFrames - 1) * duration) : 0.0f;
+            const float srcFrameF = t * in.fps;
+            const int f0 = std::min(in.frames - 1, static_cast<int>(std::floor(srcFrameF)));
+            const int f1 = std::min(in.frames - 1, f0 + 1);
+            const float alpha = srcFrameF - f0;
 
-    if (rootMotion != RootMotion::Preserve) {
-        float pathLen = 0.0f;
-        float px = work.rootPositions[0];
-        float pz = work.rootPositions[2];
-        for (int f = 0; f < F; ++f) {
-            float* p = work.rootPositions.data() + f * 3;
-            if (f > 0) {
-                const float dx = p[0] - px;
-                const float dz = p[2] - pz;
-                pathLen += std::sqrt(dx * dx + dz * dz);
-                px = p[0];
-                pz = p[2];
+            // Interpolate root
+            const float* r0 = in.rootPositions.data() + f0 * 3;
+            const float* r1 = in.rootPositions.data() + f1 * 3;
+            float* dstR = out.rootPositions.data() + f * 3;
+            for (int c = 0; c < 3; ++c) {
+                dstR[c] = r0[c] * (1.0f - alpha) + r1[c] * alpha;
             }
-            p[0] = 0.0f;
-            p[2] = 0.0f;
-        }
-        if (rootMotion == RootMotion::Extract) {
-            std::ostringstream rs;
-            rs << "extracted root path " << pathLen << " units";
-            report = rs.str();
-        } else {
-            report = "in-place (root XZ zeroed)";
-        }
-    }
 
-    // Identity fast path: no float churn when nothing transforms.
-    bool identity = scale == 1.0f;
-    for (int i = 0; identity && i < 3; ++i) {
-        for (int j = 0; j < 3; ++j) {
-            if (basis.m[i][j] != (i == j ? 1.0f : 0.0f)) {
-                identity = false;
+            // Slerp rotations
+            const float* q0 = in.localRotationsXyzw.data() + static_cast<size_t>(f0) * J * 4;
+            const float* q1 = in.localRotationsXyzw.data() + static_cast<size_t>(f1) * J * 4;
+            float* dstQ = out.localRotationsXyzw.data() + static_cast<size_t>(f) * J * 4;
+            for (int j = 0; j < J; ++j) {
+                Quat a{q0[j * 4], q0[j * 4 + 1], q0[j * 4 + 2], q0[j * 4 + 3]};
+                Quat b{q1[j * 4], q1[j * 4 + 1], q1[j * 4 + 2], q1[j * 4 + 3]};
+                // dot product
+                float dot = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+                if (dot < 0.0f) {
+                    b.x = -b.x; b.y = -b.y; b.z = -b.z; b.w = -b.w;
+                    dot = -dot;
+                }
+                Quat res;
+                if (dot > 0.9995f) {
+                    res = {a.x + alpha * (b.x - a.x), a.y + alpha * (b.y - a.y),
+                           a.z + alpha * (b.z - a.z), a.w + alpha * (b.w - a.w)};
+                } else {
+                    const float theta = std::acos(dot);
+                    const float sinTheta = std::sin(theta);
+                    const float wa = std::sin((1.0f - alpha) * theta) / sinTheta;
+                    const float wb = std::sin(alpha * theta) / sinTheta;
+                    res = {a.x * wa + b.x * wb, a.y * wa + b.y * wb,
+                           a.z * wa + b.z * wb, a.w * wa + b.w * wb};
+                }
+                res = quatNormalize(res);
+                dstQ[j * 4 + 0] = res.x;
+                dstQ[j * 4 + 1] = res.y;
+                dstQ[j * 4 + 2] = res.z;
+                dstQ[j * 4 + 3] = res.w;
             }
         }
     }
-    if (identity) {
-        return work;
-    }
 
-    const Mat3 ct = mat3Transpose(basis);
-    auto xformPos = [&](float x, float y, float z, float* out) {
-        out[0] = (basis.m[0][0] * x + basis.m[0][1] * y + basis.m[0][2] * z) * scale;
-        out[1] = (basis.m[1][0] * x + basis.m[1][1] * y + basis.m[1][2] * z) * scale;
-        out[2] = (basis.m[2][0] * x + basis.m[2][1] * y + basis.m[2][2] * z) * scale;
-    };
+    // Apply scale & basis transformation to offsets
+    const Mat3 basisT = mat3Transpose(basis);
     for (int j = 0; j < J; ++j) {
-        const auto& o = work.offsets[j];
-        float t[3];
-        xformPos(o[0], o[1], o[2], t);
-        work.offsets[j] = {t[0], t[1], t[2]};
+        const auto& o = out.offsets[j];
+        float vx = o[0] * scale;
+        float vy = o[1] * scale;
+        float vz = o[2] * scale;
+        out.offsets[j][0] = basis.m[0][0] * vx + basis.m[0][1] * vy + basis.m[0][2] * vz;
+        out.offsets[j][1] = basis.m[1][0] * vx + basis.m[1][1] * vy + basis.m[1][2] * vz;
+        out.offsets[j][2] = basis.m[2][0] * vx + basis.m[2][1] * vy + basis.m[2][2] * vz;
     }
-    for (size_t k = 0; k < work.localRotationsXyzw.size() / 4; ++k) {
-        const float* q = work.localRotationsXyzw.data() + k * 4;
-        Mat3 r = mat3FromQuat({q[0], q[1], q[2], q[3]});
-        Quat nq = quatFromMat3(mat3Mul(mat3Mul(basis, r), ct));
-        float* d = work.localRotationsXyzw.data() + k * 4;
-        d[0] = nq.x;
-        d[1] = nq.y;
-        d[2] = nq.z;
-        d[3] = nq.w;
+
+    // Apply basis to rotations & roots
+    const float initRootX = out.rootPositions.empty() ? 0.0f : out.rootPositions[0];
+    const float initRootZ = out.rootPositions.empty() ? 0.0f : out.rootPositions[2];
+
+    for (int f = 0; f < out.frames; ++f) {
+        float* r = out.rootPositions.data() + f * 3;
+        float rx = r[0] * scale;
+        float ry = r[1] * scale;
+        float rz = r[2] * scale;
+
+        if (rootMotion == RootMotion::LockX) {
+            rx = initRootX * scale;
+        } else if (rootMotion == RootMotion::LockXZ) {
+            rx = initRootX * scale;
+            rz = initRootZ * scale;
+        } else if (rootMotion == RootMotion::Zero) {
+            rx = 0.0f;
+            ry = 0.0f;
+            rz = 0.0f;
+        }
+
+        r[0] = basis.m[0][0] * rx + basis.m[0][1] * ry + basis.m[0][2] * rz;
+        r[1] = basis.m[1][0] * rx + basis.m[1][1] * ry + basis.m[1][2] * rz;
+        r[2] = basis.m[2][0] * rx + basis.m[2][1] * ry + basis.m[2][2] * rz;
+
+        float* qPtr = out.localRotationsXyzw.data() + static_cast<size_t>(f) * J * 4;
+        for (int j = 0; j < J; ++j) {
+            Quat q{qPtr[j * 4], qPtr[j * 4 + 1], qPtr[j * 4 + 2], qPtr[j * 4 + 3]};
+            Mat3 m = mat3FromQuat(q);
+            Mat3 mPrime = mat3Mul(basis, mat3Mul(m, basisT));
+            Quat qPrime = quatFromMat3(mPrime);
+            qPtr[j * 4 + 0] = qPrime.x;
+            qPtr[j * 4 + 1] = qPrime.y;
+            qPtr[j * 4 + 2] = qPrime.z;
+            qPtr[j * 4 + 3] = qPrime.w;
+        }
     }
-    for (int f = 0; f < F; ++f) {
-        const float* p = work.rootPositions.data() + f * 3;
-        float t[3];
-        xformPos(p[0], p[1], p[2], t);
-        float* d = work.rootPositions.data() + f * 3;
-        d[0] = t[0];
-        d[1] = t[1];
-        d[2] = t[2];
-    }
-    return work;
+
+    std::ostringstream ss;
+    ss << "Export prepared: " << out.frames << " frames at " << out.fps << " FPS (scale=" << scale << ")\n";
+    report = ss.str();
+    return out;
 }
 
 } // namespace studio

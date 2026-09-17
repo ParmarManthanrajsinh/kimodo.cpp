@@ -96,12 +96,20 @@ void KimodoEngine::run(std::string prompt, GenerationParams params) {
         textBundle = textBundle_;
     }
     if (!adapter_.isLoaded()) {
+        if (motionPath.empty()) {
+            std::lock_guard<std::mutex> lock(mutex_);
+            message_ = "No motion model installed. Please open Models page to download or import SOMA weights.";
+            status_.store(EngineStatus::Error);
+            Logger::instance().error("Kimodo load aborted: No motion model installed (motion_gguf path is empty). Open Models page.");
+            return;
+        }
+
         status_.store(EngineStatus::LoadingModel);
         {
             std::lock_guard<std::mutex> lock(mutex_);
             message_ = "Loading model...";
         }
-        Logger::instance().info("Kimodo: loading model");
+        Logger::instance().info("Kimodo: loading model from " + motionPath);
         std::string error;
         if (!adapter_.load(motionPath, textBundle, error)) {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -110,7 +118,7 @@ void KimodoEngine::run(std::string prompt, GenerationParams params) {
             Logger::instance().error("Kimodo load failed: " + error);
             return;
         }
-        Logger::instance().info("Kimodo: model loaded");
+        Logger::instance().info("Kimodo: model loaded successfully");
     }
 
     status_.store(EngineStatus::Generating);

@@ -46,6 +46,14 @@ void AnimationPlayer::scrub(float timeSec) {
     sample();
 }
 
+void AnimationPlayer::stepFrame(int delta) {
+    if (!hasAnimation() || anim_.fps <= 0.0f) {
+        return;
+    }
+    float dt = static_cast<float>(delta) / anim_.fps;
+    scrub(time_ + dt);
+}
+
 int AnimationPlayer::frame() const {
     if (!hasAnimation()) {
         return 0;

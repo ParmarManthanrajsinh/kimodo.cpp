@@ -1,21 +1,16 @@
 #include "export/BVHExporter.h"
 
+#include <algorithm>
 #include <cmath>
-#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 
 namespace studio {
-namespace {
 
-// XYZ Euler (degrees) from quat, matching Xrotation Yrotation Zrotation
-// channel order with R = Rz*Ry*Rx (standard BVH XYZ). Normalizes input,
-// guards non-finite, stable near gimbal (|m20|>=0.99999). Deterministic.
-void quatToEulerXYZ(float x, float y, float z, float w, float& ex, float& ey,
-                    float& ez) {
-    if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) ||
-        !std::isfinite(w)) {
+void BVHExporter::quatToEulerXYZ(float x, float y, float z, float w, float& ex, float& ey,
+                                 float& ez) {
+    if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) || !std::isfinite(w)) {
         ex = ey = ez = 0.0f;
         return;
     }
@@ -40,50 +35,69 @@ void quatToEulerXYZ(float x, float y, float z, float w, float& ex, float& ey,
     const float m12 = 2 * (yz - wx);
     const float m11 = 1 - 2 * (xx + zz);
     constexpr float kDeg = 57.29577951308232f;
-    ey = std::asin(std::min(1.0f, std::max(-1.0f, -m20))) * kDeg;
+    ey = std::asin(std::clamp(-m20, -1.0f, 1.0f)) * kDeg;
     if (std::abs(m20) < 0.99999f) {
         ex = std::atan2(m21, m22) * kDeg;
         ez = std::atan2(m10, m00) * kDeg;
     } else {
-        // Gimbal: ez=0, ex carries roll (R = Rz*Ry*Rx convention).
+        // Gimbal lock singularity handling
         ex = std::atan2(-m12, m11) * kDeg;
         ez = 0.0f;
     }
-    (void)zz;
 }
 
+namespace {
+
 std::string ftoa(float v) {
+    if (!std::isfinite(v)) return "0.0";
     std::ostringstream ss;
-    ss << v;
-    return ss.str();
+    ss.precision(6);
+    ss << std::fixed << v;
+    std::string str = ss.str();
+    // Trim trailing zeros after decimal point
+    if (str.find('.') != std::string::npos) {
+        while (str.back() == '0') str.pop_back();
+        if (str.back() == '.') str.push_back('0');
+    }
+    return str;
 }
 
 } // namespace
 
 bool BVHExporter::exportAnimation(const Animation& animation,
                                   const ExportOptions& options, std::string& error) {
+    return exportWithRange(animation, options, -1, -1, error, &report_);
+}
+
+bool BVHExporter::exportWithRange(const Animation& animation, const ExportOptions& options,
+                                  int startFrame, int endFrame, std::string& error,
+                                  std::string* report) {
     if (animation.empty()) {
-        error = "animation empty";
+        error = "Animation is empty";
         return false;
     }
     const int J = animation.joints;
     if (static_cast<int>(animation.parents.size()) != J ||
         static_cast<int>(animation.offsets.size()) != J ||
         static_cast<int>(animation.jointNames.size()) != J) {
-        error = "animation topology incomplete";
+        error = "Animation hierarchy incomplete";
         return false;
     }
     const float fps = options.fps > 0 ? options.fps : animation.fps;
     if (fps <= 0) {
-        error = "invalid fps";
+        error = "Invalid FPS";
         return false;
     }
+
     std::string preReport;
-    const Animation work = prepareExport(animation, options.fps > 0 ? options.fps : animation.fps,
-                                         options.rootScale, options.basis,
-                                         options.rootMotion, preReport);
-    report_ = preReport;
-    const int F = work.frames;
+    const Animation work = prepareExport(animation, fps, options.rootScale,
+                                         options.basis, options.rootMotion, preReport);
+    if (report) *report = preReport;
+
+    const int totalF = work.frames;
+    int f0 = (startFrame >= 0 && startFrame < totalF) ? startFrame : 0;
+    int f1 = (endFrame >= f0 && endFrame < totalF) ? endFrame : (totalF - 1);
+    const int outFrames = (f1 - f0 + 1);
 
     std::vector<std::vector<int>> children(J);
     int rootJoint = 0;
@@ -96,8 +110,7 @@ bool BVHExporter::exportAnimation(const Animation& animation,
         }
     }
 
-    // MOTION rows follow joint index order; require it to be a valid
-    // depth-first preorder of the hierarchy (true for all our profiles).
+    // Verify depth-first ordering
     {
         std::vector<int> order;
         std::vector<int> stack{rootJoint};
@@ -111,7 +124,7 @@ bool BVHExporter::exportAnimation(const Animation& animation,
         }
         for (int j = 0; j < J; ++j) {
             if (order[j] != j) {
-                error = "joint order is not depth-first; unsupported topology";
+                error = "Joint order is not depth-first preorder";
                 return false;
             }
         }
@@ -119,33 +132,35 @@ bool BVHExporter::exportAnimation(const Animation& animation,
 
     std::ostringstream out;
     out << "HIERARCHY\n";
-    // Iterative DFS with explicit indent.
-    struct Frame {
+
+    struct FrameItem {
         int joint;
         size_t childIdx;
         bool opened;
     };
-    std::vector<Frame> stack{{rootJoint, 0, false}};
+    std::vector<FrameItem> stack{{rootJoint, 0, false}};
     auto indent = [](int depth) { return std::string(static_cast<size_t>(depth) * 2, ' '); };
-    // Track depth via stack size.
+
     while (!stack.empty()) {
-        Frame& fr = stack.back();
+        FrameItem& fr = stack.back();
         const int depth = static_cast<int>(stack.size()) - 1;
         const int j = fr.joint;
         if (!fr.opened) {
             fr.opened = true;
             const auto& o = work.offsets[j];
             if (depth == 0) {
-                out << "ROOT " << work.jointNames[j] << "\n" << indent(depth + 1)
-                    << "{\n" << indent(depth + 2) << "OFFSET " << ftoa(o[0]) << " "
-                    << ftoa(o[1]) << " " << ftoa(o[2]) << "\n" << indent(depth + 2)
-                    << "CHANNELS 6 Xposition Yposition Zposition Xrotation Yrotation "
-                       "Zrotation\n";
+                out << "ROOT " << work.jointNames[j] << "\n"
+                    << indent(depth + 1) << "{\n"
+                    << indent(depth + 2) << "OFFSET " << ftoa(o[0]) << " "
+                    << ftoa(o[1]) << " " << ftoa(o[2]) << "\n"
+                    << indent(depth + 2)
+                    << "CHANNELS 6 Xposition Yposition Zposition Xrotation Yrotation Zrotation\n";
             } else {
                 out << indent(depth) << "JOINT " << work.jointNames[j] << "\n"
-                    << indent(depth) << "{\n" << indent(depth + 1) << "OFFSET " << ftoa(o[0])
-                    << " " << ftoa(o[1]) << " " << ftoa(o[2]) << "\n" << indent(depth + 1)
-                    << "CHANNELS 3 Xrotation Yrotation Zrotation\n";
+                    << indent(depth) << "{\n"
+                    << indent(depth + 1) << "OFFSET " << ftoa(o[0]) << " "
+                    << ftoa(o[1]) << " " << ftoa(o[2]) << "\n"
+                    << indent(depth + 1) << "CHANNELS 3 Xrotation Yrotation Zrotation\n";
             }
         }
         if (fr.childIdx < children[j].size()) {
@@ -153,41 +168,37 @@ bool BVHExporter::exportAnimation(const Animation& animation,
             stack.push_back({c, 0, false});
         } else {
             if (children[j].empty()) {
-                // End Site extends along the bone direction (never zero-length).
                 const auto& o = work.offsets[j];
-                float len =
-                    std::sqrt(o[0] * o[0] + o[1] * o[1] + o[2] * o[2]);
+                float len = std::sqrt(o[0] * o[0] + o[1] * o[1] + o[2] * o[2]);
                 float dx = 0, dy = -1, dz = 0;
                 if (len > 1e-6f) {
                     dx = o[0] / len;
                     dy = o[1] / len;
                     dz = o[2] / len;
                 }
-                const float ext = std::max(0.1f, len * 0.25f);
-                out << indent(depth + 1) << "End Site\n" << indent(depth + 1) << "{\n"
+                const float ext = std::max(0.05f, len * 0.25f);
+                out << indent(depth + 1) << "End Site\n"
+                    << indent(depth + 1) << "{\n"
                     << indent(depth + 2) << "OFFSET " << ftoa(dx * ext) << " "
-                    << ftoa(dy * ext) << " " << ftoa(dz * ext) << "\n" << indent(depth + 1)
-                    << "}\n";
+                    << ftoa(dy * ext) << " " << ftoa(dz * ext) << "\n"
+                    << indent(depth + 1) << "}\n";
             }
             out << indent(depth) << "}\n";
             stack.pop_back();
         }
     }
 
-    out << "MOTION\nFrames: " << F << "\nFrame Time: " << ftoa(1.0f / fps) << "\n";
-    for (int f = 0; f < F; ++f) {
+    out << "MOTION\nFrames: " << outFrames << "\nFrame Time: " << ftoa(1.0f / fps) << "\n";
+    for (int f = f0; f <= f1; ++f) {
         bool first = true;
         for (int j = 0; j < J; ++j) {
-            if (!first) {
-                out << " ";
-            }
+            if (!first) out << " ";
             first = false;
             if (j == rootJoint) {
                 const float* p = work.rootPositions.data() + f * 3;
                 out << ftoa(p[0]) << " " << ftoa(p[1]) << " " << ftoa(p[2]) << " ";
             }
-            const float* q =
-                work.localRotationsXyzw.data() + (static_cast<size_t>(f) * J + j) * 4;
+            const float* q = work.localRotationsXyzw.data() + (static_cast<size_t>(f) * J + j) * 4;
             float ex, ey, ez;
             quatToEulerXYZ(q[0], q[1], q[2], q[3], ex, ey, ez);
             out << ftoa(ex) << " " << ftoa(ey) << " " << ftoa(ez);
@@ -196,16 +207,15 @@ bool BVHExporter::exportAnimation(const Animation& animation,
     }
 
     std::error_code ec;
-    std::filesystem::create_directories(
-        std::filesystem::path(options.path).parent_path(), ec);
+    std::filesystem::create_directories(std::filesystem::path(options.path).parent_path(), ec);
     std::ofstream file(options.path, std::ios::trunc);
     if (!file) {
-        error = "cannot open output file";
+        error = "Cannot open output file: " + options.path;
         return false;
     }
     file << out.str();
     if (!file) {
-        error = "write failed";
+        error = "Failed writing BVH output to " + options.path;
         return false;
     }
     return true;
