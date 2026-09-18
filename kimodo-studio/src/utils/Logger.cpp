@@ -5,12 +5,12 @@
 
 namespace studio {
 
-Logger& Logger::instance() {
-    static Logger inst;
+FLogger& FLogger::GetInstance() {
+    static FLogger inst;
     return inst;
 }
 
-std::filesystem::path Logger::defaultLogFile() {
+std::filesystem::path FLogger::DefaultLogFile() {
     std::filesystem::path base;
 #if defined(_WIN32)
     if (const char* appdata = std::getenv("LOCALAPPDATA")) {
@@ -28,32 +28,32 @@ std::filesystem::path Logger::defaultLogFile() {
     return base / "kimodo-studio.log";
 }
 
-void Logger::init(const std::filesystem::path& file) {
-    std::lock_guard<std::mutex> lock(mutex_);
+void FLogger::Init(const std::filesystem::path& file) {
+    std::lock_guard<std::mutex> lock(mutex);
     std::error_code ec;
     std::filesystem::create_directories(file.parent_path(), ec);
-    stream_.open(file, std::ios::app);
+    stream.open(file, std::ios::app);
     // Never fails hard: console fallback always works.
 }
 
-const char* Logger::levelName(LogLevel level) {
+const char* FLogger::LevelName(ELogLevel level) {
     switch (level) {
-        case LogLevel::Trace: return "TRACE";
-        case LogLevel::Debug: return "DEBUG";
-        case LogLevel::Info: return "INFO";
-        case LogLevel::Warning: return "WARNING";
-        case LogLevel::Error: return "ERROR";
+        case ELogLevel::Trace: return "TRACE";
+        case ELogLevel::Debug: return "DEBUG";
+        case ELogLevel::Info: return "INFO";
+        case ELogLevel::Warning: return "WARNING";
+        case ELogLevel::Error: return "ERROR";
     }
     return "INFO";
 }
 
-void Logger::log(LogLevel level, const std::string& msg) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    std::string line = std::string("[") + levelName(level) + "] " + msg + "\n";
+void FLogger::Log(ELogLevel level, const std::string& msg) {
+    std::lock_guard<std::mutex> lock(mutex);
+    std::string line = std::string("[") + LevelName(level) + "] " + msg + "\n";
     std::cout << line;
-    if (stream_.is_open()) {
-        stream_ << line;
-        stream_.flush();
+    if (stream.is_open()) {
+        stream << line;
+        stream.flush();
     }
 }
 

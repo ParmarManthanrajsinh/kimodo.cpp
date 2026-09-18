@@ -9,7 +9,7 @@ namespace studio {
 // Minimal Hugging Face HTTP client (plan section 14).
 // Windows: WinHTTP, no third-party deps. HTTPS only.
 // Token is passed per-call and never stored or logged here.
-class HuggingFaceClient {
+class FHuggingFaceClient {
 public:
     struct HttpResult {
         long status = 0;

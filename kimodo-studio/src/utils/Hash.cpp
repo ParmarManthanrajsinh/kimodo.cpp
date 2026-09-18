@@ -9,7 +9,7 @@
 
 namespace studio {
 
-std::string FileHash::sha256(const std::string& path, std::string& error,
+std::string FFileHash::sha256(const std::string& path, std::string& error,
                              ProgressFn progress) {
 #if defined(_WIN32)
     FILE* f = nullptr;

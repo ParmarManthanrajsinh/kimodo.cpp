@@ -8,86 +8,86 @@
 
 namespace studio {
 
-void Viewport::reset() {
-    target_ = {0, 0.76f, 0};
-    yaw_ = 1.57f;
-    pitch_ = 0.05f;
-    dist_ = 2.85f;
-    recomputeCamera();
+void FViewport::Reset() {
+    Target = {0, 0.76f, 0};
+    Yaw = 1.57f;
+    Pitch = 0.05f;
+    dist = 2.85f;
+    RecomputeCamera();
 }
 
-void Viewport::frame() {
-    if (character_ && character_->isLoaded()) {
-        const BoundingBox b = character_->bounds();
-        target_ = Vector3Scale(Vector3Add(b.min, b.max), 0.5f);
+void FViewport::Frame() {
+    if (character && character->IsLoaded()) {
+        const BoundingBox b = character->GetBounds();
+        Target = Vector3Scale(Vector3Add(b.min, b.max), 0.5f);
         float diag = Vector3Distance(b.min, b.max);
-        dist_ = std::max(2.0f, diag * 1.5f);
-    } else if (!pose_.empty()) {
+        dist = std::max(2.0f, diag * 1.5f);
+    } else if (!pose.empty()) {
         Vector3 sum{0, 0, 0};
-        for (const auto& p : pose_) sum = Vector3Add(sum, p);
-        target_ = Vector3Scale(sum, 1.0f / static_cast<float>(pose_.size()));
-        dist_ = 3.5f;
+        for (const auto& p : pose) sum = Vector3Add(sum, p);
+        Target = Vector3Scale(sum, 1.0f / static_cast<float>(pose.size()));
+        dist = 3.5f;
     } else {
-        target_ = {0, 1.0f, 0};
-        dist_ = 3.5f;
+        Target = {0, 1.0f, 0};
+        dist = 3.5f;
     }
-    recomputeCamera();
+    RecomputeCamera();
 }
 
-void Viewport::update(bool mouseOverUi) {
+void FViewport::Update(bool mouseOverUi) {
     const Vector2 delta = GetMouseDelta();
 
     // Camera owns mouse pointer only when ImGui does not capture it
     if (!mouseOverUi) {
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-            yaw_ -= delta.x * 0.005f;
-            pitch_ -= delta.y * 0.005f;
-            if (pitch_ > 1.45f) pitch_ = 1.45f;
-            if (pitch_ < -1.45f) pitch_ = -1.45f;
+            Yaw -= delta.x * 0.005f;
+            Pitch -= delta.y * 0.005f;
+            if (Pitch > 1.45f) Pitch = 1.45f;
+            if (Pitch < -1.45f) Pitch = -1.45f;
         }
         if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE) ||
             (IsMouseButtonDown(MOUSE_BUTTON_RIGHT) && IsKeyDown(KEY_LEFT_SHIFT))) {
-            Vector3 fwd = Vector3Normalize(Vector3Subtract(target_, camera_.position));
-            Vector3 right = Vector3Normalize(Vector3CrossProduct(fwd, camera_.up));
+            Vector3 fwd = Vector3Normalize(Vector3Subtract(Target, camera.position));
+            Vector3 right = Vector3Normalize(Vector3CrossProduct(fwd, camera.up));
             Vector3 up = Vector3CrossProduct(right, fwd);
-            const float s = dist_ * 0.0016f;
-            target_ = Vector3Subtract(target_, Vector3Scale(right, delta.x * s));
-            target_ = Vector3Add(target_, Vector3Scale(up, delta.y * s));
+            const float s = dist * 0.0016f;
+            Target = Vector3Subtract(Target, Vector3Scale(right, delta.x * s));
+            Target = Vector3Add(Target, Vector3Scale(up, delta.y * s));
         }
     }
 
     const float wheel = mouseOverUi ? 0.0f : GetMouseWheelMove();
     if (wheel != 0.0f) {
-        dist_ *= (wheel > 0) ? 0.9f : 1.1f;
-        if (dist_ < 0.5f) dist_ = 0.5f;
-        if (dist_ > 60.0f) dist_ = 60.0f;
+        dist *= (wheel > 0) ? 0.9f : 1.1f;
+        if (dist < 0.5f) dist = 0.5f;
+        if (dist > 60.0f) dist = 60.0f;
     }
 
-    if (IsKeyPressed(KEY_R)) reset();
-    if (IsKeyPressed(KEY_F)) frame();
+    if (IsKeyPressed(KEY_R)) Reset();
+    if (IsKeyPressed(KEY_F)) Frame();
 
-    recomputeCamera();
+    RecomputeCamera();
 }
 
-void Viewport::setProjection(int proj) {
-    projection_ = proj;
-    recomputeCamera();
+void FViewport::SetProjection(int proj) {
+    projection = proj;
+    RecomputeCamera();
 }
 
-void Viewport::recomputeCamera() const {
-    const float cp = std::cos(pitch_);
-    camera_.position = {
-        target_.x + dist_ * cp * std::cos(yaw_),
-        target_.y + dist_ * std::sin(pitch_),
-        target_.z + dist_ * cp * std::sin(yaw_),
+void FViewport::RecomputeCamera() const {
+    const float cp = std::cos(Pitch);
+    camera.position = {
+        Target.x + dist * cp * std::cos(Yaw),
+        Target.y + dist * std::sin(Pitch),
+        Target.z + dist * cp * std::sin(Yaw),
     };
-    camera_.target = target_;
-    camera_.up = {0, 1, 0};
-    camera_.fovy = 45.0f;
-    camera_.projection = (projection_ == 1) ? CAMERA_ORTHOGRAPHIC : CAMERA_PERSPECTIVE;
+    camera.target = Target;
+    camera.up = {0, 1, 0};
+    camera.fovy = 45.0f;
+    camera.projection = (projection == 1) ? CAMERA_ORTHOGRAPHIC : CAMERA_PERSPECTIVE;
 }
 
-void Viewport::drawPose(const std::vector<Vector3>& pose,
+void FViewport::DrawPose(const std::vector<Vector3>& pose,
                          const std::vector<int>& parents, const Vector3& offset,
                          Color joint, Color bone) {
     const int J = static_cast<int>(pose.size());
@@ -107,93 +107,93 @@ void Viewport::drawPose(const std::vector<Vector3>& pose,
     }
 }
 
-void Viewport::cameraBasis(Vector3& right, Vector3& up) const {
-    Vector3 fwd = Vector3Normalize(Vector3Subtract(target_, camera_.position));
+void FViewport::CameraBasis(Vector3& right, Vector3& up) const {
+    Vector3 fwd = Vector3Normalize(Vector3Subtract(Target, camera.position));
     right = Vector3Normalize(Vector3CrossProduct(fwd, Vector3{0, 1, 0}));
     up = Vector3CrossProduct(right, fwd);
 }
 
-void Viewport::drawBoneNames(const Camera3D& cam) const {
-    if (pose_.empty() || jointNames_.empty()) return;
-    const int J = static_cast<int>(std::min(pose_.size(), jointNames_.size()));
+void FViewport::drawBoneNames(const Camera3D& cam) const {
+    if (pose.empty() || jointNames.empty()) return;
+    const int J = static_cast<int>(std::min(pose.size(), jointNames.size()));
 
     // Draw small billboard text for bones
     for (int j = 0; j < J; ++j) {
-        Vector3 pos = Vector3Add(pose_[j], Vector3{0, 0.04f, 0});
+        Vector3 pos = Vector3Add(pose[j], Vector3{0, 0.04f, 0});
         // Project to screen or draw 3D billboard text
         DrawBillboard(cam, GetFontDefault().texture, pos, 0.05f, WHITE);
     }
 }
 
-void Viewport::draw3D() {
-    BeginMode3D(camera_);
+void FViewport::Draw3D() {
+    BeginMode3D(camera);
 
-    if (floorDraw_) {
+    if (bFloorDraw) {
         DrawPlane(Vector3{0, -0.005f, 0}, Vector2{40.0f, 40.0f}, Color{14, 14, 18, 200});
     }
 
-    grid_.draw(gridDraw_, axesDraw_);
+    Grid.Draw(bGridDraw, bAxesDraw);
 
     // Side-by-side debug poses
-    if (!debug_.empty()) {
-        for (const DebugPose& d : debug_) {
-            drawPose(d.pos, d.parents, d.offset, d.joint, d.bone);
+    if (!debug.empty()) {
+        for (const FDebugPose& d : debug) {
+            DrawPose(d.pos, d.parents, d.offset, d.joint, d.bone);
         }
         EndMode3D();
         return;
     }
 
     // Model transform application
-    bool hasModelTransform = (modelPos_.x != 0.0f || modelPos_.y != 0.0f || modelPos_.z != 0.0f ||
-                              modelRot_.x != 0.0f || modelRot_.y != 0.0f || modelRot_.z != 0.0f ||
-                              modelScale_.x != 1.0f || modelScale_.y != 1.0f || modelScale_.z != 1.0f);
+    bool hasModelTransform = (modelPos.x != 0.0f || modelPos.y != 0.0f || modelPos.z != 0.0f ||
+                              modelRot.x != 0.0f || modelRot.y != 0.0f || modelRot.z != 0.0f ||
+                              modelScale.x != 1.0f || modelScale.y != 1.0f || modelScale.z != 1.0f);
     if (hasModelTransform) {
         rlPushMatrix();
-        rlTranslatef(modelPos_.x, modelPos_.y, modelPos_.z);
-        rlRotatef(modelRot_.x, 1, 0, 0);
-        rlRotatef(modelRot_.y, 0, 1, 0);
-        rlRotatef(modelRot_.z, 0, 0, 1);
-        rlScalef(modelScale_.x, modelScale_.y, modelScale_.z);
+        rlTranslatef(modelPos.x, modelPos.y, modelPos.z);
+        rlRotatef(modelRot.x, 1, 0, 0);
+        rlRotatef(modelRot.y, 0, 1, 0);
+        rlRotatef(modelRot.z, 0, 0, 1);
+        rlScalef(modelScale.x, modelScale.y, modelScale.z);
     }
 
     // 1. Draw Skinned 3D Character Mesh
-    if (characterDraw_ && character_ && character_->isLoaded()) {
-        skinRenderer_.drawCharacter(*character_, skinMatrices_, wireframeDraw_);
+    if (bCharacterDraw && character && character->IsLoaded()) {
+        skinRenderer.drawCharacter(*character, skinMatrices, bWireframeDraw);
     }
 
     // 2. Draw Skeleton Bones & Joints (X-Ray overlay through mesh matching Image 2)
-    if (skeletonDraw_) {
-        const int J = static_cast<int>(pose_.size());
+    if (bSkeletonDraw) {
+        const int J = static_cast<int>(pose.size());
         const Color colBoneGhost = Color{95, 175, 235, 140};
         const Color colJointGhost = Color{145, 195, 245, 180};
         const Color colBoneSolid = Color{95, 175, 235, 240};
         const Color colJointSolid = Color{145, 195, 245, 255};
 
-        if (J > 0 && poseParents_.size() == pose_.size()) {
+        if (J > 0 && poseParents.size() == pose.size()) {
             // Pass 1: X-Ray overlay visible through character mesh
             rlDisableDepthTest();
             for (int j = 0; j < J; ++j) {
-                const int p = poseParents_[j];
+                const int p = poseParents[j];
                 if (p >= 0 && p < J) {
-                    DrawCapsule(pose_[p], pose_[j], 0.018f, 8, 8, colBoneGhost);
+                    DrawCapsule(pose[p], pose[j], 0.018f, 8, 8, colBoneGhost);
                 }
             }
             for (int j = 0; j < J; ++j) {
-                DrawSphere(pose_[j], 0.024f, colJointGhost);
+                DrawSphere(pose[j], 0.024f, colJointGhost);
             }
             rlEnableDepthTest();
 
             // Pass 2: Solid depth-tested pass
             for (int j = 0; j < J; ++j) {
-                const int p = poseParents_[j];
+                const int p = poseParents[j];
                 if (p >= 0 && p < J) {
-                    DrawCapsule(pose_[p], pose_[j], 0.018f, 8, 8, colBoneSolid);
+                    DrawCapsule(pose[p], pose[j], 0.018f, 8, 8, colBoneSolid);
                 }
             }
             for (int j = 0; j < J; ++j) {
-                DrawSphere(pose_[j], 0.024f, colJointSolid);
+                DrawSphere(pose[j], 0.024f, colJointSolid);
             }
-        } else if (!characterDraw_ || !character_ || !character_->isLoaded()) {
+        } else if (!bCharacterDraw || !character || !character->IsLoaded()) {
             // Standby origin rig stub
             DrawSphere(Vector3{0, 1.0f, 0}, 0.045f, colJointSolid);
             DrawSphere(Vector3{0, 1.6f, 0}, 0.035f, colJointSolid);
@@ -202,8 +202,8 @@ void Viewport::draw3D() {
     }
 
     // 3. Draw Bone Names if enabled
-    if (boneNamesDraw_) {
-        drawBoneNames(camera_);
+    if (bBoneNamesDraw) {
+        drawBoneNames(camera);
     }
 
     if (hasModelTransform) {
@@ -213,8 +213,8 @@ void Viewport::draw3D() {
     EndMode3D();
 }
 
-void Viewport::drawOrientationGizmo(float centerX, float centerY) const {
-    Vector3 fwd = Vector3Normalize(Vector3Subtract(target_, camera_.position));
+void FViewport::DrawOrientationGizmo(float centerX, float centerY) const {
+    Vector3 fwd = Vector3Normalize(Vector3Subtract(Target, camera.position));
     Vector3 right = Vector3Normalize(Vector3CrossProduct(fwd, Vector3{0, 1, 0}));
     Vector3 up = Vector3CrossProduct(right, fwd);
 

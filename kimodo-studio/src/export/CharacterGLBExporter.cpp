@@ -36,13 +36,13 @@ std::string jsonEscape(const std::string& s) {
 
 } // namespace
 
-bool CharacterGLBExporter::exportCharacterGLB(const CharacterAsset& character,
-                                             const Animation& animation,
-                                             const CharacterBoneMap& mapping,
-                                             const ExportOptions& options,
+bool FCharacterGLBExporter::exportCharacterGLB(const FCharacterAsset& character,
+                                             const FAnimation& animation,
+                                             const FCharacterBoneMap& mapping,
+                                             const FExportOptions& options,
                                              std::string& error,
                                              std::string* report) {
-    if (!character.isLoaded() || character.skinningData().vertices.empty()) {
+    if (!character.IsLoaded() || character.GetSkinningData().vertices.empty()) {
         error = "Character is empty or not loaded";
         return false;
     }
@@ -51,9 +51,9 @@ bool CharacterGLBExporter::exportCharacterGLB(const CharacterAsset& character,
         return false;
     }
 
-    const size_t vcount = character.skinningData().vertices.size();
-    const size_t icount = character.skinningData().indices.size();
-    const size_t bcount = character.bones().size();
+    const size_t vcount = character.GetSkinningData().vertices.size();
+    const size_t icount = character.GetSkinningData().indices.size();
+    const size_t bcount = character.GetBones().size();
     const int F = animation.frames;
     const float fps = options.fps > 0 ? options.fps : animation.fps;
 
@@ -63,7 +63,7 @@ bool CharacterGLBExporter::exportCharacterGLB(const CharacterAsset& character,
     std::vector<float> posData(vcount * 3);
     Vector3 minPos{1e9f, 1e9f, 1e9f}, maxPos{-1e9f, -1e9f, -1e9f};
     for (size_t i = 0; i < vcount; ++i) {
-        const auto& p = character.skinningData().vertices[i].position;
+        const auto& p = character.GetSkinningData().vertices[i].position;
         posData[i * 3 + 0] = p.x;
         posData[i * 3 + 1] = p.y;
         posData[i * 3 + 2] = p.z;
@@ -75,7 +75,7 @@ bool CharacterGLBExporter::exportCharacterGLB(const CharacterAsset& character,
     // 2. Pack Normals (vec3 float)
     std::vector<float> normData(vcount * 3);
     for (size_t i = 0; i < vcount; ++i) {
-        const auto& n = character.skinningData().vertices[i].normal;
+        const auto& n = character.GetSkinningData().vertices[i].normal;
         normData[i * 3 + 0] = n.x;
         normData[i * 3 + 1] = n.y;
         normData[i * 3 + 2] = n.z;
@@ -85,7 +85,7 @@ bool CharacterGLBExporter::exportCharacterGLB(const CharacterAsset& character,
     // 3. Pack UVs (vec2 float)
     std::vector<float> uvData(vcount * 2);
     for (size_t i = 0; i < vcount; ++i) {
-        const auto& u = character.skinningData().vertices[i].texcoord;
+        const auto& u = character.GetSkinningData().vertices[i].texcoord;
         uvData[i * 2 + 0] = u.x;
         uvData[i * 2 + 1] = u.y;
     }
@@ -95,7 +95,7 @@ bool CharacterGLBExporter::exportCharacterGLB(const CharacterAsset& character,
     std::vector<uint16_t> jointsData(vcount * 4);
     for (size_t i = 0; i < vcount; ++i) {
         for (int k = 0; k < 4; ++k) {
-            jointsData[i * 4 + k] = character.skinningData().vertices[i].boneIndices[k];
+            jointsData[i * 4 + k] = character.GetSkinningData().vertices[i].boneIndices[k];
         }
     }
     size_t offJoints = bin.append(jointsData.data(), jointsData.size() * sizeof(uint16_t));
@@ -104,21 +104,21 @@ bool CharacterGLBExporter::exportCharacterGLB(const CharacterAsset& character,
     std::vector<float> weightsData(vcount * 4);
     for (size_t i = 0; i < vcount; ++i) {
         for (int k = 0; k < 4; ++k) {
-            weightsData[i * 4 + k] = character.skinningData().vertices[i].boneWeights[k];
+            weightsData[i * 4 + k] = character.GetSkinningData().vertices[i].boneWeights[k];
         }
     }
     size_t offWeights = bin.append(weightsData.data(), weightsData.size() * sizeof(float));
 
     // 6. Pack Indices (scalar unsigned int)
     std::vector<uint32_t> idxData(icount);
-    for (size_t i = 0; i < icount; ++i) idxData[i] = character.skinningData().indices[i];
+    for (size_t i = 0; i < icount; ++i) idxData[i] = character.GetSkinningData().indices[i];
     size_t offIndices = bin.append(idxData.data(), idxData.size() * sizeof(uint32_t));
 
     // 7. Pack Inverse Bind Matrices (mat4 float)
     std::vector<float> ibmData(bcount * 16);
     for (size_t b = 0; b < bcount; ++b) {
-        const Matrix& m = (b < character.skinningData().inverseBindMatrices.size()) ?
-                          character.skinningData().inverseBindMatrices[b] : MatrixIdentity();
+        const Matrix& m = (b < character.GetSkinningData().inverseBindMatrices.size()) ?
+                          character.GetSkinningData().inverseBindMatrices[b] : MatrixIdentity();
         float* dst = &ibmData[b * 16];
         dst[0] = m.m0;  dst[1] = m.m1;  dst[2] = m.m2;  dst[3] = m.m3;
         dst[4] = m.m4;  dst[5] = m.m5;  dst[6] = m.m6;  dst[7] = m.m7;
@@ -141,7 +141,7 @@ bool CharacterGLBExporter::exportCharacterGLB(const CharacterAsset& character,
     std::vector<size_t> offRots(bcount);
     for (size_t b = 0; b < bcount; ++b) {
         std::vector<float> rotData(F * 4);
-        const auto& bone = character.bones()[b];
+        const auto& bone = character.GetBones()[b];
         auto mapIt = mapping.find(bone.name);
         int srcJ = -1;
         if (mapIt != mapping.end() && !mapIt->second.empty() && mapIt->second != "(none)") {
@@ -189,13 +189,13 @@ bool CharacterGLBExporter::exportCharacterGLB(const CharacterAsset& character,
 
     // Joint Nodes (Node 1 to 1 + bcount)
     for (size_t b = 0; b < bcount; ++b) {
-        const auto& bone = character.bones()[b];
+        const auto& bone = character.GetBones()[b];
         ss << "    {\"name\": \"" << jsonEscape(bone.name) << "\"";
 
         // Collect children
         std::vector<int> childNodes;
         for (size_t c = 0; c < bcount; ++c) {
-            if (character.bones()[c].parent == static_cast<int>(b)) {
+            if (character.GetBones()[c].parent == static_cast<int>(b)) {
                 childNodes.push_back(static_cast<int>(1 + c));
             }
         }

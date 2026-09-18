@@ -13,7 +13,7 @@ namespace studio {
 
 inline constexpr int kSomaJoints = 30;
 
-struct Soma30Spec {
+struct FSoma30Spec {
     static std::array<std::string_view, kSomaJoints> names;
     static std::array<int, kSomaJoints> parents;
     static std::array<std::array<float, 3>, kSomaJoints> offsets;
@@ -22,21 +22,21 @@ struct Soma30Spec {
 // Forward kinematics: local quats [J,4] xyzw (parent-relative) + root
 // translation -> world positions. Matches kimodo decode convention:
 // world(j) = world(parent) * local(j), root world pos = rootPositions.
-class Skeleton {
+class FSkeleton {
 public:
     // localXyzw: joints*4 floats, root: 3 floats. out: joints Vector3.
-    static void forwardKinematics(const float* localXyzw, const float* root,
+    static void ForwardKinematics(const float* localXyzw, const float* root,
                                   std::vector<Vector3>& out);
-    static void forwardKinematicsGeneral(
+    static void ForwardKinematicsGeneral(
         const float* localXyzw, const float* root, const std::vector<int>& parents,
         const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& out);
     // Same, but also returns world orientations (parent-composed local quats).
-    static void forwardKinematicsFull(
+    static void ForwardKinematicsFull(
         const float* localXyzw, const float* root, const std::vector<int>& parents,
         const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& outPos,
         std::vector<Quaternion>& outRot);
     static const std::array<int, kSomaJoints>& parents() {
-        return Soma30Spec::parents;
+        return FSoma30Spec::parents;
     }
 };
 

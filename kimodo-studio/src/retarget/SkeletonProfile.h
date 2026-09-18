@@ -7,21 +7,21 @@
 
 namespace studio {
 
-enum class RetargetMode {
+enum class ERetargetMode {
     GenericLocal
 };
 
-struct SkeletonProfile {
+struct FSkeletonProfile {
     std::string id;
     std::string name;
-    RetargetMode mode = RetargetMode::GenericLocal;
+    ERetargetMode mode = ERetargetMode::GenericLocal;
     std::vector<std::string> joints;
     std::vector<int> parents;
     std::vector<std::pair<std::string, std::string>> defaultMap;
     std::vector<std::array<float, 3>> offsets;
 };
 
-const std::vector<SkeletonProfile>& targetProfiles();
-const SkeletonProfile* findProfile(const std::string& id);
+const std::vector<FSkeletonProfile>& targetProfiles();
+const FSkeletonProfile* FindProfile(const std::string& id);
 
 } // namespace studio

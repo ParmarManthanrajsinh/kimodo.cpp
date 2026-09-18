@@ -8,28 +8,28 @@
 
 namespace studio {
 
-class Viewport;
-class KimodoEngine;
-class AnimationPlayer;
-class AnimationLibrary;
-struct LibraryEntry;
-class CharacterLibrary;
-class ModelManager;
-class Toasts;
+class FViewport;
+class FKimodoEngine;
+class FAnimationPlayer;
+class FAnimationLibrary;
+struct FLibraryEntry;
+class FCharacterLibrary;
+class FModelManager;
+class SToasts;
 
-class UIManager {
+class FUIManager {
 public:
-    using CaptureFn = std::function<void(const LibraryEntry&)>;
+    using CaptureFn = std::function<void(const FLibraryEntry&)>;
 
-    void draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
-              AnimationPlayer& player, AnimationLibrary& library,
-              CharacterLibrary& characters, ModelManager& models,
-              Toasts& toasts, CaptureFn capture = {});
+    void Draw(FAppState& state, FViewport& viewport, FKimodoEngine& engine,
+              FAnimationPlayer& player, FAnimationLibrary& library,
+              FCharacterLibrary& characters, FModelManager& models,
+              SToasts& toasts, CaptureFn capture = {});
 
-    void shutdown();
+    void Shutdown();
 
 private:
-    std::map<std::string, Texture2D> thumbs_;
+    std::map<std::string, Texture2D> thumbs;
 };
 
 } // namespace studio

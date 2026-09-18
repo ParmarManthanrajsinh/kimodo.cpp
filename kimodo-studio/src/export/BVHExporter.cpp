@@ -8,7 +8,7 @@
 
 namespace studio {
 
-void BVHExporter::quatToEulerXYZ(float x, float y, float z, float w, float& ex, float& ey,
+void FBVHExporter::QuatToEulerXYZ(float x, float y, float z, float w, float& ex, float& ey,
                                  float& ez) {
     if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) || !std::isfinite(w)) {
         ex = ey = ez = 0.0f;
@@ -64,12 +64,12 @@ std::string ftoa(float v) {
 
 } // namespace
 
-bool BVHExporter::exportAnimation(const Animation& animation,
-                                  const ExportOptions& options, std::string& error) {
-    return exportWithRange(animation, options, -1, -1, error, &report_);
+bool FBVHExporter::ExportAnimation(const FAnimation& animation,
+                                  const FExportOptions& options, std::string& error) {
+    return ExportWithRange(animation, options, -1, -1, error, &report);
 }
 
-bool BVHExporter::exportWithRange(const Animation& animation, const ExportOptions& options,
+bool FBVHExporter::ExportWithRange(const FAnimation& animation, const FExportOptions& options,
                                   int startFrame, int endFrame, std::string& error,
                                   std::string* report) {
     if (animation.empty()) {
@@ -90,7 +90,7 @@ bool BVHExporter::exportWithRange(const Animation& animation, const ExportOption
     }
 
     std::string preReport;
-    const Animation work = prepareExport(animation, fps, options.rootScale,
+    const FAnimation work = prepareExport(animation, fps, options.rootScale,
                                          options.basis, options.rootMotion, preReport);
     if (report) *report = preReport;
 
@@ -200,7 +200,7 @@ bool BVHExporter::exportWithRange(const Animation& animation, const ExportOption
             }
             const float* q = work.localRotationsXyzw.data() + (static_cast<size_t>(f) * J + j) * 4;
             float ex, ey, ez;
-            quatToEulerXYZ(q[0], q[1], q[2], q[3], ex, ey, ez);
+            QuatToEulerXYZ(q[0], q[1], q[2], q[3], ex, ey, ez);
             out << ftoa(ex) << " " << ftoa(ey) << " " << ftoa(ez);
         }
         out << "\n";

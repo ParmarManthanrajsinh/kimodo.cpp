@@ -54,7 +54,7 @@ const std::vector<std::array<float, 3>>& getPresentationOffsets() {
         std::vector<std::array<float, 3>> offs(getPresentationNames().size(), {0, 0, 0});
         // Core 30 offsets from Soma30Spec
         for (int i = 0; i < kSomaJoints; ++i) {
-            offs[i] = Soma30Spec::offsets[i];
+            offs[i] = FSoma30Spec::offsets[i];
         }
         // Extended finger default rest offsets (relative to parents)
         // Left fingers (pointing +X / +Z)
@@ -97,19 +97,19 @@ const std::vector<std::array<float, 3>>& getPresentationOffsets() {
 
 } // namespace
 
-const std::vector<std::string>& SomaPresentationSpec::jointNames() {
+const std::vector<std::string>& FSomaPresentationSpec::jointNames() {
     return getPresentationNames();
 }
 
-const std::vector<int>& SomaPresentationSpec::parents() {
+const std::vector<int>& FSomaPresentationSpec::parents() {
     return getPresentationParents();
 }
 
-const std::vector<std::array<float, 3>>& SomaPresentationSpec::defaultOffsets() {
+const std::vector<std::array<float, 3>>& FSomaPresentationSpec::defaultOffsets() {
     return getPresentationOffsets();
 }
 
-int SomaPresentationSpec::jointIndex(const std::string& name) {
+int FSomaPresentationSpec::jointIndex(const std::string& name) {
     const auto& names = getPresentationNames();
     for (size_t i = 0; i < names.size(); ++i) {
         if (names[i] == name) return static_cast<int>(i);
@@ -117,7 +117,7 @@ int SomaPresentationSpec::jointIndex(const std::string& name) {
     return -1;
 }
 
-bool SomaPresentation::expandSoma30(const Animation& in, Animation& out, std::string& error) {
+bool FSomaPresentation::expandSoma30(const FAnimation& in, FAnimation& out, std::string& error) {
     if (in.empty() || in.joints < kSomaJoints) {
         error = "Invalid SOMA30 source animation";
         return false;
@@ -163,7 +163,7 @@ bool SomaPresentation::expandSoma30(const Animation& in, Animation& out, std::st
     return true;
 }
 
-SomaPresentation::ValidationResult SomaPresentation::validate(const Animation& anim) {
+FSomaPresentation::ValidationResult FSomaPresentation::validate(const FAnimation& anim) {
     ValidationResult res;
     if (anim.empty()) {
         res.valid = false;
@@ -235,7 +235,7 @@ SomaPresentation::ValidationResult SomaPresentation::validate(const Animation& a
         for (int j = 0; j < J; ++j) identRots[j * 4 + 3] = 1.0f;
         const float origin[3] = {0.0f, 0.95f, 0.0f};
         std::vector<Vector3> worldPos;
-        Skeleton::forwardKinematicsGeneral(identRots.data(), origin, anim.parents, anim.offsets, worldPos);
+        FSkeleton::ForwardKinematicsGeneral(identRots.data(), origin, anim.parents, anim.offsets, worldPos);
 
         int headIdx = -1, hipsIdx = -1, footIdx = -1;
         for (int j = 0; j < J; ++j) {

@@ -7,9 +7,9 @@ namespace studio {
 // Hugging Face token handling (plan section 14):
 // - token lives in OS secure storage (Windows Credential Manager)
 // - never in source, never in logs, never in plain files
-class HFAuthenticator {
+class FHFAuthenticator {
 public:
-    static bool saveToken(const std::string& token, std::string& error);
+    static bool SaveToken(const std::string& token, std::string& error);
     static bool loadToken(std::string& token);
     static bool clearToken();
 

@@ -44,7 +44,7 @@ std::string ftoa(float v) {
 
 } // namespace
 
-std::string GLBExporter::defaultExportDir() {
+std::string FGLBExporter::defaultExportDir() {
 #if defined(_WIN32)
     if (const char* appdata = std::getenv("LOCALAPPDATA")) {
         return (std::filesystem::path(appdata) / "KimodoStudio" / "exports").string();
@@ -53,8 +53,8 @@ std::string GLBExporter::defaultExportDir() {
     return "exports";
 }
 
-bool GLBExporter::exportAnimation(const Animation& animation,
-                                  const ExportOptions& options, std::string& error) {
+bool FGLBExporter::ExportAnimation(const FAnimation& animation,
+                                  const FExportOptions& options, std::string& error) {
     if (animation.empty()) {
         error = "animation empty";
         return false;
@@ -74,10 +74,10 @@ bool GLBExporter::exportAnimation(const Animation& animation,
 
     // Shared preprocessing: resample -> root motion -> basis/scale.
     std::string preReport;
-    const Animation work = prepareExport(animation, options.fps > 0 ? options.fps : animation.fps,
+    const FAnimation work = prepareExport(animation, options.fps > 0 ? options.fps : animation.fps,
                                          options.rootScale, options.basis,
                                          options.rootMotion, preReport);
-    report_ = preReport;
+    report = preReport;
     const int F = work.frames;
 
     // ---- BIN chunk layout ----

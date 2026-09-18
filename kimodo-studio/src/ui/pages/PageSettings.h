@@ -3,12 +3,12 @@
 #include "app/AppState.h"
 
 namespace studio {
-class Viewport;
-class Toasts;
+class FViewport;
+class SToasts;
 
-class PageSettings {
+class SPageSettings {
 public:
-    static void draw(AppState& state, Viewport& viewport, Toasts& toasts);
+    static void Draw(FAppState& state, FViewport& viewport, SToasts& toasts);
 };
 
 } // namespace studio

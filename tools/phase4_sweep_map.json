@@ -1,0 +1,21 @@
+{
+  "settings_": "Settings",
+  "target_": "Target",
+  "taskLabel_": "TaskLabel",
+  "message_": "Message",
+  "motionPath_": "MotionPath",
+  "lastPrompt_": "LastPrompt",
+  "hasResult_": "bHasResult",
+  "adapter_": "Adapter",
+  "handle_": "HandlePtr",
+  "initialized_": "bInitialized",
+  "author_": "Author",
+  "scale_": "Scale",
+  "bounds_": "Bounds",
+  "playing_": "bPlaying",
+  "pitch_": "Pitch",
+  "yaw_": "Yaw",
+  "grid_": "Grid",
+  "base_": "Base",
+  "boneMatricesLoc_": "BoneMatricesLoc"
+}

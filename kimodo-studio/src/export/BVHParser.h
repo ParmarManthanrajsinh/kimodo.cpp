@@ -6,7 +6,7 @@
 
 namespace studio {
 
-class BVHParser {
+class FBVHParser {
 public:
     struct ValidationReport {
         bool valid = true;
@@ -20,11 +20,11 @@ public:
     };
 
     // Parse BVH text string into Animation struct
-    static bool parseString(const std::string& bvhText, Animation& outAnimation,
+    static bool parseString(const std::string& bvhText, FAnimation& outAnimation,
                             std::string& error);
 
     // Parse BVH file into Animation struct
-    static bool parseFile(const std::string& filePath, Animation& outAnimation,
+    static bool parseFile(const std::string& filePath, FAnimation& outAnimation,
                           std::string& error);
 
     // Validate a BVH text content

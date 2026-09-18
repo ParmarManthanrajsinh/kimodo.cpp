@@ -6,23 +6,23 @@
 
 namespace studio {
 
-class SkinningRenderer {
+class FSkinningRenderer {
 public:
-    SkinningRenderer() = default;
-    ~SkinningRenderer();
+    FSkinningRenderer() = default;
+    ~FSkinningRenderer();
 
-    bool init();
-    void shutdown();
+    bool Init();
+    void Shutdown();
 
     // Render character mesh with given skin matrices
-    void drawCharacter(CharacterAsset& character,
+    void drawCharacter(FCharacterAsset& character,
                        const std::vector<Matrix>& skinMatrices,
                        bool wireframe);
 
 private:
-    bool initialized_ = false;
-    Shader skinShader_{};
-    int boneMatricesLoc_ = -1;
+    bool bInitialized = false;
+    Shader skinShader{};
+    int BoneMatricesLoc = -1;
 };
 
 } // namespace studio

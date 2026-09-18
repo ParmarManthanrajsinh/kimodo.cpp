@@ -8,17 +8,17 @@
 namespace studio {
 
 // SOMA Presentation Skeleton (expanded presentation layer, separate from SOMA30 inference backend)
-struct SomaPresentationSpec {
+struct FSomaPresentationSpec {
     static const std::vector<std::string>& jointNames();
     static const std::vector<int>& parents();
     static const std::vector<std::array<float, 3>>& defaultOffsets();
     static int jointIndex(const std::string& name);
 };
 
-class SomaPresentation {
+class FSomaPresentation {
 public:
     // Expand a SOMA-30 animation into the rich presentation skeleton
-    static bool expandSoma30(const Animation& soma30Anim, Animation& outPresentation,
+    static bool expandSoma30(const FAnimation& soma30Anim, FAnimation& outPresentation,
                              std::string& error);
 
     // Validate any animation skeleton representation
@@ -34,7 +34,7 @@ public:
         std::vector<std::string> errors;
     };
 
-    static ValidationResult validate(const Animation& anim);
+    static ValidationResult validate(const FAnimation& anim);
 };
 
 } // namespace studio

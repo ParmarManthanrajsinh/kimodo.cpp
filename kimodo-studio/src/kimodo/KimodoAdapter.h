@@ -10,7 +10,7 @@
 // runs them on a worker thread, never on UI thread.
 namespace studio {
 
-struct GenerationParams {
+struct FGenerationParams {
     uint64_t seed = 42;
     uint32_t frames = 120;
     uint32_t steps = 50;
@@ -18,41 +18,41 @@ struct GenerationParams {
     float constraintCfg = 2.0f;
 };
 
-struct MotionResult {
+struct FMotionResult {
     int frames = 0;
     int joints = 0;
     std::vector<float> localRotationsXyzw; // [frames, joints, 4]
     std::vector<float> rootPositions;      // [frames, 3]
 };
 
-class KimodoAdapter {
+class FKimodoAdapter {
 public:
-    KimodoAdapter() = default;
-    ~KimodoAdapter();
+    FKimodoAdapter() = default;
+    ~FKimodoAdapter();
 
-    KimodoAdapter(const KimodoAdapter&) = delete;
-    KimodoAdapter& operator=(const KimodoAdapter&) = delete;
+    FKimodoAdapter(const FKimodoAdapter&) = delete;
+    FKimodoAdapter& operator=(const FKimodoAdapter&) = delete;
 
     static int abiVersion();
 
     bool load(const std::string& motionGguf, const std::string& textBundle,
               std::string& error);
-    bool isLoaded() const { return loaded_; }
+    bool IsLoaded() const { return bLoaded; }
 
     // progress(done, total) runs on the worker thread; return true to cancel.
     using ProgressFn = std::function<bool(unsigned done, unsigned total)>;
 
-    bool generate(const std::string& prompt, const GenerationParams& params,
-                  MotionResult& out, std::string& error, ProgressFn progress = {});
+    bool generate(const std::string& prompt, const FGenerationParams& params,
+                  FMotionResult& out, std::string& error, ProgressFn progress = {});
     void unload();
 
-    const std::string& lastError() const { return lastError_; }
+    const std::string& GetLastError() const { return lastError; }
 
 private:
     struct Handle;
-    Handle* handle_ = nullptr;
-    bool loaded_ = false;
-    std::string lastError_;
+    Handle* HandlePtr = nullptr;
+    bool bLoaded = false;
+    std::string lastError;
 };
 
 } // namespace studio

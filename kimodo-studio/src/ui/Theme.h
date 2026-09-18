@@ -6,7 +6,7 @@
 namespace studio {
 
 // Centralized NVIDIA-grade dark theme + dense editor dimensions & colors.
-struct UIStyle {
+struct FUIStyle {
     static constexpr float topH = 46.0f;
     static constexpr float timelineH = 84.0f;
     static constexpr float statusH = 26.0f;
@@ -29,7 +29,7 @@ struct UIStyle {
     static inline const ImVec4 red = ImVec4(0.95f, 0.30f, 0.30f, 1.0f);
 };
 
-struct Theme {
+struct FTheme {
     static void apply();
     // Section header: small caps label + thin rule.
     static void sectionHeader(const char* label);

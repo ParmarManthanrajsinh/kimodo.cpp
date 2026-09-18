@@ -8,7 +8,7 @@
 
 namespace studio {
 
-struct CharacterBone {
+struct FCharacterBone {
     std::string name;
     int parent = -1;
     Matrix localTransform{MatrixIdentity()};
@@ -18,7 +18,7 @@ struct CharacterBone {
     Vector3 restScale{1, 1, 1};
 };
 
-struct CharacterSubmesh {
+struct FCharacterSubmesh {
     int materialIndex = 0;
     uint32_t vertexOffset = 0;
     uint32_t vertexCount = 0;
@@ -29,7 +29,7 @@ struct CharacterSubmesh {
     bool hasTexture = false;
 };
 
-struct CharacterValidationReport {
+struct FCharacterValidationReport {
     bool valid = true;
     bool hasMesh = false;
     bool hasSkeleton = false;
@@ -47,74 +47,74 @@ struct CharacterValidationReport {
     std::vector<std::string> errors;
 };
 
-class CharacterAsset {
+class FCharacterAsset {
 public:
-    CharacterAsset() = default;
-    ~CharacterAsset();
+    FCharacterAsset() = default;
+    ~FCharacterAsset();
 
     // Move only
-    CharacterAsset(const CharacterAsset&) = delete;
-    CharacterAsset& operator=(const CharacterAsset&) = delete;
-    CharacterAsset(CharacterAsset&& other) noexcept;
-    CharacterAsset& operator=(CharacterAsset&& other) noexcept;
+    FCharacterAsset(const FCharacterAsset&) = delete;
+    FCharacterAsset& operator=(const FCharacterAsset&) = delete;
+    FCharacterAsset(FCharacterAsset&& other) noexcept;
+    FCharacterAsset& operator=(FCharacterAsset&& other) noexcept;
 
     void unload();
-    bool isLoaded() const { return loaded_; }
+    bool IsLoaded() const { return bLoaded; }
 
-    const std::string& id() const { return id_; }
-    const std::string& name() const { return name_; }
-    const std::string& filePath() const { return filePath_; }
-    const std::string& license() const { return license_; }
-    const std::string& author() const { return author_; }
-    float scale() const { return scale_; }
-    BoundingBox bounds() const { return bounds_; }
+    const std::string& GetId() const { return Id; }
+    const std::string& GetName() const { return Name; }
+    const std::string& GetFilePath() const { return filePath; }
+    const std::string& GetLicense() const { return license; }
+    const std::string& GetAuthor() const { return Author; }
+    float GetScale() const { return Scale; }
+    BoundingBox GetBounds() const { return Bounds; }
 
-    void setId(std::string id) { id_ = std::move(id); }
-    void setName(std::string name) { name_ = std::move(name); }
-    void setFilePath(std::string path) { filePath_ = std::move(path); }
-    void setLicense(std::string lic) { license_ = std::move(lic); }
-    void setAuthor(std::string auth) { author_ = std::move(auth); }
-    void setScale(float s) { scale_ = s; }
+    void SetId(std::string id) { Id = std::move(id); }
+    void SetName(std::string name) { Name = std::move(name); }
+    void SetFilePath(std::string path) { filePath = std::move(path); }
+    void SetLicense(std::string lic) { license = std::move(lic); }
+    void SetAuthor(std::string auth) { Author = std::move(auth); }
+    void SetScale(float s) { Scale = s; }
 
-    const std::vector<CharacterBone>& bones() const { return bones_; }
-    std::vector<CharacterBone>& bones() { return bones_; }
+    const std::vector<FCharacterBone>& GetBones() const { return Bones; }
+    std::vector<FCharacterBone>& GetBones() { return Bones; }
 
-    const std::vector<CharacterSubmesh>& submeshes() const { return submeshes_; }
-    std::vector<CharacterSubmesh>& submeshes() { return submeshes_; }
+    const std::vector<FCharacterSubmesh>& GetSubmeshes() const { return submeshes; }
+    std::vector<FCharacterSubmesh>& GetSubmeshes() { return submeshes; }
 
-    const SkinningData& skinningData() const { return skinningData_; }
-    SkinningData& skinningData() { return skinningData_; }
+    const FSkinningData& GetSkinningData() const { return skinningData; }
+    FSkinningData& GetSkinningData() { return skinningData; }
 
-    const CharacterValidationReport& validationReport() const { return report_; }
-    void setValidationReport(CharacterValidationReport report) { report_ = std::move(report); }
+    const FCharacterValidationReport& GetValidationReport() const { return report; }
+    void SetValidationReport(FCharacterValidationReport inReport) { report = std::move(inReport); }
 
     int findBoneIndex(const std::string& boneName) const;
 
     // CPU animated vertices buffer (for CPU fallback skinning / wireframe)
-    const std::vector<Vector3>& animatedVertices() const { return animVertices_; }
-    const std::vector<Vector3>& animatedNormals() const { return animNormals_; }
+    const std::vector<Vector3>& GetAnimatedVertices() const { return AnimVertices; }
+    const std::vector<Vector3>& GetAnimatedNormals() const { return AnimNormals; }
     void updateCpuSkinning(const std::vector<Matrix>& skinMatrices);
 
     void finalizeGeometry(BoundingBox bounds);
 
 private:
-    bool loaded_ = false;
-    std::string id_;
-    std::string name_;
-    std::string filePath_;
-    std::string license_;
-    std::string author_;
-    float scale_ = 1.0f;
-    BoundingBox bounds_{{0, 0, 0}, {0, 0, 0}};
+    bool bLoaded = false;
+    std::string Id;
+    std::string Name;
+    std::string filePath;
+    std::string license;
+    std::string Author;
+    float Scale = 1.0f;
+    BoundingBox Bounds{{0, 0, 0}, {0, 0, 0}};
 
-    std::vector<CharacterBone> bones_;
-    std::vector<CharacterSubmesh> submeshes_;
-    SkinningData skinningData_;
-    CharacterValidationReport report_;
+    std::vector<FCharacterBone> Bones;
+    std::vector<FCharacterSubmesh> submeshes;
+    FSkinningData skinningData;
+    FCharacterValidationReport report;
 
     // CPU skinning cached buffers
-    std::vector<Vector3> animVertices_;
-    std::vector<Vector3> animNormals_;
+    std::vector<Vector3> AnimVertices;
+    std::vector<Vector3> AnimNormals;
 };
 
 } // namespace studio

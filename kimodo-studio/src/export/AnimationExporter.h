@@ -7,23 +7,23 @@
 
 namespace studio {
 
-struct ExportOptions {
+struct FExportOptions {
     std::string path;   // destination .glb file
     float fps = 0.0f;   // 0 = keep source fps
     float rootScale = 1.0f;
     Mat3 basis = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}}; // applied to positions/rotations
-    RootMotion rootMotion = RootMotion::Preserve;
+    ERootMotion rootMotion = ERootMotion::Preserve;
 };
 
 // Exporter interface (plan section 30): core animation system stays free
 // of format-specific code; one class per format.
-class AnimationExporter {
+class IAnimationExporter {
 public:
-    virtual ~AnimationExporter() = default;
-    virtual bool exportAnimation(const Animation& animation,
-                                 const ExportOptions& options,
+    virtual ~IAnimationExporter() = default;
+    virtual bool ExportAnimation(const FAnimation& animation,
+                                 const FExportOptions& options,
                                  std::string& error) = 0;
-    virtual std::string lastReport() const { return {}; }
+    virtual std::string GetLastReport() const { return {}; }
 };
 
 } // namespace studio

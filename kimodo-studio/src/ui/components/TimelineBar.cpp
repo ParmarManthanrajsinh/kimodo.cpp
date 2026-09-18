@@ -10,7 +10,7 @@
 
 namespace studio {
 
-void TimelineBar::draw(AppState& state, AnimationPlayer& player, float panelWidth) {
+void STimelineBar::Draw(FAppState& state, FAnimationPlayer& player, float panelWidth) {
     ImGuiViewport* vp = ImGui::GetMainViewport();
     const float sideW = state.sideWidth;
     const float viewportW = vp->Size.x - sideW - panelWidth;
@@ -19,7 +19,7 @@ void TimelineBar::draw(AppState& state, AnimationPlayer& player, float panelWidt
     const float barW = std::clamp(viewportW - 32.0f, 480.0f, 1200.0f);
     const float barH = 78.0f;
     const float barX = vp->Pos.x + sideW + (viewportW - barW) * 0.5f;
-    const float barY = vp->Pos.y + vp->Size.y - UIStyle::statusH - barH - 12.0f;
+    const float barY = vp->Pos.y + vp->Size.y - FUIStyle::statusH - barH - 12.0f;
 
     ImGui::SetNextWindowPos(ImVec2(barX, barY));
     ImGui::SetNextWindowSize(ImVec2(barW, barH));
@@ -37,17 +37,17 @@ void TimelineBar::draw(AppState& state, AnimationPlayer& player, float panelWidt
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 6));
 
     if (ImGui::Begin("##FloatingTimelineBar", nullptr, flags)) {
-        const int curFrame = player.frame();
-        const int totalFrames = std::max(1, player.totalFrames());
-        const float curTime = player.time();
-        const float maxTime = std::max(0.01f, player.duration());
+        const int curFrame = player.Frame();
+        const int totalFrames = std::max(1, player.GetTotalFrames());
+        const float curTime = player.GetTime();
+        const float maxTime = std::max(0.01f, player.GetDuration());
         const float ctrlH = 26.0f;
 
         // ==========================================
         // 1. TOP CONTROLS ROW
         // ==========================================
         ImGui::AlignTextToFramePadding();
-        ImGui::TextColored(UIStyle::text, "TIMELINE");
+        ImGui::TextColored(FUIStyle::text, "TIMELINE");
         ImGui::SameLine(0, 14);
 
         // First frame |<<
@@ -58,7 +58,7 @@ void TimelineBar::draw(AppState& state, AnimationPlayer& player, float panelWidt
 
         // Circular Green Play / Pause Button
         {
-            bool isPlaying = player.isPlaying();
+            bool isPlaying = player.IsPlaying();
             ImGui::PushStyleColor(ImGuiCol_Button, isPlaying ? ImVec4(0.18f, 0.22f, 0.28f, 1.0f) : ImVec4(0.13f, 0.77f, 0.37f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, isPlaying ? ImVec4(0.24f, 0.28f, 0.36f, 1.0f) : ImVec4(0.16f, 0.85f, 0.42f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
@@ -80,16 +80,16 @@ void TimelineBar::draw(AppState& state, AnimationPlayer& player, float panelWidt
         ImGui::SameLine();
 
         // Loop toggle pill switch
-        bool isLoop = player.isLooping();
+        bool isLoop = player.IsLooping();
         if (isLoop) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.28f, 0.18f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::accent);
+            ImGui::PushStyleColor(ImGuiCol_Text, FUIStyle::accent);
         } else {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.14f, 0.18f, 0.6f));
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.65f, 0.70f, 0.78f, 1.0f));
         }
         if (ImGui::Button(isLoop ? "● Loop" : "○ Loop", ImVec2(58, ctrlH))) {
-            player.setLoop(!isLoop);
+            player.SetLoop(!isLoop);
         }
         ImGui::PopStyleColor(2);
 
@@ -97,7 +97,7 @@ void TimelineBar::draw(AppState& state, AnimationPlayer& player, float panelWidt
 
         // Frame readout (e.g. "Frame: 065 / 120")
         ImGui::AlignTextToFramePadding();
-        ImGui::TextColored(UIStyle::text, "Frame: %03d / %d", curFrame, totalFrames);
+        ImGui::TextColored(FUIStyle::text, "Frame: %03d / %d", curFrame, totalFrames);
 
         // Time readout (e.g. "Time: 00:02.17 / 00:04.00")
         ImGui::SameLine(0, 12);

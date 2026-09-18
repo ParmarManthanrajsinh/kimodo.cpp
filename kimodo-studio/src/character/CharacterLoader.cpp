@@ -43,7 +43,7 @@ int findJointInSkin(const cgltf_skin* skin, const cgltf_node* node) {
 
 } // namespace
 
-bool CharacterLoader::loadGLB(const std::string& filePath, CharacterAsset& outAsset,
+bool FCharacterLoader::loadGLB(const std::string& filePath, FCharacterAsset& outAsset,
                               std::string& error) {
     outAsset.unload();
 
@@ -64,22 +64,22 @@ bool CharacterLoader::loadGLB(const std::string& filePath, CharacterAsset& outAs
 
     std::filesystem::path fPath(filePath);
     std::string filename = fPath.stem().string();
-    outAsset.setId(filename);
-    outAsset.setName(filename);
-    outAsset.setFilePath(filePath);
+    outAsset.SetId(filename);
+    outAsset.SetName(filename);
+    outAsset.SetFilePath(filePath);
 
     // Default metadata
     if (filename == "CesiumMan") {
-        outAsset.setLicense("CC-BY 4.0");
-        outAsset.setAuthor("Cesium (Khronos glTF Sample Assets)");
+        outAsset.SetLicense("CC-BY 4.0");
+        outAsset.SetAuthor("Cesium (Khronos glTF Sample Assets)");
     } else {
-        outAsset.setLicense("Open / User Imported");
-        outAsset.setAuthor("External");
+        outAsset.SetLicense("Open / User Imported");
+        outAsset.SetAuthor("External");
     }
 
     // Process Skin / Skeleton
     const cgltf_skin* skin = (data->skins_count > 0) ? &data->skins[0] : nullptr;
-    std::vector<CharacterBone> bones;
+    std::vector<FCharacterBone> bones;
     std::vector<Matrix> invBindMatrices;
 
     if (skin && skin->joints_count > 0) {
@@ -154,14 +154,14 @@ bool CharacterLoader::loadGLB(const std::string& filePath, CharacterAsset& outAs
         }
     }
 
-    outAsset.bones() = std::move(bones);
-    outAsset.skinningData().inverseBindMatrices = std::move(invBindMatrices);
-    outAsset.skinningData().currentBoneMatrices.assign(outAsset.bones().size(), MatrixIdentity());
-    outAsset.skinningData().hasSkin = (skin != nullptr && skin->joints_count > 0);
+    outAsset.GetBones() = std::move(bones);
+    outAsset.GetSkinningData().inverseBindMatrices = std::move(invBindMatrices);
+    outAsset.GetSkinningData().currentBoneMatrices.assign(outAsset.GetBones().size(), MatrixIdentity());
+    outAsset.GetSkinningData().hasSkin = (skin != nullptr && skin->joints_count > 0);
 
     // Process Meshes & Primitives
-    SkinningData& sData = outAsset.skinningData();
-    std::vector<CharacterSubmesh>& submeshes = outAsset.submeshes();
+    FSkinningData& sData = outAsset.GetSkinningData();
+    std::vector<FCharacterSubmesh>& submeshes = outAsset.GetSubmeshes();
 
     Vector3 minBounds{1e9f, 1e9f, 1e9f};
     Vector3 maxBounds{-1e9f, -1e9f, -1e9f};
@@ -226,7 +226,7 @@ bool CharacterLoader::loadGLB(const std::string& filePath, CharacterAsset& outAs
             }
 
             for (size_t v = 0; v < vcount; ++v) {
-                SkinVertex vert;
+                FSkinVertex vert;
                 Vector3 rawPos = {posFloats[v * 3 + 0], posFloats[v * 3 + 1], posFloats[v * 3 + 2]};
                 Vector3 rawNorm = {normFloats[v * 3 + 0], normFloats[v * 3 + 1], normFloats[v * 3 + 2]};
 
@@ -283,7 +283,7 @@ bool CharacterLoader::loadGLB(const std::string& filePath, CharacterAsset& outAs
                 }
             }
 
-            CharacterSubmesh sub;
+            FCharacterSubmesh sub;
             sub.vertexOffset = vertexBase;
             sub.vertexCount = static_cast<uint32_t>(vcount);
             sub.indexOffset = indexBase;
@@ -334,25 +334,25 @@ bool CharacterLoader::loadGLB(const std::string& filePath, CharacterAsset& outAs
     outAsset.finalizeGeometry(bounds);
 
     // Validate
-    CharacterValidationReport rep = validate(outAsset);
-    outAsset.setValidationReport(rep);
+    FCharacterValidationReport rep = validate(outAsset);
+    outAsset.SetValidationReport(rep);
 
     return true;
 }
 
-CharacterValidationReport CharacterLoader::validate(const CharacterAsset& asset) {
-    CharacterValidationReport rep;
-    rep.hasMesh = !asset.skinningData().vertices.empty();
-    rep.vertexCount = static_cast<int>(asset.skinningData().vertices.size());
-    rep.triangleCount = static_cast<int>(asset.skinningData().indices.size() / 3);
-    rep.boneCount = static_cast<int>(asset.bones().size());
+FCharacterValidationReport FCharacterLoader::validate(const FCharacterAsset& asset) {
+    FCharacterValidationReport rep;
+    rep.hasMesh = !asset.GetSkinningData().vertices.empty();
+    rep.vertexCount = static_cast<int>(asset.GetSkinningData().vertices.size());
+    rep.triangleCount = static_cast<int>(asset.GetSkinningData().indices.size() / 3);
+    rep.boneCount = static_cast<int>(asset.GetBones().size());
     rep.hasSkeleton = (rep.boneCount > 0);
-    rep.hasSkin = asset.skinningData().hasSkin;
+    rep.hasSkin = asset.GetSkinningData().hasSkin;
 
-    const BoundingBox b = asset.bounds();
+    const BoundingBox b = asset.GetBounds();
     rep.height = (b.max.y - b.min.y);
 
-    for (const auto& bone : asset.bones()) {
+    for (const auto& bone : asset.GetBones()) {
         rep.detectedBones.push_back(bone.name);
     }
 
@@ -384,7 +384,7 @@ CharacterValidationReport CharacterLoader::validate(const CharacterAsset& asset)
 
     rep.requiredBonesPresent = (matchedKeywords.size() >= 4); // at least 4 major humanoid bone groups
     rep.validWeights = true;
-    for (const auto& v : asset.skinningData().vertices) {
+    for (const auto& v : asset.GetSkinningData().vertices) {
         float sum = v.boneWeights[0] + v.boneWeights[1] + v.boneWeights[2] + v.boneWeights[3];
         if (std::abs(sum - 1.0f) > 0.1f && sum > 1e-4f) {
             rep.validWeights = false;

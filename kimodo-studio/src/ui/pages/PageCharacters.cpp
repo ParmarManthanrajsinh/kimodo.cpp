@@ -6,6 +6,8 @@
 #include "ui/Icons.h"
 #include "ui/Theme.h"
 #include "ui/UIHelpers.h"
+#include "utils/FileDialog.h"
+#include "utils/AppPaths.h"
 
 #include <cstdio>
 #include <string>
@@ -37,8 +39,8 @@ void endCard() {
 
 } // namespace
 
-void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& viewport,
-                          AnimationPlayer* player) {
+void SPageCharacters::Draw(FAppState& state, FCharacterLibrary& chars, FViewport& viewport,
+                          FAnimationPlayer* player) {
     // =========================================================================
     // 1. TOP TAB BAR: Animation | Character | Inspector (matching Image 2)
     // =========================================================================
@@ -53,7 +55,7 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.12f, 0.14f, 0.18f, 0.4f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.14f, 0.18f, 0.8f));
-        ImGui::PushStyleColor(ImGuiCol_Text, isActive ? UIStyle::accent : UIStyle::textMuted);
+        ImGui::PushStyleColor(ImGuiCol_Text, isActive ? FUIStyle::accent : FUIStyle::textMuted);
 
         if (ImGui::Button(label, ImVec2(tabW - 4.0f, 32.0f))) {
             state.rightPanelTab = tabIdx;
@@ -64,7 +66,7 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
             // Green bottom underline bar matching Image 2
             drawList->AddRectFilled(ImVec2(p0.x + 8.0f, p0.y + 30.0f),
                                     ImVec2(p0.x + tabW - 12.0f, p0.y + 32.5f),
-                                    ImGui::GetColorU32(UIStyle::accent), 1.0f);
+                                    ImGui::GetColorU32(FUIStyle::accent), 1.0f);
         }
     };
 
@@ -81,9 +83,9 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
     // 2. TAB 1: CHARACTER (Selected Character, Mapping, Transform, Display)
     // =========================================================================
     if (state.rightPanelTab == 1) {
-        CharacterAsset* active = chars.activeAsset();
-        CharacterEntry curEntry;
-        bool hasEntry = chars.findEntry(chars.activeId(), curEntry);
+        FCharacterAsset* active = chars.GetActiveAsset();
+        FCharacterEntry curEntry;
+        bool hasEntry = chars.FindEntry(chars.GetActiveId(), curEntry);
 
         static bool showChangeCharModal = false;
         static bool showImportModal = false;
@@ -121,18 +123,18 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
             ImGui::BeginGroup();
             {
                 std::string charName = "SOMA Humanoid";
-                if (active && active->isLoaded() && !active->name().empty()) {
-                    charName = active->name();
+                if (active && active->IsLoaded() && !active->GetName().empty()) {
+                    charName = active->GetName();
                 }
-                ImGui::TextColored(UIStyle::text, "%s", charName.c_str());
+                ImGui::TextColored(FUIStyle::text, "%s", charName.c_str());
 
                 // Loaded status row with green dot
-                ImGui::TextColored(UIStyle::accent, "%s", icons::kCheckCircle);
+                ImGui::TextColored(FUIStyle::accent, "%s", icons::kCheckCircle);
                 ImGui::SameLine(0, 5);
-                ImGui::TextColored(UIStyle::text, "Loaded");
+                ImGui::TextColored(FUIStyle::text, "Loaded");
 
-                if (active && active->isLoaded()) {
-                    ImGui::TextDisabled("Bones:   %zu", active->bones().size());
+                if (active && active->IsLoaded()) {
+                    ImGui::TextDisabled("Bones:   %zu", active->GetBones().size());
                     ImGui::TextDisabled("Status:  Ready");
                 }
             }
@@ -162,8 +164,8 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
 
             size_t mappedCount = 30;
             size_t totalBones = 30;
-            if (active && active->isLoaded()) {
-                totalBones = active->bones().size();
+            if (active && active->IsLoaded()) {
+                totalBones = active->GetBones().size();
                 if (hasEntry) {
                     mappedCount = 0;
                     for (const auto& [bone, joint] : curEntry.mapping) {
@@ -173,9 +175,9 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
             }
 
             // Green dot + 30 / 30 joints mapped
-            ImGui::TextColored(UIStyle::accent, "%s", icons::kCheckCircle);
+            ImGui::TextColored(FUIStyle::accent, "%s", icons::kCheckCircle);
             ImGui::SameLine(0, 6);
-            ImGui::TextColored(UIStyle::text, "%zu / %zu joints mapped", mappedCount, totalBones);
+            ImGui::TextColored(FUIStyle::text, "%zu / %zu joints mapped", mappedCount, totalBones);
 
             ImGui::Spacing();
             float btnW = ImGui::GetContentRegionAvail().x - 38.0f;
@@ -264,13 +266,13 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
 
             auto drawModeBtn = [&](const char* label, bool active) -> bool {
                 if (active) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, UIStyle::accent);
+                    ImGui::PushStyleColor(ImGuiCol_Button, FUIStyle::accent);
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.85f, 0.44f, 1.0f));
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05f, 0.05f, 0.08f, 1.0f));
                 } else {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.14f, 0.18f, 0.7f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.22f, 0.28f, 0.9f));
-                    ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::textMuted);
+                    ImGui::PushStyleColor(ImGuiCol_Text, FUIStyle::textMuted);
                 }
                 bool clicked = ImGui::Button(label, ImVec2(modeBtnW, modeBtnH));
                 ImGui::PopStyleColor(3);
@@ -296,7 +298,7 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
             ImGui::Separator();
             ImGui::Spacing();
 
-            ImGui::PushStyleColor(ImGuiCol_CheckMark, UIStyle::accent);
+            ImGui::PushStyleColor(ImGuiCol_CheckMark, FUIStyle::accent);
 
             ImGui::Checkbox("Show Character Mesh", &state.showCharacter);
             ImGui::Spacing();
@@ -319,16 +321,16 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
             ImGui::OpenPopup("Select Character##Modal");
         }
         if (ImGui::BeginPopupModal("Select Character##Modal", &showChangeCharModal, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextColored(UIStyle::accent, "%s Select Character", icons::kUser);
+            ImGui::TextColored(FUIStyle::accent, "%s Select Character", icons::kUser);
             ImGui::Separator();
             ImGui::Spacing();
 
-            for (const auto& entry : chars.entries()) {
-                bool isSelected = (entry.id == chars.activeId());
+            for (const auto& entry : chars.GetEntries()) {
+                bool isSelected = (entry.id == chars.GetActiveId());
                 if (ImGui::Selectable(entry.name.c_str(), isSelected, 0, ImVec2(280, 28))) {
-                    chars.selectCharacter(entry.id);
+                    chars.SelectCharacter(entry.id);
                     state.activeCharacterId = entry.id;
-                    viewport.setCharacterAsset(chars.activeAsset());
+                    viewport.SetCharacterAsset(chars.GetActiveAsset());
                     showChangeCharModal = false;
                 }
             }
@@ -345,7 +347,7 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
             ImGui::OpenPopup("Import GLB Character##Modal");
         }
         if (ImGui::BeginPopupModal("Import GLB Character##Modal", &showImportModal, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextColored(UIStyle::accent, "%s Import 3D Character (GLB/glTF)", icons::kFolder);
+            ImGui::TextColored(FUIStyle::accent, "%s Import 3D Character (GLB/glTF)", icons::kFolder);
             ImGui::Separator();
             ImGui::Spacing();
 
@@ -354,12 +356,20 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
             ImGui::SetNextItemWidth(360);
             ImGui::InputTextWithHint("##ImportModalPath", "e.g. assets/characters/model.glb",
                                      importPathBuf, sizeof(importPathBuf));
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_FOLDER " Browse...", ImVec2(110, 0))) {
+                std::string startDir = FAppPaths::defaultCharactersDir().string();
+                std::string picked;
+                if (FFileDialog::openFile("glb,gltf", startDir.c_str(), picked)) {
+                    strncpy_s(importPathBuf, sizeof(importPathBuf), picked.c_str(), _TRUNCATE);
+                }
+            }
 
             ImGui::Spacing();
             if (ImGui::Button("Import", ImVec2(100, 28))) {
                 std::string err;
-                if (chars.importCharacter(importPathBuf, err)) {
-                    viewport.setCharacterAsset(chars.activeAsset());
+                if (chars.ImportCharacter(importPathBuf, err)) {
+                    viewport.SetCharacterAsset(chars.GetActiveAsset());
                     showImportModal = false;
                     importPathBuf[0] = '\0';
                 }
@@ -375,12 +385,12 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
             ImGui::OpenPopup("Edit Skeleton Mapping##Modal");
         }
         if (ImGui::BeginPopupModal("Edit Skeleton Mapping##Modal", &showMappingModal, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextColored(UIStyle::accent, "%s Skeleton Bone Mapping", icons::kRetarget);
+            ImGui::TextColored(FUIStyle::accent, "%s Skeleton Bone Mapping", icons::kRetarget);
             ImGui::TextDisabled("Map character rig bones to SOMA humanoid joints");
             ImGui::Separator();
             ImGui::Spacing();
 
-            if (active && active->isLoaded() && hasEntry) {
+            if (active && active->IsLoaded() && hasEntry) {
                 if (ImGui::BeginTable("##ModalBoneMappingTable", 3,
                                       ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY,
                                       ImVec2(460, 320))) {
@@ -389,7 +399,7 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
                     ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 60.0f);
                     ImGui::TableHeadersRow();
 
-                    const auto& bones = active->bones();
+                    const auto& bones = active->GetBones();
                     for (size_t b = 0; b < bones.size(); ++b) {
                         ImGui::TableNextRow();
                         ImGui::TableSetColumnIndex(0);
@@ -402,7 +412,7 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
 
                         ImGui::TableSetColumnIndex(2);
                         if (mappedJoint != "(none)" && !mappedJoint.empty()) {
-                            ImGui::TextColored(UIStyle::green, "%s", icons::kCheck);
+                            ImGui::TextColored(FUIStyle::green, "%s", icons::kCheck);
                         } else {
                             ImGui::TextDisabled("-");
                         }
@@ -430,15 +440,15 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
             drawCardHeader("Active Animation");
 
             std::string title = "A person eating an apple";
-            if (player && player->hasAnimation() && !player->animation().skeletonName.empty()) {
-                title = "Active Motion (" + player->animation().skeletonName + ")";
+            if (player && player->HasAnimation() && !player->GetAnimation().skeletonName.empty()) {
+                title = "Active Motion (" + player->GetAnimation().skeletonName + ")";
             }
-            ImGui::TextColored(UIStyle::text, "%s", title.c_str());
+            ImGui::TextColored(FUIStyle::text, "%s", title.c_str());
             ImGui::Spacing();
 
-            float dur = player ? player->duration() : 4.0f;
-            int fr = player ? player->totalFrames() : 120;
-            float fps = player ? player->fps() : 30.0f;
+            float dur = player ? player->GetDuration() : 4.0f;
+            int fr = player ? player->GetTotalFrames() : 120;
+            float fps = player ? player->GetFps() : 30.0f;
 
             ImGui::TextDisabled("Duration:  %.2f seconds", dur);
             ImGui::TextDisabled("Frames:    %d frames", fr);
@@ -450,11 +460,11 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
             ImGui::Spacing();
 
             if (player) {
-                ImGui::TextDisabled("Current Frame: %03d / %03d", player->frame(), fr);
-                ImGui::TextDisabled("Current Time:  %.2f / %.2f s", player->time(), dur);
+                ImGui::TextDisabled("Current Frame: %03d / %03d", player->Frame(), fr);
+                ImGui::TextDisabled("Current Time:  %.2f / %.2f s", player->GetTime(), dur);
 
                 ImGui::Spacing();
-                if (ImGui::Button(player->isPlaying() ? "Pause Animation" : "Play Animation",
+                if (ImGui::Button(player->IsPlaying() ? "Pause Animation" : "Play Animation",
                                   ImVec2(ImGui::GetContentRegionAvail().x, 30.0f))) {
                     player->togglePlay();
                 }
@@ -467,16 +477,16 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
     // 4. TAB 2: INSPECTOR (Mesh & Rig Validation)
     // =========================================================================
     else if (state.rightPanelTab == 2) {
-        CharacterAsset* active = chars.activeAsset();
+        FCharacterAsset* active = chars.GetActiveAsset();
         beginCard("##CardMeshInspector");
         {
             drawCardHeader("Mesh & Rig Validation");
 
             auto drawCheck = [](const char* label, bool ok, const std::string& desc = "") {
                 if (ok) {
-                    ImGui::TextColored(UIStyle::green, "%s %s", icons::kCheck, label);
+                    ImGui::TextColored(FUIStyle::green, "%s %s", icons::kCheck, label);
                 } else {
-                    ImGui::TextColored(UIStyle::red, "%s %s", icons::kClose, label);
+                    ImGui::TextColored(FUIStyle::red, "%s %s", icons::kClose, label);
                 }
                 if (!desc.empty()) {
                     ImGui::SameLine();
@@ -484,8 +494,8 @@ void PageCharacters::draw(AppState& state, CharacterLibrary& chars, Viewport& vi
                 }
             };
 
-            if (active && active->isLoaded()) {
-                const auto& rep = active->validationReport();
+            if (active && active->IsLoaded()) {
+                const auto& rep = active->GetValidationReport();
                 drawCheck("Geometry", rep.hasMesh, std::to_string(rep.vertexCount) + " verts");
                 drawCheck("Skeleton", rep.hasSkeleton, std::to_string(rep.boneCount) + " bones");
                 drawCheck("Skinning", rep.hasSkin, rep.hasSkin ? "Skin matrices valid" : "No skin");

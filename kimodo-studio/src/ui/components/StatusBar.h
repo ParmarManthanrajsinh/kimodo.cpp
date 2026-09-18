@@ -3,11 +3,11 @@
 #include "app/AppState.h"
 
 namespace studio {
-class Viewport;
+class FViewport;
 
-class StatusBar {
+class SStatusBar {
 public:
-    static void draw(AppState& state, Viewport& viewport);
+    static void Draw(FAppState& state, FViewport& viewport);
 };
 
 } // namespace studio

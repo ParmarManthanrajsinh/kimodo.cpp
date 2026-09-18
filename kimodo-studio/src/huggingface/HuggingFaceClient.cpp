@@ -106,7 +106,7 @@ bool queryHeader(HINTERNET req, DWORD id, std::string& out) {
 long getOnce(const std::wstring& startHost, const std::wstring& startPath,
              const std::string& token, std::string& body, FILE* bodyFile,
              uint64_t resumeOffset, uint64_t& contentTotal,
-             HuggingFaceClient::ProgressFn& progress, std::string& error) {
+             FHuggingFaceClient::ProgressFn& progress, std::string& error) {
     std::wstring host = startHost;
     std::wstring path = startPath;
     for (int hop = 0; hop < 6; ++hop) {
@@ -246,7 +246,7 @@ long getOnce(const std::wstring& startHost, const std::wstring& startPath,
 
 } // namespace
 
-HuggingFaceClient::HttpResult HuggingFaceClient::apiGet(const std::string& path,
+FHuggingFaceClient::HttpResult FHuggingFaceClient::apiGet(const std::string& path,
                                                         const std::string& token,
                                                         std::string& error) {
     HttpResult out;
@@ -269,7 +269,7 @@ HuggingFaceClient::HttpResult HuggingFaceClient::apiGet(const std::string& path,
     return out;
 }
 
-std::string HuggingFaceClient::whoami(const std::string& token, std::string& error) {
+std::string FHuggingFaceClient::whoami(const std::string& token, std::string& error) {
     if (token.empty()) {
         error = "no token";
         return {};
@@ -297,7 +297,7 @@ std::string HuggingFaceClient::whoami(const std::string& token, std::string& err
     return r.body.substr(q1 + 1, q2 - q1 - 1);
 }
 
-bool HuggingFaceClient::download(const std::string& url, const std::string& tmpPath,
+bool FHuggingFaceClient::download(const std::string& url, const std::string& tmpPath,
                                  const std::string& token, ProgressFn progress,
                                  std::string& error, int retries) {
 #if defined(_WIN32)
@@ -359,7 +359,7 @@ bool HuggingFaceClient::download(const std::string& url, const std::string& tmpP
 #endif
 }
 
-std::string HuggingFaceClient::resolveUrl(const std::string& repo,
+std::string FHuggingFaceClient::resolveUrl(const std::string& repo,
                                           const std::string& remotePath) {
     return "https://huggingface.co/" + repo + "/resolve/main/" + remotePath;
 }

@@ -7,7 +7,7 @@
 
 namespace studio {
 
-void BVHParser::eulerXYZToQuat(float ex, float ey, float ez,
+void FBVHParser::eulerXYZToQuat(float ex, float ey, float ez,
                                float& x, float& y, float& z, float& w) {
     constexpr float kRad = 0.017453292519943295f; // pi / 180
     const float hx = ex * kRad * 0.5f;
@@ -78,7 +78,7 @@ struct ParsedJoint {
 
 } // namespace
 
-bool BVHParser::parseString(const std::string& bvhText, Animation& outAnimation,
+bool FBVHParser::parseString(const std::string& bvhText, FAnimation& outAnimation,
                             std::string& error) {
     TokenStream ts = tokenize(bvhText);
     if (!ts.hasNext()) {
@@ -273,7 +273,7 @@ bool BVHParser::parseString(const std::string& bvhText, Animation& outAnimation,
     return true;
 }
 
-bool BVHParser::parseFile(const std::string& filePath, Animation& outAnimation,
+bool FBVHParser::parseFile(const std::string& filePath, FAnimation& outAnimation,
                           std::string& error) {
     std::ifstream file(filePath);
     if (!file.is_open()) {
@@ -285,9 +285,9 @@ bool BVHParser::parseFile(const std::string& filePath, Animation& outAnimation,
     return parseString(buffer.str(), outAnimation, error);
 }
 
-BVHParser::ValidationReport BVHParser::validate(const std::string& bvhText) {
+FBVHParser::ValidationReport FBVHParser::validate(const std::string& bvhText) {
     ValidationReport rep;
-    Animation anim;
+    FAnimation anim;
     std::string err;
     if (!parseString(bvhText, anim, err)) {
         rep.valid = false;

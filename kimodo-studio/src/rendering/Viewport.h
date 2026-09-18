@@ -11,23 +11,23 @@
 
 namespace studio {
 
-class Viewport {
+class FViewport {
 public:
-    void reset();
-    void frame();
-    void update(bool mouseOverUi);
-    void draw3D();
-    float distance() const { return dist_; }
+    void Reset();
+    void Frame();
+    void Update(bool mouseOverUi);
+    void Draw3D();
+    float GetDistance() const { return dist; }
 
-    void setPose(std::vector<Vector3> pose, std::vector<int> parents,
-                 std::vector<std::string> jointNames = {}) {
-        pose_ = std::move(pose);
-        poseParents_ = std::move(parents);
-        jointNames_ = std::move(jointNames);
+    void SetPose(std::vector<Vector3> inPose, std::vector<int> inParents,
+                 std::vector<std::string> inJointNames = {}) {
+        pose = std::move(inPose);
+        poseParents = std::move(inParents);
+        jointNames = std::move(inJointNames);
     }
-    bool hasPose() const { return !pose_.empty(); }
+    bool HasPose() const { return !pose.empty(); }
 
-    struct DebugPose {
+    struct FDebugPose {
         std::vector<Vector3> pos;
         std::vector<int> parents;
         Vector3 offset = {0, 0, 0};
@@ -35,81 +35,81 @@ public:
         Color bone = {110, 110, 125, 255};
     };
 
-    void setDebugPoses(std::vector<DebugPose> poses) { debug_ = std::move(poses); }
-    void clearDebug() { debug_.clear(); }
-    bool hasDebug() const { return !debug_.empty(); }
+    void SetDebugPoses(std::vector<FDebugPose> poses) { debug = std::move(poses); }
+    void ClearDebug() { debug.clear(); }
+    bool HasDebug() const { return !debug.empty(); }
 
     // Display Toggles
-    void setGrid(bool v) { gridDraw_ = v; }
-    void setAxes(bool v) { axesDraw_ = v; }
-    void setFloor(bool v) { floorDraw_ = v; }
-    void setSkeleton(bool v) { skeletonDraw_ = v; }
-    void setCharacter(bool v) { characterDraw_ = v; }
-    void setWireframe(bool v) { wireframeDraw_ = v; }
-    void setBoneNames(bool v) { boneNamesDraw_ = v; }
+    void SetGrid(bool v) { bGridDraw = v; }
+    void SetAxes(bool v) { bAxesDraw = v; }
+    void SetFloor(bool v) { bFloorDraw = v; }
+    void SetSkeleton(bool v) { bSkeletonDraw = v; }
+    void SetCharacter(bool v) { bCharacterDraw = v; }
+    void SetWireframe(bool v) { bWireframeDraw = v; }
+    void SetBoneNames(bool v) { bBoneNamesDraw = v; }
 
-    bool showGrid() const { return gridDraw_; }
-    bool showAxes() const { return axesDraw_; }
-    bool showFloor() const { return floorDraw_; }
-    bool showSkeleton() const { return skeletonDraw_; }
-    bool showCharacter() const { return characterDraw_; }
-    bool showWireframe() const { return wireframeDraw_; }
-    bool showBoneNames() const { return boneNamesDraw_; }
+    bool ShowGrid() const { return bGridDraw; }
+    bool ShowAxes() const { return bAxesDraw; }
+    bool ShowFloor() const { return bFloorDraw; }
+    bool ShowSkeleton() const { return bSkeletonDraw; }
+    bool ShowCharacter() const { return bCharacterDraw; }
+    bool ShowWireframe() const { return bWireframeDraw; }
+    bool ShowBoneNames() const { return bBoneNamesDraw; }
 
     // Active Character Asset & Skinning Data
-    void setCharacterAsset(CharacterAsset* asset) { character_ = asset; }
-    void setCharacterSkinMatrices(std::vector<Matrix> skinMatrices) {
-        skinMatrices_ = std::move(skinMatrices);
+    void SetCharacterAsset(FCharacterAsset* asset) { character = asset; }
+    void SetCharacterSkinMatrices(std::vector<Matrix> inMatrices) {
+        skinMatrices = std::move(inMatrices);
     }
 
-    void setProjection(int proj);
-    int projection() const { return projection_; }
+    void SetProjection(int proj);
+    int GetProjection() const { return projection; }
 
-    void setModelTransform(Vector3 pos, Vector3 rot, Vector3 scale) {
-        modelPos_ = pos;
-        modelRot_ = rot;
-        modelScale_ = scale;
+    void SetModelTransform(Vector3 pos, Vector3 rot, Vector3 scale) {
+        modelPos = pos;
+        modelRot = rot;
+        modelScale = scale;
     }
 
-    void cameraBasis(Vector3& right, Vector3& up) const;
-    const Camera3D& camera() const { return camera_; }
-    void drawOrientationGizmo(float centerX, float centerY) const;
+    void CameraBasis(Vector3& right, Vector3& up) const;
+    const Camera3D& GetCamera() const { return camera; }
+    void DrawOrientationGizmo(float centerX, float centerY) const;
 
 private:
-    static void drawPose(const std::vector<Vector3>& pose,
+    static void DrawPose(const std::vector<Vector3>& pose,
                          const std::vector<int>& parents, const Vector3& offset,
                          Color joint, Color bone);
     void drawBoneNames(const Camera3D& cam) const;
-    void recomputeCamera() const;
+    void RecomputeCamera() const;
 
-    Vector3 target_ = {0, 1.0f, 0};
-    float yaw_ = 0.7f;
-    float pitch_ = 0.45f;
-    float dist_ = 3.5f;
-    mutable Camera3D camera_{};
-    GridRenderer grid_;
+    Vector3 Target = {0, 1.0f, 0};
+    float Yaw = 0.7f;
+    float Pitch = 0.45f;
+    float dist = 3.5f;
+    mutable Camera3D camera{};
+    FGridRenderer Grid;
 
-    bool gridDraw_ = true;
-    bool axesDraw_ = true;
-    bool floorDraw_ = true;
-    bool skeletonDraw_ = true;
-    bool characterDraw_ = true;
-    bool wireframeDraw_ = false;
-    bool boneNamesDraw_ = false;
+    bool bGridDraw = true;
+    bool bAxesDraw = true;
+    bool bFloorDraw = true;
+    bool bSkeletonDraw = true;
+    bool bCharacterDraw = true;
+    bool bWireframeDraw = false;
+    bool bBoneNamesDraw = false;
 
-    std::vector<Vector3> pose_;
-    std::vector<int> poseParents_;
-    std::vector<std::string> jointNames_;
-    std::vector<DebugPose> debug_;
+    std::vector<Vector3> pose;
+    std::vector<int> poseParents;
+    std::vector<std::string> jointNames;
+    std::vector<FDebugPose> debug;
 
-    CharacterAsset* character_ = nullptr;
-    std::vector<Matrix> skinMatrices_;
-    SkinningRenderer skinRenderer_;
+    FCharacterAsset* character = nullptr;
+    std::vector<Matrix> skinMatrices;
+    FSkinningRenderer skinRenderer;
 
-    int projection_ = 0; // 0 = Perspective, 1 = Orthographic
-    Vector3 modelPos_ = {0.0f, 0.0f, 0.0f};
-    Vector3 modelRot_ = {0.0f, 0.0f, 0.0f};
-    Vector3 modelScale_ = {1.0f, 1.0f, 1.0f};
+    int projection = 0; // 0 = Perspective, 1 = Orthographic
+    Vector3 modelPos = {0.0f, 0.0f, 0.0f};
+    Vector3 modelRot = {0.0f, 0.0f, 0.0f};
+    Vector3 modelScale = {1.0f, 1.0f, 1.0f};
 };
 
 } // namespace studio

@@ -11,47 +11,45 @@ namespace studio {
 
 // Playback state machine. UI thread only. Samples interpolated pose
 // each frame and runs forward kinematics into world positions.
-class AnimationPlayer {
+class FAnimationPlayer {
 public:
-    void load(const Animation& anim);
+    void load(const FAnimation& inClip);
     void clear();
 
-    void play() { playing_ = true; }
-    void pause() { playing_ = false; }
-    void toggle() { playing_ = !playing_; }
+    void play() { bPlaying = true; }
+    void pause() { bPlaying = false; }
+    void toggle() { bPlaying = !bPlaying; }
     void togglePlay() { toggle(); }
-    void restart() { time_ = 0.0f; }
-    void setLoop(bool loop) { loop_ = loop; }
+    void restart() { time = 0.0f; }
+    void SetLoop(bool loop) { bLoop = loop; }
 
-    void update(float dt);
+    void Update(float dt);
     void scrub(float timeSec);
     void stepFrame(int delta);
     void seekFrame(int f) {
-        if (anim_.fps > 0.0f) scrub(static_cast<float>(f) / anim_.fps);
+        if (clip.fps > 0.0f) scrub(static_cast<float>(f) / clip.fps);
     }
 
-    bool hasAnimation() const { return !anim_.empty(); }
-    const Animation& animation() const { return anim_; }
-    const std::vector<int>& poseParents() const { return anim_.parents; }
-    bool playing() const { return playing_; }
-    bool isPlaying() const { return playing_; }
-    bool loop() const { return loop_; }
-    bool isLooping() const { return loop_; }
-    float time() const { return time_; }
-    float duration() const { return anim_.duration(); }
-    float fps() const { return anim_.fps; }
-    int frame() const;
-    int totalFrames() const { return anim_.frames; }
-    const std::vector<Vector3>& worldPositions() const { return world_; }
+    bool HasAnimation() const { return !clip.empty(); }
+    const FAnimation& GetAnimation() const { return clip; }
+    const std::vector<int>& GetPoseParents() const { return clip.parents; }
+    bool IsPlaying() const { return bPlaying; }
+    bool IsLooping() const { return bLoop; }
+    float GetTime() const { return time; }
+    float GetDuration() const { return clip.GetDuration(); }
+    float GetFps() const { return clip.fps; }
+    int Frame() const;
+    int GetTotalFrames() const { return clip.frames; }
+    const std::vector<Vector3>& GetWorldPositions() const { return world; }
 
 private:
     void sample();
 
-    Animation anim_;
-    float time_ = 0.0f;
-    bool playing_ = false;
-    bool loop_ = true;
-    std::vector<Vector3> world_;
+    FAnimation clip;
+    float time = 0.0f;
+    bool bPlaying = false;
+    bool bLoop = true;
+    std::vector<Vector3> world;
 };
 
 } // namespace studio

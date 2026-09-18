@@ -6,7 +6,7 @@
 
 namespace studio {
 
-class AppPaths {
+class FAppPaths {
 public:
     // Core directory locations
     static std::filesystem::path appDataDir();
@@ -15,7 +15,7 @@ public:
     static std::filesystem::path defaultAnimationsDir();
     static std::filesystem::path defaultExportDir();
     static std::filesystem::path configDir();
-    static std::filesystem::path settingsFile();
+    static std::filesystem::path GetSettingsFile();
     static std::filesystem::path characterRegistryFile();
 
     // Resource location resolvers (finds assets in exe dir, working dir, or dev source dir)

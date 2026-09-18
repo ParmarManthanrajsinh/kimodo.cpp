@@ -1,0 +1,48 @@
+# Kimodo Studio — based on Epic Games' Unreal Engine C++ .clang-format
+# Applied manually: clang-format -i $(git ls-files 'src/*.h' 'src/*.cpp')
+---
+Language: Cpp
+Standard: c++20
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 120
+
+# UE uses Allman braces: every opening brace on its own line.
+BreakBeforeBraces: Allman
+
+# UE puts pointers/references with the type: FString* Foo, const FString& Bar
+PointerAlignment: Left
+DerivePointerAlignment: false
+
+# UE writes short inline accessors on one line.
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: true
+
+# Template declarations break before the declaration.
+AlwaysBreakTemplateDeclarations: Yes
+
+# UE controls include order manually (its own build tooling); do not reshuffle.
+SortIncludes: Never
+
+# Access modifiers: no extra indent (UE style).
+AccessModifierOffset: -4
+
+# Keep UE's tight parameter packing behavior reasonable.
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignOperands: true
+AlignTrailingComments: true
+
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceAfterLogicalNot: false
+
+# Numeric literals in UE code stay as authored; do not pad.
+Cpp11BracedListStyle: true
+
+FixNamespaceComments: true

@@ -25,36 +25,36 @@
 
 namespace studio {
 
-void UIManager::shutdown() {
-    for (auto& [k, tex] : thumbs_) {
+void FUIManager::Shutdown() {
+    for (auto& [k, tex] : thumbs) {
         if (tex.id > 0) {
             UnloadTexture(tex);
             tex.id = 0;
         }
     }
-    thumbs_.clear();
+    thumbs.clear();
 }
 
-void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
-                     AnimationPlayer& player, AnimationLibrary& library,
-                     CharacterLibrary& characters, ModelManager& models,
-                     Toasts& toasts, CaptureFn capture) {
+void FUIManager::Draw(FAppState& state, FViewport& viewport, FKimodoEngine& engine,
+                     FAnimationPlayer& player, FAnimationLibrary& library,
+                     FCharacterLibrary& characters, FModelManager& models,
+                     SToasts& toasts, CaptureFn capture) {
     (void)capture;
     ImGuiViewport* vp = ImGui::GetMainViewport();
 
     // 1. Draw Top Header Bar
-    HeaderBar::draw(state, engine, models);
+    SHeaderBar::Draw(state, engine, models);
 
     // 2. Draw Left Navigation Rail
-    NavRail::draw(state);
+    SNavRail::Draw(state);
 
     // 3. Draw Right Active Tool / Workspace Panel
     float panelW = std::clamp(state.panelWidth, 260.0f, 640.0f);
     state.panelWidth = panelW;
 
     float panelX = vp->Pos.x + vp->Size.x - panelW;
-    float panelY = vp->Pos.y + UIStyle::topH;
-    float panelH = vp->Size.y - UIStyle::topH - UIStyle::statusH;
+    float panelY = vp->Pos.y + FUIStyle::topH;
+    float panelH = vp->Size.y - FUIStyle::topH - FUIStyle::statusH;
 
     ImGui::SetNextWindowPos(ImVec2(panelX, panelY));
     ImGui::SetNextWindowSize(ImVec2(panelW, panelH));
@@ -64,34 +64,34 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
                                  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking;
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, UIStyle::panel);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, FUIStyle::panel);
 
     if (ImGui::Begin("##ActivePagePanel", nullptr, panelFlags)) {
         switch (state.screen) {
-            case Screen::Home:
-            case Screen::Characters:
-                PageCharacters::draw(state, characters, viewport, &player);
+            case EScreen::Home:
+            case EScreen::Characters:
+                SPageCharacters::Draw(state, characters, viewport, &player);
                 break;
-            case Screen::Generate:
-                PageGenerate::draw(state, engine, models, toasts);
+            case EScreen::Generate:
+                SPageGenerate::Draw(state, engine, models, toasts);
                 break;
-            case Screen::Models:
-                PageModels::draw(state, models, toasts);
+            case EScreen::Models:
+                SPageModels::Draw(state, models, toasts);
                 break;
-            case Screen::Library:
-                PageLibrary::draw(state, library, player, toasts);
+            case EScreen::Library:
+                SPageLibrary::Draw(state, library, player, toasts);
                 break;
-            case Screen::Retarget:
-                PageRetarget::draw(state, library, player, toasts);
+            case EScreen::Retarget:
+                SPageRetarget::Draw(state, library, player, toasts);
                 break;
-            case Screen::Export:
-                PageExport::draw(state, player, library, characters, toasts);
+            case EScreen::Export:
+                SPageExport::Draw(state, player, library, characters, toasts);
                 break;
-            case Screen::Settings:
-                PageSettings::draw(state, viewport, toasts);
+            case EScreen::Settings:
+                SPageSettings::Draw(state, viewport, toasts);
                 break;
             default:
-                PageCharacters::draw(state, characters, viewport, &player);
+                SPageCharacters::Draw(state, characters, viewport, &player);
                 break;
         }
     }
@@ -125,7 +125,7 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
             state.sideWidth += io.MouseDelta.x;
             state.sideWidth = std::clamp(state.sideWidth, 120.0f, 320.0f);
         }
-        ImU32 col = active ? ImGui::GetColorU32(UIStyle::accent) :
+        ImU32 col = active ? ImGui::GetColorU32(FUIStyle::accent) :
                     (hovered ? IM_COL32(100, 200, 120, 220) : IM_COL32(40, 44, 52, 160));
         fgDraw->AddLine(ImVec2(leftSplitterX, panelY), ImVec2(leftSplitterX, panelY + panelH), col, (hovered || active) ? 2.0f : 1.0f);
     }
@@ -151,7 +151,7 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
             state.panelWidth -= io.MouseDelta.x;
             state.panelWidth = std::clamp(state.panelWidth, 260.0f, 640.0f);
         }
-        ImU32 col = active ? ImGui::GetColorU32(UIStyle::accent) :
+        ImU32 col = active ? ImGui::GetColorU32(FUIStyle::accent) :
                     (hovered ? IM_COL32(100, 200, 120, 220) : IM_COL32(40, 44, 52, 160));
         fgDraw->AddLine(ImVec2(rightSplitterX, panelY), ImVec2(rightSplitterX, panelY + panelH), col, (hovered || active) ? 2.0f : 1.0f);
     }
@@ -168,7 +168,7 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         float toolW = std::min(570.0f, maxToolW);
         float toolH = 36.0f;
         float toolX = viewportX + 14.0f;
-        float toolY = vp->Pos.y + UIStyle::topH + 12.0f;
+        float toolY = vp->Pos.y + FUIStyle::topH + 12.0f;
 
         ImGui::SetNextWindowPos(ImVec2(toolX, toolY));
         ImGui::SetNextWindowSize(ImVec2(toolW, toolH));
@@ -193,7 +193,7 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
             ImGui::SetNextItemWidth(102);
             static const char* projLabels[] = {"Perspective", "Orthographic"};
             if (ImGui::Combo("##CameraProjCombo", &state.cameraProjection, projLabels, 2)) {
-                viewport.setProjection(state.cameraProjection);
+                viewport.SetProjection(state.cameraProjection);
             }
 
             ImGui::SameLine(0, 8);
@@ -203,7 +203,7 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
                 std::string text = (hasPlus && val ? "+ " : (hasPlus ? "+ " : "")) + std::string(label);
                 if (val) {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.28f, 0.18f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::accent);
+                    ImGui::PushStyleColor(ImGuiCol_Text, FUIStyle::accent);
                 } else {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.14f, 0.18f, 0.6f));
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.65f, 0.70f, 0.78f, 1.0f));
@@ -227,11 +227,11 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
             if (ImGui::Button(ICON_FA_CAMERA "##Snap1", ImVec2(28, itemH))) {
                 std::string snapPath = "screenshot_" + std::to_string(std::time(nullptr)) + ".png";
                 TakeScreenshot(snapPath.c_str());
-                toasts.push("Snapshot saved: " + snapPath, ToastKind::Success);
+                toasts.Push("Snapshot saved: " + snapPath, EToastKind::Success);
             }
             ImGui::SameLine(0, 4);
             if (ImGui::Button(ICON_FA_RESET " Reset", ImVec2(0, itemH))) {
-                viewport.reset();
+                viewport.Reset();
             }
         }
         ImGui::End();
@@ -245,7 +245,7 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         float hudW = 150.0f;
         float hudH = 74.0f;
         float hudX = rightSplitterX - hudW - 14.0f;
-        float hudY = vp->Pos.y + UIStyle::topH + 12.0f;
+        float hudY = vp->Pos.y + FUIStyle::topH + 12.0f;
 
         ImGui::SetNextWindowPos(ImVec2(hudX, hudY));
         ImGui::SetNextWindowSize(ImVec2(hudW, hudH));
@@ -261,25 +261,25 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 8));
 
         if (ImGui::Begin("##ViewportStatsHUD", nullptr, hudFlags)) {
-            CharacterAsset* activeChar = characters.activeAsset();
+            FCharacterAsset* activeChar = characters.GetActiveAsset();
             int vertCount = 12842;
             int jointCount = 30;
-            if (activeChar && activeChar->isLoaded()) {
-                vertCount = static_cast<int>(activeChar->skinningData().vertices.size());
-                jointCount = static_cast<int>(activeChar->bones().size());
+            if (activeChar && activeChar->IsLoaded()) {
+                vertCount = static_cast<int>(activeChar->GetSkinningData().vertices.size());
+                jointCount = static_cast<int>(activeChar->GetBones().size());
             }
 
             ImGui::TextDisabled("Skeleton:");
             ImGui::SameLine(64.0f);
-            ImGui::TextColored(UIStyle::text, "%d joints", jointCount);
+            ImGui::TextColored(FUIStyle::text, "%d joints", jointCount);
 
             ImGui::TextDisabled("Vertices:");
             ImGui::SameLine(64.0f);
-            ImGui::TextColored(UIStyle::text, "%d", vertCount);
+            ImGui::TextColored(FUIStyle::text, "%d", vertCount);
 
             ImGui::TextDisabled("FPS:");
             ImGui::SameLine(64.0f);
-            ImGui::TextColored(UIStyle::text, "%d", state.fps > 0 ? state.fps : 60);
+            ImGui::TextColored(FUIStyle::text, "%d", state.fps > 0 ? state.fps : 60);
         }
         ImGui::End();
 
@@ -290,7 +290,7 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
     // 5c. Bottom-Right Animation HUD (Animation Name, Frame, Time, Playback)
     {
         float barH = 76.0f;
-        float barY = vp->Pos.y + vp->Size.y - UIStyle::statusH - barH - 12.0f;
+        float barY = vp->Pos.y + vp->Size.y - FUIStyle::statusH - barH - 12.0f;
         float hudW = 230.0f;
         float hudH = 92.0f;
         float hudX = rightSplitterX - hudW - 14.0f;
@@ -310,26 +310,26 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 8));
 
         if (ImGui::Begin("##ViewportPlaybackHUD", nullptr, hudFlags)) {
-            const int curFrame = player.frame();
-            const int totalFrames = std::max(1, player.totalFrames());
-            const float curTime = player.time();
+            const int curFrame = player.Frame();
+            const int totalFrames = std::max(1, player.GetTotalFrames());
+            const float curTime = player.GetTime();
 
             ImGui::TextDisabled("Animation:");
             ImGui::SameLine(72.0f);
             std::string animTitle = "A person eating an apple";
-            ImGui::TextColored(UIStyle::text, "%s", animTitle.c_str());
+            ImGui::TextColored(FUIStyle::text, "%s", animTitle.c_str());
 
             ImGui::TextDisabled("Frame:");
             ImGui::SameLine(72.0f);
-            ImGui::TextColored(UIStyle::text, "%03d / %d", curFrame, totalFrames);
+            ImGui::TextColored(FUIStyle::text, "%03d / %d", curFrame, totalFrames);
 
             ImGui::TextDisabled("Time:");
             ImGui::SameLine(72.0f);
-            ImGui::TextColored(UIStyle::text, "%.2fs / 4.000", curTime);
+            ImGui::TextColored(FUIStyle::text, "%.2fs / 4.000", curTime);
 
             ImGui::TextDisabled("Playback:");
             ImGui::SameLine(72.0f);
-            ImGui::TextColored(UIStyle::text, "%.1fx", state.playbackSpeed);
+            ImGui::TextColored(FUIStyle::text, "%.1fx", state.playbackSpeed);
         }
         ImGui::End();
 
@@ -338,13 +338,13 @@ void UIManager::draw(AppState& state, Viewport& viewport, KimodoEngine& engine,
     }
 
     // 6. Draw Bottom Timeline Bar
-    TimelineBar::draw(state, player, panelW);
+    STimelineBar::Draw(state, player, panelW);
 
     // 6. Draw Bottom Status Bar
-    StatusBar::draw(state, viewport);
+    SStatusBar::Draw(state, viewport);
 
     // 7. Draw Toast Notifications Floating Overlay
-    toasts.draw();
+    toasts.Draw();
 }
 
 } // namespace studio

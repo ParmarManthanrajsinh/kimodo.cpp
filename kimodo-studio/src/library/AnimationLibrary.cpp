@@ -70,7 +70,7 @@ bool findNumber(const std::string& json, const std::string& key, double& out) {
 
 } // namespace
 
-std::filesystem::path AnimationLibrary::defaultBaseDir() {
+std::filesystem::path FAnimationLibrary::defaultBaseDir() {
 #if defined(_WIN32)
     if (const char* appdata = std::getenv("LOCALAPPDATA")) {
         return std::filesystem::path(appdata) / "KimodoStudio" / "animations";
@@ -84,30 +84,30 @@ std::filesystem::path AnimationLibrary::defaultBaseDir() {
 #endif
 }
 
-bool AnimationLibrary::init(const std::filesystem::path& baseDir) {
-    base_ = baseDir;
+bool FAnimationLibrary::Init(const std::filesystem::path& baseDir) {
+    Base = baseDir;
     std::error_code ec;
-    std::filesystem::create_directories(base_, ec);
-    rescan();
+    std::filesystem::create_directories(Base, ec);
+    Rescan();
     return true;
 }
 
-void AnimationLibrary::rescan() {
-    entries_.clear();
+void FAnimationLibrary::Rescan() {
+    entries.clear();
     std::error_code ec;
-    for (const auto& dir : std::filesystem::directory_iterator(base_, ec)) {
+    for (const auto& dir : std::filesystem::directory_iterator(Base, ec)) {
         if (!dir.is_directory()) {
             continue;
         }
-        LibraryEntry e;
+        FLibraryEntry e;
         if (readMetadata(dir.path(), e)) {
-            entries_.push_back(std::move(e));
+            entries.push_back(std::move(e));
         }
     }
 }
 
-bool AnimationLibrary::writeMetadata(const std::filesystem::path& dir,
-                                     const LibraryEntry& e) {
+bool FAnimationLibrary::writeMetadata(const std::filesystem::path& dir,
+                                     const FLibraryEntry& e) {
     std::ofstream out(dir / "metadata.json", std::ios::trunc);
     if (!out) {
         return false;
@@ -120,7 +120,7 @@ bool AnimationLibrary::writeMetadata(const std::filesystem::path& dir,
     return static_cast<bool>(out);
 }
 
-bool AnimationLibrary::readMetadata(const std::filesystem::path& dir, LibraryEntry& e) {
+bool FAnimationLibrary::readMetadata(const std::filesystem::path& dir, FLibraryEntry& e) {
     std::ifstream in(dir / "metadata.json");
     if (!in) {
         return false;
@@ -148,7 +148,7 @@ bool AnimationLibrary::readMetadata(const std::filesystem::path& dir, LibraryEnt
 
 namespace {
 
-bool readAnimData(std::ifstream& bin, Animation& out) {
+bool readAnimData(std::ifstream& bin, FAnimation& out) {
     uint32_t frames = 0, joints = 0;
     float fps = 30.0f;
     bin.read(reinterpret_cast<char*>(&frames), sizeof(frames));
@@ -180,8 +180,8 @@ bool readU32(std::ifstream& bin, uint32_t& v) {
 
 } // namespace
 
-bool AnimationLibrary::saveAnimation(const std::string& prompt, const std::string& model,
-                                     const Animation& anim, LibraryEntry& out) {
+bool FAnimationLibrary::saveAnimation(const std::string& prompt, const std::string& model,
+                                     const FAnimation& anim, FLibraryEntry& out) {
     // Unique across restarts: timestamp + ms + random (no shared counter).
     static thread_local std::mt19937 rng{std::random_device{}()};
     const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -199,7 +199,7 @@ bool AnimationLibrary::saveAnimation(const std::string& prompt, const std::strin
     out.frames = anim.frames;
     out.joints = anim.joints;
     out.skeleton = anim.skeletonName;
-    out.dir = base_ / out.id;
+    out.dir = Base / out.id;
 
     std::error_code ec;
     std::filesystem::create_directories(out.dir, ec);
@@ -234,11 +234,11 @@ bool AnimationLibrary::saveAnimation(const std::string& prompt, const std::strin
     if (!bin || !writeMetadata(out.dir, out)) {
         return false;
     }
-    entries_.push_back(out);
+    entries.push_back(out);
     return true;
 }
 
-bool AnimationLibrary::loadAnimation(const LibraryEntry& entry, Animation& out) const {
+bool FAnimationLibrary::loadAnimation(const FLibraryEntry& entry, FAnimation& out) const {
     std::ifstream bin(entry.dir / "motion.bin", std::ios::binary);
     if (!bin) {
         return false;
@@ -255,14 +255,14 @@ bool AnimationLibrary::loadAnimation(const LibraryEntry& entry, Animation& out) 
         if (!readAnimData(bin, out)) {
             return false;
         }
-        Animation soma;
+        FAnimation soma;
         soma.frames = out.frames;
         soma.joints = out.joints;
         soma.fps = out.fps;
         soma.skeletonName = "soma30";
-        soma.jointNames.assign(Soma30Spec::names.begin(), Soma30Spec::names.end());
-        soma.parents.assign(Soma30Spec::parents.begin(), Soma30Spec::parents.end());
-        soma.offsets.assign(Soma30Spec::offsets.begin(), Soma30Spec::offsets.end());
+        soma.jointNames.assign(FSoma30Spec::names.begin(), FSoma30Spec::names.end());
+        soma.parents.assign(FSoma30Spec::parents.begin(), FSoma30Spec::parents.end());
+        soma.offsets.assign(FSoma30Spec::offsets.begin(), FSoma30Spec::offsets.end());
         soma.localRotationsXyzw = std::move(out.localRotationsXyzw);
         soma.rootPositions = std::move(out.rootPositions);
         out = std::move(soma);
@@ -338,8 +338,8 @@ bool AnimationLibrary::loadAnimation(const LibraryEntry& entry, Animation& out) 
     return true;
 }
 
-bool AnimationLibrary::rename(const std::string& id, const std::string& newPrompt) {
-    for (LibraryEntry& e : entries_) {
+bool FAnimationLibrary::rename(const std::string& id, const std::string& newPrompt) {
+    for (FLibraryEntry& e : entries) {
         if (e.id == id) {
             e.prompt = newPrompt;
             return writeMetadata(e.dir, e);
@@ -348,31 +348,31 @@ bool AnimationLibrary::rename(const std::string& id, const std::string& newPromp
     return false;
 }
 
-bool AnimationLibrary::duplicate(const std::string& id) {
-    for (const LibraryEntry& e : entries_) {
+bool FAnimationLibrary::duplicate(const std::string& id) {
+    for (const FLibraryEntry& e : entries) {
         if (e.id == id) {
-            Animation anim;
+            FAnimation anim;
             if (!loadAnimation(e, anim)) {
                 return false;
             }
-            LibraryEntry copy;
+            FLibraryEntry copy;
             return saveAnimation(e.prompt, e.model, anim, copy);
         }
     }
     return false;
 }
 
-bool AnimationLibrary::hasThumb(const LibraryEntry& e) {
+bool FAnimationLibrary::hasThumb(const FLibraryEntry& e) {
     std::error_code ec;
     return std::filesystem::is_regular_file(e.dir / "thumb.png", ec);
 }
 
-bool AnimationLibrary::remove(const std::string& id) {
-    for (auto it = entries_.begin(); it != entries_.end(); ++it) {
+bool FAnimationLibrary::remove(const std::string& id) {
+    for (auto it = entries.begin(); it != entries.end(); ++it) {
         if (it->id == id) {
             std::error_code ec;
             std::filesystem::remove_all(it->dir, ec);
-            entries_.erase(it);
+            entries.erase(it);
             return true;
         }
     }

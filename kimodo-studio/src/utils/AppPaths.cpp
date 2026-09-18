@@ -24,7 +24,7 @@ std::filesystem::path getExecutableDir() {
 
 } // namespace
 
-std::filesystem::path AppPaths::appDataDir() {
+std::filesystem::path FAppPaths::appDataDir() {
 #if defined(_WIN32)
     if (const char* localAppData = std::getenv("LOCALAPPDATA")) {
         return std::filesystem::path(localAppData) / "KimodoStudio";
@@ -41,19 +41,19 @@ std::filesystem::path AppPaths::appDataDir() {
 #endif
 }
 
-std::filesystem::path AppPaths::defaultModelsDir() {
+std::filesystem::path FAppPaths::defaultModelsDir() {
     return appDataDir() / "models";
 }
 
-std::filesystem::path AppPaths::defaultCharactersDir() {
+std::filesystem::path FAppPaths::defaultCharactersDir() {
     return appDataDir() / "characters";
 }
 
-std::filesystem::path AppPaths::defaultAnimationsDir() {
+std::filesystem::path FAppPaths::defaultAnimationsDir() {
     return appDataDir() / "animations";
 }
 
-std::filesystem::path AppPaths::defaultExportDir() {
+std::filesystem::path FAppPaths::defaultExportDir() {
 #if defined(_WIN32)
     if (const char* userProfile = std::getenv("USERPROFILE")) {
         return std::filesystem::path(userProfile) / "Documents" / "KimodoStudio" / "Exports";
@@ -62,19 +62,19 @@ std::filesystem::path AppPaths::defaultExportDir() {
     return appDataDir() / "exports";
 }
 
-std::filesystem::path AppPaths::configDir() {
+std::filesystem::path FAppPaths::configDir() {
     return appDataDir() / "config";
 }
 
-std::filesystem::path AppPaths::settingsFile() {
+std::filesystem::path FAppPaths::GetSettingsFile() {
     return appDataDir() / "settings.json";
 }
 
-std::filesystem::path AppPaths::characterRegistryFile() {
+std::filesystem::path FAppPaths::characterRegistryFile() {
     return appDataDir() / "characters.json";
 }
 
-std::filesystem::path AppPaths::resolveAsset(const std::string& relativePath) {
+std::filesystem::path FAppPaths::resolveAsset(const std::string& relativePath) {
     const std::filesystem::path exeDir = getExecutableDir();
     std::vector<std::filesystem::path> candidates = {
         exeDir / relativePath,
@@ -107,11 +107,11 @@ std::filesystem::path AppPaths::resolveAsset(const std::string& relativePath) {
     return candidates.front();
 }
 
-std::filesystem::path AppPaths::resolveFont(const std::string& fontFilename) {
+std::filesystem::path FAppPaths::resolveFont(const std::string& fontFilename) {
     return resolveAsset("fonts/" + fontFilename);
 }
 
-std::filesystem::path AppPaths::resolveConfig(const std::string& configFilename) {
+std::filesystem::path FAppPaths::resolveConfig(const std::string& configFilename) {
     // Check user data config first, then bundled config
     std::error_code ec;
     const auto userConfig = configDir() / configFilename;
@@ -121,7 +121,7 @@ std::filesystem::path AppPaths::resolveConfig(const std::string& configFilename)
     return resolveAsset("config/" + configFilename);
 }
 
-std::filesystem::path AppPaths::resolveModel(const std::string& modelFilename) {
+std::filesystem::path FAppPaths::resolveModel(const std::string& modelFilename) {
     std::error_code ec;
     const auto userModel = defaultModelsDir() / modelFilename;
     if (std::filesystem::is_regular_file(userModel, ec) && !ec) {
@@ -130,7 +130,7 @@ std::filesystem::path AppPaths::resolveModel(const std::string& modelFilename) {
     return resolveAsset("models/" + modelFilename);
 }
 
-std::filesystem::path AppPaths::resolveTextBundle(const std::string& bundleName) {
+std::filesystem::path FAppPaths::resolveTextBundle(const std::string& bundleName) {
     const std::filesystem::path exeDir = getExecutableDir();
     std::vector<std::filesystem::path> candidates = {
         defaultModelsDir() / bundleName,
@@ -186,7 +186,7 @@ std::filesystem::path AppPaths::resolveTextBundle(const std::string& bundleName)
     return candidates.front();
 }
 
-void AppPaths::ensureDirectories() {
+void FAppPaths::ensureDirectories() {
     std::error_code ec;
     std::filesystem::create_directories(appDataDir(), ec);
     std::filesystem::create_directories(defaultModelsDir(), ec);

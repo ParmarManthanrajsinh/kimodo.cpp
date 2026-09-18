@@ -5,7 +5,7 @@
 
 namespace studio {
 
-struct UserSettings {
+struct FUserSettings {
     std::string theme = "Dark";
     int targetFps = 60;
     int viewportMode = 2; // 0 = Character, 1 = Skeleton, 2 = Both
@@ -26,20 +26,20 @@ struct UserSettings {
     float playbackSpeed = 1.0f;
 };
 
-class SettingsManager {
+class FSettingsManager {
 public:
-    static SettingsManager& instance();
+    static FSettingsManager& GetInstance();
 
     bool load();
     bool save();
 
-    UserSettings& settings() { return settings_; }
-    const UserSettings& settings() const { return settings_; }
+    FUserSettings& GetSettings() { return Settings; }
+    const FUserSettings& GetSettings() const { return Settings; }
 
 private:
-    SettingsManager() = default;
-    UserSettings settings_;
-    std::filesystem::path filePath_;
+    FSettingsManager() = default;
+    FUserSettings Settings;
+    std::filesystem::path filePath;
 };
 
 } // namespace studio

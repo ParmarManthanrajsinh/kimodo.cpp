@@ -10,37 +10,37 @@
 
 namespace studio {
 
-void Toasts::push(const std::string& text, ToastKind kind) {
-    items_.push_back({text, kind, GetTime() + 4.0});
+void SToasts::Push(const std::string& text, EToastKind kind) {
+    items.push_back({text, kind, GetTime() + 4.0});
 }
 
-void Toasts::draw() {
+void SToasts::Draw() {
     const double now = GetTime();
-    items_.erase(std::remove_if(items_.begin(), items_.end(),
-                                [now](const Toast& t) { return t.expiresAt < now; }),
-                 items_.end());
+    items.erase(std::remove_if(items.begin(), items.end(),
+                                [now](const FToast& t) { return t.expiresAt < now; }),
+                 items.end());
 
-    if (items_.empty()) return;
+    if (items.empty()) return;
 
     // Position above timeline + status bar, to the right of the left sidebar.
-    const float baseY = (float)GetScreenHeight() - (UIStyle::timelineH + UIStyle::statusH) - 16.0f;
-    const float baseX = UIStyle::sideW + 16.0f;
+    const float baseY = (float)GetScreenHeight() - (FUIStyle::timelineH + FUIStyle::statusH) - 16.0f;
+    const float baseX = FUIStyle::sideW + 16.0f;
     float y = baseY;
     int idx = 0;
-    for (auto it = items_.rbegin(); it != items_.rend(); ++it) {
-        const Toast& t = *it;
+    for (auto it = items.rbegin(); it != items.rend(); ++it) {
+        const FToast& t = *it;
         ImVec4 color;
         const char* icon = "";
         switch (t.kind) {
-            case ToastKind::Success:
+            case EToastKind::Success:
                 color = ImVec4(0.30f, 0.85f, 0.45f, 1.0f);
                 icon = studio::icons::kCheckCircle;
                 break;
-            case ToastKind::Warning:
+            case EToastKind::Warning:
                 color = ImVec4(0.95f, 0.75f, 0.25f, 1.0f);
                 icon = studio::icons::kWarn;
                 break;
-            case ToastKind::Error:
+            case EToastKind::Error:
                 color = ImVec4(0.95f, 0.35f, 0.35f, 1.0f);
                 icon = studio::icons::kWarn;
                 break;

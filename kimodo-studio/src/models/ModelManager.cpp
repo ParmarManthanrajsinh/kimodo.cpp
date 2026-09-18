@@ -75,20 +75,20 @@ std::filesystem::path appDataDir() {
 
 } // namespace
 
-bool ModelManager::init(const std::string& registryPath, const std::string& modelDir,
-                        const std::string& textBundle) {
-    registryPath_ = registryPath;
-    modelDir_ = modelDir;
-    textBundle_ = textBundle;
+bool FModelManager::Init(const std::string& inRegistryPath, const std::string& inModelDir,
+                         const std::string& inTextBundle) {
+    registryPath = inRegistryPath;
+    modelDir = inModelDir;
+    textBundle = inTextBundle;
 
-    std::ifstream in(registryPath_);
+    std::ifstream in(registryPath);
     if (in) {
         const std::string json{std::istreambuf_iterator<char>(in), {}};
         // Flat object per model: {"models":[{...},{...}]}. Scan "id" occurrences.
         size_t pos = 0;
         std::string id;
         while (findString(json, "id", id, pos)) {
-            ModelEntry e;
+            FModelEntry e;
             e.id = id;
             const size_t anchor = json.find(id, pos);
             findString(json, "name", e.name, pos);
@@ -104,27 +104,27 @@ bool ModelManager::init(const std::string& registryPath, const std::string& mode
             if (findNumber(json, "sizeBytes", num, pos)) {
                 e.sizeBytes = static_cast<uint64_t>(num);
             }
-            entries_.push_back(std::move(e));
+            entries.push_back(std::move(e));
             pos = anchor + id.size();
         }
     }
-    if (entries_.empty()) {
-        Logger::instance().warning("ModelManager: registry empty or missing: " +
-                                   registryPath_);
+    if (entries.empty()) {
+        FLogger::GetInstance().warning("ModelManager: registry empty or missing: " +
+                                   registryPath);
     }
 
     // Restore selection.
     std::ifstream sel(appDataDir() / "settings" / "active_model.txt");
     if (sel) {
-        std::getline(sel, activeId_);
+        std::getline(sel, ActiveId);
     }
-    rescan();
+    Rescan();
     return true;
 }
 
 namespace {
-const ModelEntry* findIn(const std::vector<ModelEntry>& entries, const std::string& id) {
-    for (const ModelEntry& e : entries) {
+const FModelEntry* findIn(const std::vector<FModelEntry>& entries, const std::string& id) {
+    for (const FModelEntry& e : entries) {
         if (e.id == id) {
             return &e;
         }
@@ -133,10 +133,10 @@ const ModelEntry* findIn(const std::vector<ModelEntry>& entries, const std::stri
 }
 } // namespace
 
-void ModelManager::rescan() {
-    std::lock_guard<std::mutex> lock(mutex_);
+void FModelManager::Rescan() {
+    std::lock_guard<std::mutex> lock(mutex);
     std::vector<std::string> dirs = {
-        modelDir_,
+        modelDir,
         (appDataDir() / "models").string(),
         (std::filesystem::current_path() / "models").string(),
     };
@@ -158,7 +158,7 @@ void ModelManager::rescan() {
         }
     }
 
-    for (ModelEntry& e : entries_) {
+    for (FModelEntry& e : entries) {
         e.installed = false;
         e.localPath.clear();
         e.localBytes = 0;
@@ -177,38 +177,38 @@ void ModelManager::rescan() {
             }
         }
     }
-    const ModelEntry* active = findIn(entries_, activeId_);
+    const FModelEntry* active = findIn(entries, ActiveId);
     if (!active || !active->installed) {
-        activeId_.clear();
-        for (const ModelEntry& e : entries_) {
+        ActiveId.clear();
+        for (const FModelEntry& e : entries) {
             if (e.installed) {
-                activeId_ = e.id;
+                ActiveId = e.id;
                 break;
             }
         }
     }
 }
 
-void ModelManager::shutdown() {
-    if (worker_.joinable()) {
-        worker_.join();
+void FModelManager::Shutdown() {
+    if (worker.joinable()) {
+        worker.join();
     }
-    task_.store(ModelTask::None);
+    task.store(EModelTask::None);
 }
 
-std::vector<ModelEntry> ModelManager::entries() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return entries_;
+std::vector<FModelEntry> FModelManager::GetEntries() const {
+    std::lock_guard<std::mutex> lock(mutex);
+    return entries;
 }
 
-std::string ModelManager::activeId() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return activeId_;
+std::string FModelManager::GetActiveId() const {
+    std::lock_guard<std::mutex> lock(mutex);
+    return ActiveId;
 }
 
-bool ModelManager::findCopy(const std::string& id, ModelEntry& out) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    const ModelEntry* e = findIn(entries_, id);
+bool FModelManager::findCopy(const std::string& id, FModelEntry& out) const {
+    std::lock_guard<std::mutex> lock(mutex);
+    const FModelEntry* e = findIn(entries, id);
     if (!e) {
         return false;
     }
@@ -216,13 +216,13 @@ bool ModelManager::findCopy(const std::string& id, ModelEntry& out) const {
     return true;
 }
 
-bool ModelManager::select(const std::string& id) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    const ModelEntry* e = findIn(entries_, id);
+bool FModelManager::select(const std::string& id) {
+    std::lock_guard<std::mutex> lock(mutex);
+    const FModelEntry* e = findIn(entries, id);
     if (!e || !e->installed) {
         return false;
     }
-    activeId_ = id;
+    ActiveId = id;
     std::error_code ec;
     std::filesystem::create_directories(appDataDir() / "settings", ec);
     std::ofstream sel(appDataDir() / "settings" / "active_model.txt", std::ios::trunc);
@@ -232,77 +232,77 @@ bool ModelManager::select(const std::string& id) {
     return true;
 }
 
-bool ModelManager::busy() const {
-    return task_.load() != ModelTask::None;
+bool FModelManager::IsBusy() const {
+    return task.load() != EModelTask::None;
 }
 
-float ModelManager::taskProgress() const {
-    const uint64_t total = taskTotal_.load();
+float FModelManager::GetTaskProgress() const {
+    const uint64_t total = taskTotal.load();
     if (total == 0) {
         return 0.0f;
     }
-    float p = static_cast<float>(taskDone_.load()) / static_cast<float>(total);
+    float p = static_cast<float>(taskDone.load()) / static_cast<float>(total);
     return p < 0.0f ? 0.0f : (p > 1.0f ? 1.0f : p);
 }
 
-std::string ModelManager::taskLabel() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return taskLabel_;
+std::string FModelManager::GetTaskLabel() const {
+    std::lock_guard<std::mutex> lock(mutex);
+    return TaskLabel;
 }
 
-void ModelManager::cancelTask() {
-    cancelRequested_.store(true);
+void FModelManager::cancelTask() {
+    bCancelRequested.store(true);
 }
 
-void ModelManager::startTask(ModelTask t, const std::string& label) {
-    if (worker_.joinable()) {
-        worker_.join();
+void FModelManager::startTask(EModelTask t, const std::string& label) {
+    if (worker.joinable()) {
+        worker.join();
     }
-    taskDone_.store(0);
-    taskTotal_.store(0);
-    cancelRequested_.store(false);
+    taskDone.store(0);
+    taskTotal.store(0);
+    bCancelRequested.store(false);
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        taskLabel_ = label;
+        std::lock_guard<std::mutex> lock(mutex);
+        TaskLabel = label;
     }
-    task_.store(t);
+    task.store(t);
 }
 
-void ModelManager::verifyAsync(const std::string& id) {
-    if (busy()) {
+void FModelManager::verifyAsync(const std::string& id) {
+    if (IsBusy()) {
         return;
     }
-    startTask(ModelTask::Verify, "Verifying " + id + "...");
-    worker_ = std::thread(&ModelManager::runVerify, this, id);
+    startTask(EModelTask::Verify, "Verifying " + id + "...");
+    worker = std::thread(&FModelManager::runVerify, this, id);
 }
 
-void ModelManager::importAsync(const std::string& sourcePath, const std::string& id) {
-    if (busy()) {
+void FModelManager::importAsync(const std::string& sourcePath, const std::string& id) {
+    if (IsBusy()) {
         return;
     }
-    startTask(ModelTask::Import, "Importing " + id + "...");
-    worker_ = std::thread(&ModelManager::runImport, this, sourcePath, id);
+    startTask(EModelTask::Import, "Importing " + id + "...");
+    worker = std::thread(&FModelManager::runImport, this, sourcePath, id);
 }
 
-void ModelManager::deleteAsync(const std::string& id) {
-    if (busy()) {
+void FModelManager::deleteAsync(const std::string& id) {
+    if (IsBusy()) {
         return;
     }
-    startTask(ModelTask::Delete, "Deleting " + id + "...");
-    worker_ = std::thread(&ModelManager::runDelete, this, id);
+    startTask(EModelTask::Delete, "Deleting " + id + "...");
+    worker = std::thread(&FModelManager::runDelete, this, id);
 }
 
-void ModelManager::downloadAsync(const std::string& id) {
-    if (busy()) {
+void FModelManager::downloadAsync(const std::string& id) {
+    if (IsBusy()) {
         return;
     }
-    startTask(ModelTask::Download, "Downloading " + id + "...");
-    worker_ = std::thread(&ModelManager::runDownload, this, id);
+    startTask(EModelTask::Download, "Downloading " + id + "...");
+    worker = std::thread(&FModelManager::runDownload, this, id);
 }
 
-void ModelManager::runDownload(std::string id) {
+void FModelManager::runDownload(std::string id) {
     std::string fail;
-    ModelEntry e;
+    FModelEntry e;
     if (!findCopy(id, e)) {
         fail = "unknown model id";
     } else if (e.repo.empty() || e.remotePath.empty()) {
@@ -315,14 +315,14 @@ void ModelManager::runDownload(std::string id) {
         const auto dest = userDir / e.motionFile;
         const std::string tmp = dest.string() + ".download";
         std::string token;
-        HFAuthenticator::loadToken(token); // may be empty for public repos
-        const std::string url = HuggingFaceClient::resolveUrl(e.repo, e.remotePath);
-        Logger::instance().info("Model " + id + " download started");
-        const bool ok = HuggingFaceClient::download(
+        FHFAuthenticator::loadToken(token); // may be empty for public repos
+        const std::string url = FHuggingFaceClient::resolveUrl(e.repo, e.remotePath);
+        FLogger::GetInstance().info("Model " + id + " download started");
+        const bool ok = FHuggingFaceClient::download(
             url, tmp, token, [this](uint64_t done, uint64_t total) {
-                taskDone_.store(done);
-                taskTotal_.store(total);
-                return !cancelRequested_.load();
+                taskDone.store(done);
+                taskTotal.store(total);
+                return !bCancelRequested.load();
             }, fail);
         if (!ok) {
             if (fail.empty()) {
@@ -332,68 +332,68 @@ void ModelManager::runDownload(std::string id) {
             }
         } else {
             std::string error;
-            const std::string digest = FileHash::sha256(tmp, error);
+            const std::string digest = FFileHash::sha256(tmp, error);
             if (!e.sha256.empty() && digest != e.sha256) {
                 std::filesystem::remove(tmp, ec);
                 fail = "CHECKSUM MISMATCH; download discarded";
-                Logger::instance().error("Model " + id + " download checksum mismatch");
+                FLogger::GetInstance().error("Model " + id + " download checksum mismatch");
             } else {
                 std::filesystem::rename(tmp, dest, ec);
                 if (ec) {
                     fail = "atomic install failed: " + ec.message();
                 } else {
-                    Logger::instance().info("Model " + id + " downloaded + verified");
+                    FLogger::GetInstance().info("Model " + id + " downloaded + verified");
                 }
             }
         }
     }
-    rescan();
+    Rescan();
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        taskLabel_ = fail.empty() ? ("Installed " + id) : fail;
+        std::lock_guard<std::mutex> lock(mutex);
+        TaskLabel = fail.empty() ? ("Installed " + id) : fail;
     }
-    task_.store(ModelTask::None);
+    task.store(EModelTask::None);
 }
 
-void ModelManager::runVerify(std::string id) {
-    ModelEntry e;
+void FModelManager::runVerify(std::string id) {
+    FModelEntry e;
     std::string fail = "entry missing";
     if (findCopy(id, e) && e.installed) {
         if (e.sha256.empty()) {
             fail.clear();
-            std::lock_guard<std::mutex> lock(mutex_);
-            taskLabel_ = "No checksum in registry; skipped";
+            std::lock_guard<std::mutex> lock(mutex);
+            TaskLabel = "No checksum in registry; skipped";
         } else {
             std::string error;
-            const std::string digest = FileHash::sha256(
+            const std::string digest = FFileHash::sha256(
                 e.localPath, error, [this](uint64_t done, uint64_t total) {
-                    taskDone_.store(done);
-                    taskTotal_.store(total);
+                    taskDone.store(done);
+                    taskTotal.store(total);
                 });
             if (digest.empty()) {
                 fail = "hash failed: " + error;
             } else if (digest != e.sha256) {
                 fail = "CHECKSUM MISMATCH (file != registry)";
-                Logger::instance().error("Model " + id + " checksum mismatch");
+                FLogger::GetInstance().error("Model " + id + " checksum mismatch");
             } else {
                 fail.clear();
-                Logger::instance().info("Model " + id + " checksum OK");
+                FLogger::GetInstance().info("Model " + id + " checksum OK");
             }
         }
     }
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        taskLabel_ = fail.empty() ? ("Verified " + id + ": checksum OK") : fail;
+        std::lock_guard<std::mutex> lock(mutex);
+        TaskLabel = fail.empty() ? ("Verified " + id + ": checksum OK") : fail;
     }
-    if (worker_.joinable()) {
+    if (worker.joinable()) {
         // Keep thread joinable for owner shutdown(); mark done via task reset below.
     }
-    task_.store(ModelTask::None);
+    task.store(EModelTask::None);
 }
 
-void ModelManager::runImport(std::string sourcePath, std::string id) {
+void FModelManager::runImport(std::string sourcePath, std::string id) {
     std::string fail;
-    ModelEntry e;
+    FModelEntry e;
     if (!findCopy(id, e)) {
         fail = "unknown model id";
     } else {
@@ -411,7 +411,7 @@ void ModelManager::runImport(std::string sourcePath, std::string id) {
             src.seekg(0, std::ios::end);
             const auto total = src.tellg();
             src.seekg(0, std::ios::beg);
-            taskTotal_.store(static_cast<uint64_t>(total));
+            taskTotal.store(static_cast<uint64_t>(total));
             std::vector<char> buf(1 << 20);
             uint64_t done = 0;
             bool ok = true;
@@ -421,7 +421,7 @@ void ModelManager::runImport(std::string sourcePath, std::string id) {
                 if (n > 0) {
                     dst.write(buf.data(), n);
                     done += static_cast<uint64_t>(n);
-                    taskDone_.store(done);
+                    taskDone.store(done);
                 }
             }
             ok = static_cast<bool>(src.eof()) && static_cast<bool>(dst);
@@ -432,7 +432,7 @@ void ModelManager::runImport(std::string sourcePath, std::string id) {
             } else {
                 // Verify before atomic install (plan section 41).
                 std::string error;
-                const std::string digest = FileHash::sha256(tmp, error);
+                const std::string digest = FFileHash::sha256(tmp, error);
                 if (!e.sha256.empty() && digest != e.sha256) {
                     std::filesystem::remove(tmp, ec);
                     fail = "CHECKSUM MISMATCH; incomplete file discarded";
@@ -445,16 +445,16 @@ void ModelManager::runImport(std::string sourcePath, std::string id) {
             }
         }
     }
-    rescan();
+    Rescan();
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        taskLabel_ = fail.empty() ? ("Installed " + id) : fail;
+        std::lock_guard<std::mutex> lock(mutex);
+        TaskLabel = fail.empty() ? ("Installed " + id) : fail;
     }
-    task_.store(ModelTask::None);
+    task.store(EModelTask::None);
 }
 
-void ModelManager::runDelete(std::string id) {
-    ModelEntry e;
+void FModelManager::runDelete(std::string id) {
+    FModelEntry e;
     std::string fail = "entry missing";
     if (findCopy(id, e) && e.installed) {
         std::error_code ec;
@@ -462,24 +462,24 @@ void ModelManager::runDelete(std::string id) {
         const auto p = std::filesystem::path(e.localPath);
         const auto dir = p.parent_path().string();
         const bool knownDir =
-            dir == modelDir_ || dir == (appDataDir() / "models").string();
+            dir == modelDir || dir == (appDataDir() / "models").string();
         if (!knownDir) {
             fail = "refusing to delete outside model dirs";
         } else if (!std::filesystem::remove(p, ec) || ec) {
             fail = "delete failed: " + ec.message();
         } else {
             fail.clear();
-            if (activeId_ == id) {
-                activeId_.clear();
+            if (ActiveId == id) {
+                ActiveId.clear();
             }
         }
     }
-    rescan();
+    Rescan();
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        taskLabel_ = fail.empty() ? ("Deleted " + id) : fail;
+        std::lock_guard<std::mutex> lock(mutex);
+        TaskLabel = fail.empty() ? ("Deleted " + id) : fail;
     }
-    task_.store(ModelTask::None);
+    task.store(EModelTask::None);
 }
 
 } // namespace studio

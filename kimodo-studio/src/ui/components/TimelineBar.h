@@ -5,9 +5,9 @@
 
 namespace studio {
 
-class TimelineBar {
+class STimelineBar {
 public:
-    static void draw(AppState& state, AnimationPlayer& player, float panelWidth);
+    static void Draw(FAppState& state, FAnimationPlayer& player, float panelWidth);
 };
 
 } // namespace studio

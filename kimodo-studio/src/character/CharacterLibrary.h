@@ -9,7 +9,7 @@
 
 namespace studio {
 
-struct CharacterEntry {
+struct FCharacterEntry {
     std::string id;
     std::string name;
     std::string filePath;
@@ -18,39 +18,39 @@ struct CharacterEntry {
     int boneCount = 0;
     int vertexCount = 0;
     float scale = 1.0f;
-    CharacterBoneMap mapping;
+    FCharacterBoneMap mapping;
     std::string thumbnailPath;
     bool installed = true;
 };
 
-class CharacterLibrary {
+class FCharacterLibrary {
 public:
-    CharacterLibrary() = default;
+    FCharacterLibrary() = default;
 
-    bool init();
-    void rescan();
+    bool Init();
+    void Rescan();
 
-    const std::vector<CharacterEntry>& entries() const { return entries_; }
-    const std::string& activeId() const { return activeId_; }
+    const std::vector<FCharacterEntry>& GetEntries() const { return entries; }
+    const std::string& GetActiveId() const { return ActiveId; }
 
-    CharacterAsset* activeAsset() { return activeAsset_.get(); }
-    const CharacterAsset* activeAsset() const { return activeAsset_.get(); }
+    FCharacterAsset* GetActiveAsset() { return ActiveAsset.get(); }
+    const FCharacterAsset* GetActiveAsset() const { return ActiveAsset.get(); }
 
-    bool selectCharacter(const std::string& id);
-    bool importCharacter(const std::string& sourcePath, std::string& error);
-    bool removeCharacter(const std::string& id);
+    bool SelectCharacter(const std::string& id);
+    bool ImportCharacter(const std::string& sourcePath, std::string& error);
+    bool RemoveCharacter(const std::string& id);
 
-    bool saveMapping(const std::string& id, const CharacterBoneMap& mapping);
-    bool findEntry(const std::string& id, CharacterEntry& outEntry) const;
+    bool SaveMapping(const std::string& id, const FCharacterBoneMap& mapping);
+    bool FindEntry(const std::string& id, FCharacterEntry& outEntry) const;
 
 private:
-    std::vector<CharacterEntry> entries_;
-    std::string activeId_;
-    std::unique_ptr<CharacterAsset> activeAsset_;
+    std::vector<FCharacterEntry> entries;
+    std::string ActiveId;
+    std::unique_ptr<FCharacterAsset> ActiveAsset;
 
-    void loadRegistry();
-    void saveRegistry();
-    void registerDefaultCharacters();
+    void LoadRegistry();
+    void SaveRegistry();
+    void RegisterDefaultCharacters();
 };
 
 } // namespace studio

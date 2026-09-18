@@ -4,9 +4,9 @@
 
 namespace studio {
 
-class NavRail {
+class SNavRail {
 public:
-    static void draw(AppState& state);
+    static void Draw(FAppState& state);
 };
 
 } // namespace studio

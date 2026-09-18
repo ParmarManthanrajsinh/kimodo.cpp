@@ -18,7 +18,7 @@ void loadStudioFonts() {
     ImGuiIO& io = ImGui::GetIO();
 
     // 1. Text font: Roboto-Regular.ttf
-    std::filesystem::path robotoPath = AppPaths::resolveFont("Roboto-Regular.ttf");
+    std::filesystem::path robotoPath = FAppPaths::resolveFont("Roboto-Regular.ttf");
     std::error_code ec;
     if (std::filesystem::is_regular_file(robotoPath, ec) && !ec) {
         ImFontConfig textCfg{};
@@ -32,14 +32,14 @@ void loadStudioFonts() {
             0,
         };
         io.Fonts->AddFontFromFileTTF(robotoPath.string().c_str(), 14.0f, &textCfg, textRanges);
-        Logger::instance().info("Text font (Roboto): " + robotoPath.string());
+        FLogger::GetInstance().info("Text font (Roboto): " + robotoPath.string());
     } else {
         io.Fonts->AddFontDefault();
-        Logger::instance().info("Text font: default fallback");
+        FLogger::GetInstance().info("Text font: default fallback");
     }
 
     // 2. Symbol font: Font Awesome Solid (fa-solid-900.ttf) merged for icon codepoints
-    std::filesystem::path faPath = AppPaths::resolveFont("fa-solid-900.ttf");
+    std::filesystem::path faPath = FAppPaths::resolveFont("fa-solid-900.ttf");
     if (std::filesystem::is_regular_file(faPath, ec) && !ec) {
         ImFontConfig cfg{};
         cfg.MergeMode = true;
@@ -48,33 +48,33 @@ void loadStudioFonts() {
         cfg.OversampleV = 2;
         static const ImWchar ranges[] = {0xf000, 0xf8ff, 0};
         io.Fonts->AddFontFromFileTTF(faPath.string().c_str(), 13.0f, &cfg, ranges);
-        Logger::instance().info("FA icons: " + faPath.string());
+        FLogger::GetInstance().info("FA icons: " + faPath.string());
     } else {
-        Logger::instance().info("FA icons: font missing, text fallback");
+        FLogger::GetInstance().info("FA icons: font missing, text fallback");
     }
 }
 
 } // namespace
 
-bool Application::init(int width, int height) {
-    Logger::instance().init(Logger::defaultLogFile());
-    Logger::instance().info(std::string("Kimodo Studio ") + KIMODO_STUDIO_VERSION +
+bool FApplication::Init(int width, int height) {
+    FLogger::GetInstance().Init(FLogger::DefaultLogFile());
+    FLogger::GetInstance().info(std::string("Kimodo Studio ") + KIMODO_STUDIO_VERSION +
                             " (" + KIMODO_STUDIO_GIT_HASH + ") built " +
                             KIMODO_STUDIO_BUILD_DATE);
 
-    AppPaths::ensureDirectories();
-    SettingsManager::instance().load();
-    const auto& settings = SettingsManager::instance().settings();
+    FAppPaths::ensureDirectories();
+    FSettingsManager::GetInstance().load();
+    const auto& settings = FSettingsManager::GetInstance().GetSettings();
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
     InitWindow(width, height, "Kimodo Studio " KIMODO_STUDIO_VERSION);
     if (!IsWindowReady()) {
-        Logger::instance().error("Raylib window init failed");
+        FLogger::GetInstance().error("Raylib window init failed");
         return false;
     }
 
     // App window icon
-    std::filesystem::path iconPath = AppPaths::resolveAsset("nvidia-logo.png");
+    std::filesystem::path iconPath = FAppPaths::resolveAsset("nvidia-logo.png");
     std::error_code ec;
     if (std::filesystem::is_regular_file(iconPath, ec) && !ec) {
         Image appIcon = LoadImage(iconPath.string().c_str());
@@ -88,172 +88,172 @@ bool Application::init(int width, int height) {
 
     rlImGuiSetLoadFontsCallback(loadStudioFonts);
     rlImGuiSetup(true);
-    Theme::apply();
+    FTheme::apply();
 
     // Initialize systems
-    state_.gpuName = "GPU Tensor Accelerated";
-    std::filesystem::path modelsJson = AppPaths::resolveConfig("models.json");
-    std::filesystem::path bundlePath = AppPaths::resolveTextBundle("llm2vec-text-bundle");
-    Logger::instance().info("Text bundle path: " + bundlePath.string());
+    state.gpuName = "GPU Tensor Accelerated";
+    std::filesystem::path modelsJson = FAppPaths::resolveConfig("models.json");
+    std::filesystem::path bundlePath = FAppPaths::resolveTextBundle("llm2vec-text-bundle");
+    FLogger::GetInstance().info("Text bundle path: " + bundlePath.string());
 
-    models_.init(modelsJson.string(), AppPaths::defaultModelsDir().string(), bundlePath.string());
+    models.Init(modelsJson.string(), FAppPaths::defaultModelsDir().string(), bundlePath.string());
 
     // Active model
-    ModelEntry activeModel;
-    if (models_.findCopy(models_.activeId(), activeModel) && activeModel.installed) {
-        state_.motionPath = activeModel.localPath;
-        Logger::instance().info("Active model: " + activeModel.name + " (" + activeModel.localPath + ")");
+    FModelEntry activeModel;
+    if (models.findCopy(models.GetActiveId(), activeModel) && activeModel.installed) {
+        state.motionPath = activeModel.localPath;
+        FLogger::GetInstance().info("Active model: " + activeModel.name + " (" + activeModel.localPath + ")");
     }
-    engine_.setPaths(state_.motionPath, bundlePath.string());
+    engine.SetPaths(state.motionPath, bundlePath.string());
 
-    library_.init(AppPaths::defaultAnimationsDir());
-    characters_.init();
+    library.Init(FAppPaths::defaultAnimationsDir());
+    characters.Init();
 
     // Viewport defaults from settings
-    viewport_.reset();
-    viewport_.setGrid(settings.showGrid);
-    viewport_.setAxes(settings.showAxes);
-    viewport_.setFloor(settings.showFloor);
-    viewport_.setSkeleton(settings.showSkeleton);
-    viewport_.setCharacter(settings.showCharacter);
-    viewport_.setWireframe(settings.showWireframe);
-    viewport_.setBoneNames(settings.showBoneNames);
+    viewport.Reset();
+    viewport.SetGrid(settings.showGrid);
+    viewport.SetAxes(settings.showAxes);
+    viewport.SetFloor(settings.showFloor);
+    viewport.SetSkeleton(settings.showSkeleton);
+    viewport.SetCharacter(settings.showCharacter);
+    viewport.SetWireframe(settings.showWireframe);
+    viewport.SetBoneNames(settings.showBoneNames);
 
-    if (characters_.activeAsset()) {
-        viewport_.setCharacterAsset(characters_.activeAsset());
+    if (characters.GetActiveAsset()) {
+        viewport.SetCharacterAsset(characters.GetActiveAsset());
     }
 
     // Initialize standby T-pose or load initial library animation
-    if (!library_.entries().empty()) {
-        Animation anim;
-        if (library_.loadAnimation(library_.entries().front(), anim)) {
-            player_.load(anim);
-            player_.play();
+    if (!library.GetEntries().empty()) {
+        FAnimation anim;
+        if (library.loadAnimation(library.GetEntries().front(), anim)) {
+            player.load(anim);
+            player.play();
         }
     } else {
         std::vector<float> ident(kSomaJoints * 4, 0.0f);
         for (int i = 0; i < kSomaJoints; ++i) ident[i * 4 + 3] = 1.0f;
         float root[3] = {0.0f, 0.95f, 0.0f};
         std::vector<Vector3> restPos;
-        Skeleton::forwardKinematics(ident.data(), root, restPos);
-        std::vector<int> parents(Soma30Spec::parents.begin(), Soma30Spec::parents.end());
-        std::vector<std::string> names(Soma30Spec::names.begin(), Soma30Spec::names.end());
-        viewport_.setPose(std::move(restPos), std::move(parents), std::move(names));
+        FSkeleton::ForwardKinematics(ident.data(), root, restPos);
+        std::vector<int> parents(FSoma30Spec::parents.begin(), FSoma30Spec::parents.end());
+        std::vector<std::string> names(FSoma30Spec::names.begin(), FSoma30Spec::names.end());
+        viewport.SetPose(std::move(restPos), std::move(parents), std::move(names));
     }
 
-    Logger::instance().info("Application initialized successfully");
-    running_ = true;
+    FLogger::GetInstance().info("Application initialized successfully");
+    bRunning = true;
     return true;
 }
 
-void Application::pollEngine() {
+void FApplication::PollEngine() {
     // Keep engine paths synchronized with active installed model
-    ModelEntry activeModel;
-    if (models_.findCopy(models_.activeId(), activeModel) && activeModel.installed) {
-        if (state_.motionPath != activeModel.localPath) {
-            state_.motionPath = activeModel.localPath;
-            engine_.setPaths(state_.motionPath, AppPaths::resolveTextBundle("llm2vec-text-bundle").string());
+    FModelEntry activeModel;
+    if (models.findCopy(models.GetActiveId(), activeModel) && activeModel.installed) {
+        if (state.motionPath != activeModel.localPath) {
+            state.motionPath = activeModel.localPath;
+            engine.SetPaths(state.motionPath, FAppPaths::resolveTextBundle("llm2vec-text-bundle").string());
         }
-    } else if (!state_.motionPath.empty()) {
-        state_.motionPath.clear();
-        engine_.setPaths("", AppPaths::resolveTextBundle("llm2vec-text-bundle").string());
+    } else if (!state.motionPath.empty()) {
+        state.motionPath.clear();
+        engine.SetPaths("", FAppPaths::resolveTextBundle("llm2vec-text-bundle").string());
     }
 
-    EngineStatus s = engine_.status();
-    if (s == EngineStatus::Finished && s != lastEngineStatus_) {
-        MotionResult result;
-        if (engine_.lastResult(result)) {
-            Animation anim;
+    EEngineStatus s = engine.GetStatus();
+    if (s == EEngineStatus::Finished && s != lastEngineStatus) {
+        FMotionResult result;
+        if (engine.lastResult(result)) {
+            FAnimation anim;
             anim.fromMotionResult(result);
-            player_.load(anim);
-            Logger::instance().info("Viewport: animation loaded, " +
+            player.load(anim);
+            FLogger::GetInstance().info("Viewport: animation loaded, " +
                                     std::to_string(anim.frames) + " frames");
-            LibraryEntry saved;
-            if (library_.saveAnimation(engine_.lastPrompt(), "soma-rp-v1.1", anim, saved)) {
-                toasts_.push("Animation saved to library", ToastKind::Success);
+            FLibraryEntry saved;
+            if (library.saveAnimation(engine.GetLastPrompt(), "soma-rp-v1.1", anim, saved)) {
+                toasts.Push("Animation saved to library", EToastKind::Success);
             } else {
-                toasts_.push("Animation generated, library save failed", ToastKind::Warning);
+                toasts.Push("Animation generated, library save failed", EToastKind::Warning);
             }
         }
     }
-    if (s == EngineStatus::Error && s != lastEngineStatus_) {
-        toasts_.push(engine_.message(), ToastKind::Error);
+    if (s == EEngineStatus::Error && s != lastEngineStatus) {
+        toasts.Push(engine.GetMessage(), EToastKind::Error);
     }
-    lastEngineStatus_ = s;
+    lastEngineStatus = s;
 }
 
-void Application::updateAnimationAndSkinning() {
+void FApplication::UpdateAnimationAndSkinning() {
     float dt = GetFrameTime();
-    player_.update(dt * state_.playbackSpeed);
+    player.Update(dt * state.playbackSpeed);
 
     // Synchronize viewport display and transform options from state
-    viewport_.setGrid(state_.showGrid);
-    viewport_.setAxes(state_.showAxes);
-    viewport_.setFloor(state_.showFloor);
-    viewport_.setSkeleton(state_.showSkeleton);
-    viewport_.setCharacter(state_.showCharacter);
-    viewport_.setWireframe(state_.showWireframe);
-    viewport_.setBoneNames(state_.showBoneNames);
-    viewport_.setProjection(state_.cameraProjection);
-    viewport_.setModelTransform(state_.modelPosition, state_.modelRotation, state_.modelScale);
+    viewport.SetGrid(state.showGrid);
+    viewport.SetAxes(state.showAxes);
+    viewport.SetFloor(state.showFloor);
+    viewport.SetSkeleton(state.showSkeleton);
+    viewport.SetCharacter(state.showCharacter);
+    viewport.SetWireframe(state.showWireframe);
+    viewport.SetBoneNames(state.showBoneNames);
+    viewport.SetProjection(state.cameraProjection);
+    viewport.SetModelTransform(state.modelPosition, state.modelRotation, state.modelScale);
 
-    const Animation& curAnim = player_.animation();
+    const FAnimation& curAnim = player.GetAnimation();
     if (!curAnim.empty()) {
         // 1. SKELETON VIEW: pristine original SOMA skeleton directly from AnimationPlayer
-        if (state_.showSkeleton) {
-            viewport_.setPose(player_.worldPositions(), curAnim.parents, curAnim.jointNames);
+        if (state.showSkeleton) {
+            viewport.SetPose(player.GetWorldPositions(), curAnim.parents, curAnim.jointNames);
         } else {
-            viewport_.setPose({}, {});
+            viewport.SetPose({}, {});
         }
 
         // 2. CHARACTER PREVIEW: view/consumer of animation, never mutates original motion
-        CharacterAsset* charAsset = characters_.activeAsset();
-        if (state_.showCharacter && charAsset && charAsset->isLoaded()) {
-            CharacterEntry curEntry;
-            if (characters_.findEntry(characters_.activeId(), curEntry)) {
+        FCharacterAsset* charAsset = characters.GetActiveAsset();
+        if (state.showCharacter && charAsset && charAsset->IsLoaded()) {
+            FCharacterEntry curEntry;
+            if (characters.FindEntry(characters.GetActiveId(), curEntry)) {
                 std::vector<Matrix> skinMatrices;
-                if (CharacterMapper::evaluateSkinMatrices(*charAsset, curAnim, player_.frame(),
+                if (FCharacterMapper::evaluateSkinMatrices(*charAsset, curAnim, player.Frame(),
                                                          curEntry.mapping, skinMatrices)) {
-                    viewport_.setCharacterSkinMatrices(std::move(skinMatrices));
+                    viewport.SetCharacterSkinMatrices(std::move(skinMatrices));
                 } else {
-                    viewport_.setCharacterSkinMatrices({});
+                    viewport.SetCharacterSkinMatrices({});
                 }
             }
         } else {
-            viewport_.setCharacterSkinMatrices({});
+            viewport.SetCharacterSkinMatrices({});
         }
     } else {
-        viewport_.setPose({}, {});
-        viewport_.setCharacterSkinMatrices({});
+        viewport.SetPose({}, {});
+        viewport.SetCharacterSkinMatrices({});
     }
 }
 
-void Application::run(int maxFrames, const char* screenshotPath) {
+void FApplication::Run(int maxFrames, const char* screenshotPath) {
     int frameCount = 0;
-    while (!WindowShouldClose() && running_) {
-        state_.fps = GetFPS();
-        pollEngine();
-        updateAnimationAndSkinning();
+    while (!WindowShouldClose() && bRunning) {
+        state.fps = GetFPS();
+        PollEngine();
+        UpdateAnimationAndSkinning();
 
         // Check if mouse hovers ImGui window to route orbit camera correctly
         ImGuiIO& io = ImGui::GetIO();
         bool mouseOverUi = io.WantCaptureMouse;
-        viewport_.update(mouseOverUi);
+        viewport.Update(mouseOverUi);
 
         BeginDrawing();
         ClearBackground(Color{18, 18, 24, 255});
 
         // 1. Draw 3D Viewport
-        viewport_.draw3D();
+        viewport.Draw3D();
 
         // 2. Draw 3D Coordinate Orientation Gizmo at bottom-left
-        float gizmoX = state_.sideWidth + 38.0f;
+        float gizmoX = state.sideWidth + 38.0f;
         float gizmoY = static_cast<float>(GetScreenHeight()) - 130.0f;
-        viewport_.drawOrientationGizmo(gizmoX, gizmoY);
+        viewport.DrawOrientationGizmo(gizmoX, gizmoY);
 
         // 3. Draw ImGui UI Overlays
         rlImGuiBegin();
-        ui_.draw(state_, viewport_, engine_, player_, library_, characters_, models_, toasts_);
+        ui.Draw(state, viewport, engine, player, library, characters, models, toasts);
         rlImGuiEnd();
 
         // Headless screenshot mode capture
@@ -272,11 +272,11 @@ void Application::run(int maxFrames, const char* screenshotPath) {
     }
 }
 
-void Application::shutdown() {
-    ui_.shutdown();
+void FApplication::Shutdown() {
+    ui.Shutdown();
     rlImGuiShutdown();
     CloseWindow();
-    Logger::instance().info("Application shutdown cleanly");
+    FLogger::GetInstance().info("Application shutdown cleanly");
 }
 
 } // namespace studio

@@ -9,11 +9,11 @@
 
 namespace studio {
 
-const char* HFAuthenticator::credTarget() {
+const char* FHFAuthenticator::credTarget() {
     return "KimodoStudio/HuggingFace";
 }
 
-bool HFAuthenticator::saveToken(const std::string& token, std::string& error) {
+bool FHFAuthenticator::SaveToken(const std::string& token, std::string& error) {
 #if defined(_WIN32)
     if (token.empty() || token.size() > 4096) {
         error = "invalid token size";
@@ -37,7 +37,7 @@ bool HFAuthenticator::saveToken(const std::string& token, std::string& error) {
 #endif
 }
 
-bool HFAuthenticator::loadToken(std::string& token) {
+bool FHFAuthenticator::loadToken(std::string& token) {
 #if defined(_WIN32)
     PCREDENTIALA cred = nullptr;
     if (!CredReadA(credTarget(), CRED_TYPE_GENERIC, 0, &cred)) {
@@ -53,7 +53,7 @@ bool HFAuthenticator::loadToken(std::string& token) {
 #endif
 }
 
-bool HFAuthenticator::clearToken() {
+bool FHFAuthenticator::clearToken() {
 #if defined(_WIN32)
     return CredDeleteA(credTarget(), CRED_TYPE_GENERIC, 0) != FALSE;
 #else
@@ -61,8 +61,8 @@ bool HFAuthenticator::clearToken() {
 #endif
 }
 
-std::string HFAuthenticator::validate(const std::string& token, std::string& error) {
-    return HuggingFaceClient::whoami(token, error);
+std::string FHFAuthenticator::validate(const std::string& token, std::string& error) {
+    return FHuggingFaceClient::whoami(token, error);
 }
 
 } // namespace studio

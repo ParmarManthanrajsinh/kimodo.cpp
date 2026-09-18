@@ -54,9 +54,9 @@ std::string normalizeName(const std::string& name) {
 
 } // namespace
 
-CharacterBoneMap CharacterMapper::autoMap(const CharacterAsset& asset,
+FCharacterBoneMap FCharacterMapper::autoMap(const FCharacterAsset& asset,
                                          const std::vector<std::string>& sourceJoints) {
-    CharacterBoneMap mapping;
+    FCharacterBoneMap mapping;
     const auto& aliasTable = getStandardAliases();
 
     // Index available source joints
@@ -65,7 +65,7 @@ CharacterBoneMap CharacterMapper::autoMap(const CharacterAsset& asset,
         normSourceToSource[normalizeName(sj)] = sj;
     }
 
-    for (const auto& bone : asset.bones()) {
+    for (const auto& bone : asset.GetBones()) {
         const std::string normBone = normalizeName(bone.name);
         bool matched = false;
 
@@ -116,13 +116,13 @@ CharacterBoneMap CharacterMapper::autoMap(const CharacterAsset& asset,
     return mapping;
 }
 
-bool CharacterMapper::evaluateSkinMatrices(const CharacterAsset& asset,
-                                          const Animation& anim,
+bool FCharacterMapper::evaluateSkinMatrices(const FCharacterAsset& asset,
+                                          const FAnimation& anim,
                                           int frame,
-                                          const CharacterBoneMap& mapping,
+                                          const FCharacterBoneMap& mapping,
                                           std::vector<Matrix>& outSkinMatrices,
                                           std::vector<Vector3>* outBonePositions) {
-    const size_t numBones = asset.bones().size();
+    const size_t numBones = asset.GetBones().size();
     if (numBones == 0 || anim.empty()) {
         return false;
     }
@@ -141,7 +141,7 @@ bool CharacterMapper::evaluateSkinMatrices(const CharacterAsset& asset,
     const float* srcRoot = anim.rootPositions.data() + clampedFrame * 3;
     std::vector<Vector3> somaWorldPos;
     std::vector<Quaternion> somaWorldRot;
-    Skeleton::forwardKinematicsFull(srcRot, srcRoot, anim.parents, anim.offsets, somaWorldPos, somaWorldRot);
+    FSkeleton::ForwardKinematicsFull(srcRot, srcRoot, anim.parents, anim.offsets, somaWorldPos, somaWorldRot);
 
     // 2. Evaluate SOMA rest pose world positions & orientations (identity rotations)
     std::vector<float> somaRestRot(numSourceJoints * 4, 0.0f);
@@ -154,13 +154,13 @@ bool CharacterMapper::evaluateSkinMatrices(const CharacterAsset& asset,
     }
     std::vector<Vector3> somaRestWorldPos;
     std::vector<Quaternion> somaRestWorldRot;
-    Skeleton::forwardKinematicsFull(somaRestRot.data(), somaRestRoot, anim.parents, anim.offsets, somaRestWorldPos, somaRestWorldRot);
+    FSkeleton::ForwardKinematicsFull(somaRestRot.data(), somaRestRoot, anim.parents, anim.offsets, somaRestWorldPos, somaRestWorldRot);
 
     // 3. Extract character rest world transforms
     std::vector<Vector3> targetRestWorldPos(numBones);
     std::vector<Quaternion> targetRestWorldRot(numBones);
     for (size_t b = 0; b < numBones; ++b) {
-        const Matrix& rw = asset.bones()[b].worldTransform;
+        const Matrix& rw = asset.GetBones()[b].worldTransform;
         targetRestWorldPos[b] = Vector3{rw.m12, rw.m13, rw.m14};
         targetRestWorldRot[b] = QuaternionNormalize(QuaternionFromMatrix(rw));
     }
@@ -182,7 +182,7 @@ bool CharacterMapper::evaluateSkinMatrices(const CharacterAsset& asset,
     somaRootDelta = Vector3Scale(somaRootDelta, rootScale);
 
     for (size_t b = 0; b < numBones; ++b) {
-        const auto& bone = asset.bones()[b];
+        const auto& bone = asset.GetBones()[b];
         const int p = bone.parent;
 
         // Determine orientation
@@ -232,7 +232,7 @@ bool CharacterMapper::evaluateSkinMatrices(const CharacterAsset& asset,
 
     // 5. Calculate final skin matrices = invBindMatrix * worldTransform
     outSkinMatrices.resize(numBones);
-    const auto& ibms = asset.skinningData().inverseBindMatrices;
+    const auto& ibms = asset.GetSkinningData().inverseBindMatrices;
 
     for (size_t b = 0; b < numBones; ++b) {
         if (b < ibms.size()) {

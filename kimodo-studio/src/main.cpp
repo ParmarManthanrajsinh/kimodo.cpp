@@ -13,40 +13,40 @@ int main(int argc, char** argv) {
             return 0;
         }
         if (arg == "--selftest-all" || arg == "--selftest") {
-            return studio::TestSuite::runAll();
+            return studio::FTestSuite::RunAll();
         }
         if (arg == "--selftest-bvh") {
-            return studio::TestSuite::runBVHRoundTrip();
+            return studio::FTestSuite::RunBVHRoundTrip();
         }
         if (arg == "--selftest-character") {
-            return studio::TestSuite::runCharacterAndSkinning();
+            return studio::FTestSuite::RunCharacterAndSkinning();
         }
         if (arg == "--selftest-soma") {
-            return studio::TestSuite::runSomaPresentation();
+            return studio::FTestSuite::RunSomaPresentation();
         }
         if (arg == "--selftest-blender") {
-            return studio::TestSuite::runBlenderRetargeting();
+            return studio::FTestSuite::RunBlenderRetargeting();
         }
         if (arg == "--screenshot") {
             const char* outPath = (argc >= 3) ? argv[2] : "app_screenshot.png";
             int w = (argc >= 5) ? std::atoi(argv[3]) : 1280;
             int h = (argc >= 5) ? std::atoi(argv[4]) : 800;
-            studio::Application app;
-            if (!app.init(w, h)) {
+            studio::FApplication app;
+            if (!app.Init(w, h)) {
                 return 1;
             }
-            app.run(15, outPath);
-            app.shutdown();
+            app.Run(15, outPath);
+            app.Shutdown();
             std::printf("Screenshot captured to %s (%dx%d)\n", outPath, w, h);
             return 0;
         }
     }
 
-    studio::Application app;
-    if (!app.init()) {
+    studio::FApplication app;
+    if (!app.Init()) {
         return 1;
     }
-    app.run();
-    app.shutdown();
+    app.Run();
+    app.Shutdown();
     return 0;
 }

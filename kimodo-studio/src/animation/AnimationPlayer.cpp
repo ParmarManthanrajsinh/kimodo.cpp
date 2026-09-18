@@ -7,79 +7,79 @@
 
 namespace studio {
 
-void AnimationPlayer::load(const Animation& anim) {
-    anim_ = anim;
-    time_ = 0.0f;
-    playing_ = true;
+void FAnimationPlayer::load(const FAnimation& inClip) {
+    clip = inClip;
+    time = 0.0f;
+    bPlaying = true;
     sample();
 }
 
-void AnimationPlayer::clear() {
-    anim_ = Animation{};
-    time_ = 0.0f;
-    playing_ = false;
-    world_.clear();
+void FAnimationPlayer::clear() {
+    clip = FAnimation{};
+    time = 0.0f;
+    bPlaying = false;
+    world.clear();
 }
 
-void AnimationPlayer::update(float dt) {
-    if (!hasAnimation() || !playing_) {
+void FAnimationPlayer::Update(float dt) {
+    if (!HasAnimation() || !bPlaying) {
         return;
     }
-    time_ += dt;
-    const float dur = anim_.duration();
-    if (time_ >= dur) {
-        if (loop_ && dur > 0.0f) {
-            time_ = std::fmod(time_, dur);
+    time += dt;
+    const float dur = clip.GetDuration();
+    if (time >= dur) {
+        if (bLoop && dur > 0.0f) {
+            time = std::fmod(time, dur);
         } else {
-            time_ = dur;
-            playing_ = false;
+            time = dur;
+            bPlaying = false;
         }
     }
     sample();
 }
 
-void AnimationPlayer::scrub(float timeSec) {
-    if (!hasAnimation()) {
+void FAnimationPlayer::scrub(float timeSec) {
+    if (!HasAnimation()) {
         return;
     }
-    time_ = std::clamp(timeSec, 0.0f, anim_.duration());
+    time = std::clamp(timeSec, 0.0f, clip.GetDuration());
     sample();
 }
 
-void AnimationPlayer::stepFrame(int delta) {
-    if (!hasAnimation() || anim_.fps <= 0.0f) {
+void FAnimationPlayer::stepFrame(int delta) {
+    if (!HasAnimation() || clip.fps <= 0.0f) {
         return;
     }
-    float dt = static_cast<float>(delta) / anim_.fps;
-    scrub(time_ + dt);
+    float dt = static_cast<float>(delta) / clip.fps;
+    scrub(time + dt);
 }
 
-int AnimationPlayer::frame() const {
-    if (!hasAnimation()) {
+int FAnimationPlayer::Frame() const {
+    if (!HasAnimation()) {
         return 0;
     }
-    int f = static_cast<int>(time_ * anim_.fps);
-    return std::clamp(f, 0, anim_.frames - 1);
+    int f = static_cast<int>(time * clip.fps);
+    return std::clamp(f, 0, clip.frames - 1);
 }
 
-void AnimationPlayer::sample() {
-    if (!hasAnimation() ||
-        static_cast<int>(anim_.parents.size()) != anim_.joints ||
-        static_cast<int>(anim_.offsets.size()) != anim_.joints) {
-        world_.clear();
+void FAnimationPlayer::sample() {
+    if (!HasAnimation() ||
+        static_cast<int>(clip.parents.size()) != clip.joints ||
+        static_cast<int>(clip.offsets.size()) != clip.joints) {
+        world.clear();
         return;
     }
-    const float f = std::clamp(time_ * anim_.fps, 0.0f,
-                               static_cast<float>(anim_.frames - 1));
+    const float f = std::clamp(time * clip.fps, 0.0f,
+                               static_cast<float>(clip.frames - 1));
     const int i0 = static_cast<int>(f);
-    const int i1 = std::min(i0 + 1, anim_.frames - 1);
+    const int i1 = std::min(i0 + 1, clip.frames - 1);
     const float a = f - static_cast<float>(i0);
 
-    const int J = anim_.joints;
-    const float* r0 = anim_.localRotationsXyzw.data() + static_cast<size_t>(i0) * J * 4;
-    const float* r1 = anim_.localRotationsXyzw.data() + static_cast<size_t>(i1) * J * 4;
-    const float* p0 = anim_.rootPositions.data() + static_cast<size_t>(i0) * 3;
-    const float* p1 = anim_.rootPositions.data() + static_cast<size_t>(i1) * 3;
+    const int J = clip.joints;
+    const float* r0 = clip.localRotationsXyzw.data() + static_cast<size_t>(i0) * J * 4;
+    const float* r1 = clip.localRotationsXyzw.data() + static_cast<size_t>(i1) * J * 4;
+    const float* p0 = clip.rootPositions.data() + static_cast<size_t>(i0) * 3;
+    const float* p1 = clip.rootPositions.data() + static_cast<size_t>(i1) * 3;
 
     std::vector<float> quats(static_cast<size_t>(J) * 4);
     for (int j = 0; j < J; ++j) {
@@ -96,8 +96,8 @@ void AnimationPlayer::sample() {
         p0[1] + (p1[1] - p0[1]) * a,
         p0[2] + (p1[2] - p0[2]) * a,
     };
-    Skeleton::forwardKinematicsGeneral(quats.data(), root, anim_.parents,
-                                       anim_.offsets, world_);
+    FSkeleton::ForwardKinematicsGeneral(quats.data(), root, clip.parents,
+                                        clip.offsets, world);
 }
 
 } // namespace studio

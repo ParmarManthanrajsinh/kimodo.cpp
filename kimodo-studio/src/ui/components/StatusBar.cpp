@@ -6,11 +6,11 @@
 
 namespace studio {
 
-void StatusBar::draw(AppState& state, Viewport& viewport) {
+void SStatusBar::Draw(FAppState& state, FViewport& viewport) {
     (void)viewport;
     ImGuiViewport* vp = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(ImVec2(vp->Pos.x, vp->Pos.y + vp->Size.y - UIStyle::statusH));
-    ImGui::SetNextWindowSize(ImVec2(vp->Size.x, UIStyle::statusH));
+    ImGui::SetNextWindowPos(ImVec2(vp->Pos.x, vp->Pos.y + vp->Size.y - FUIStyle::statusH));
+    ImGui::SetNextWindowSize(ImVec2(vp->Size.x, FUIStyle::statusH));
     ImGui::SetNextWindowViewport(vp->ID);
 
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
@@ -18,13 +18,13 @@ void StatusBar::draw(AppState& state, Viewport& viewport) {
                             ImGuiWindowFlags_NoBringToFrontOnFocus;
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 4));
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, UIStyle::bg);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, FUIStyle::bg);
 
     if (ImGui::Begin("##StatusBar", nullptr, flags)) {
         // Left side: ● Ready | Loaded animation: ...
-        ImGui::TextColored(UIStyle::green, "%s", icons::kCheckCircle);
+        ImGui::TextColored(FUIStyle::green, "%s", icons::kCheckCircle);
         ImGui::SameLine(0, 6);
-        ImGui::TextColored(UIStyle::text, "Ready");
+        ImGui::TextColored(FUIStyle::text, "Ready");
 
         ImGui::SameLine(0, 14);
         ImGui::TextDisabled("|");
@@ -33,7 +33,7 @@ void StatusBar::draw(AppState& state, Viewport& viewport) {
         std::string animName = !state.prompt.empty() ? state.prompt : "None";
         ImGui::TextDisabled("Loaded animation:");
         ImGui::SameLine(0, 6);
-        ImGui::TextColored(UIStyle::text, "%s", animName.c_str());
+        ImGui::TextColored(FUIStyle::text, "%s", animName.c_str());
 
         // Right side: OpenGL 3.3 | 60 FPS | Kimodo Studio 0.1.0
         float rightW = 280.0f;

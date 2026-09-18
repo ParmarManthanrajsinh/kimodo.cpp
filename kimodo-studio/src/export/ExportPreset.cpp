@@ -6,7 +6,7 @@
 
 namespace studio {
 
-Mat3 mat3Mul(const Mat3& a, const Mat3& b) {
+Mat3 Mat3Mul(const Mat3& a, const Mat3& b) {
     Mat3 r{};
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
@@ -17,7 +17,7 @@ Mat3 mat3Mul(const Mat3& a, const Mat3& b) {
     return r;
 }
 
-Mat3 mat3Transpose(const Mat3& a) {
+Mat3 Mat3Transpose(const Mat3& a) {
     Mat3 r{};
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
@@ -27,7 +27,7 @@ Mat3 mat3Transpose(const Mat3& a) {
     return r;
 }
 
-Quat quatNormalize(Quat q) {
+Quat QuatNormalize(Quat q) {
     const float n = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
     if (n > 1e-9f) {
         q.x /= n;
@@ -38,8 +38,8 @@ Quat quatNormalize(Quat q) {
     return q;
 }
 
-Mat3 mat3FromQuat(Quat q) {
-    q = quatNormalize(q);
+Mat3 Mat3FromQuat(Quat q) {
+    q = QuatNormalize(q);
     const float xx = q.x * q.x, yy = q.y * q.y, zz = q.z * q.z;
     const float xy = q.x * q.y, xz = q.x * q.z, yz = q.y * q.z;
     const float wx = q.w * q.x, wy = q.w * q.y, wz = q.w * q.z;
@@ -56,7 +56,7 @@ Mat3 mat3FromQuat(Quat q) {
     return r;
 }
 
-Quat quatFromMat3(const Mat3& m) {
+Quat QuatFromMat3(const Mat3& m) {
     const float t = m.m[0][0] + m.m[1][1] + m.m[2][2];
     Quat q{0, 0, 0, 1};
     if (t > 0) {
@@ -84,47 +84,47 @@ Quat quatFromMat3(const Mat3& m) {
         q.y = (m.m[1][2] + m.m[2][1]) / s;
         q.z = 0.25f * s;
     }
-    return quatNormalize(q);
+    return QuatNormalize(q);
 }
 
-const std::vector<ExportPreset>& exportPresets() {
-    static const std::vector<ExportPreset> presets = [] {
-        std::vector<ExportPreset> out;
+const std::vector<FExportPreset>& exportPresets() {
+    static const std::vector<FExportPreset> presets = [] {
+        std::vector<FExportPreset> out;
         const Mat3 identity{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};
 
         // First-class BVH Humanoid Preset (Direct pipeline for Unreal Engine IK Rig / Retargeter)
-        ExportPreset bvhHumanoid;
+        FExportPreset bvhHumanoid;
         bvhHumanoid.id = "bvh-humanoid";
         bvhHumanoid.name = "BVH Humanoid (Export for Unreal / Maya)";
         bvhHumanoid.profile = "";
         bvhHumanoid.fps = 30.0f;
         bvhHumanoid.scale = 1.0f;
         bvhHumanoid.basis = identity;
-        bvhHumanoid.rootMotion = RootMotion::Preserve;
+        bvhHumanoid.rootMotion = ERootMotion::Preserve;
         bvhHumanoid.format = "BVH";
         out.push_back(bvhHumanoid);
 
         // Blender Generic Humanoid GLB
-        ExportPreset blender;
+        FExportPreset blender;
         blender.id = "blender";
         blender.name = "Blender (generic GLB)";
         blender.profile = "blender-generic";
         blender.fps = 30.0f;
         blender.scale = 1.0f;
         blender.basis = identity;
-        blender.rootMotion = RootMotion::Preserve;
+        blender.rootMotion = ERootMotion::Preserve;
         blender.format = "GLB";
         out.push_back(blender);
 
         // Generic Raw Animation
-        ExportPreset generic;
+        FExportPreset generic;
         generic.id = "generic";
         generic.name = "Generic (as generated)";
         generic.profile = "";
         generic.fps = 30.0f;
         generic.scale = 1.0f;
         generic.basis = identity;
-        generic.rootMotion = RootMotion::Preserve;
+        generic.rootMotion = ERootMotion::Preserve;
         generic.format = "GLB";
         out.push_back(generic);
 
@@ -133,8 +133,8 @@ const std::vector<ExportPreset>& exportPresets() {
     return presets;
 }
 
-const ExportPreset* findPreset(const std::string& id) {
-    for (const ExportPreset& p : exportPresets()) {
+const FExportPreset* findPreset(const std::string& id) {
+    for (const FExportPreset& p : exportPresets()) {
         if (p.id == id) {
             return &p;
         }
@@ -142,16 +142,16 @@ const ExportPreset* findPreset(const std::string& id) {
     return nullptr;
 }
 
-Animation prepareExport(const Animation& in, float targetFps, float scale,
-                        const Mat3& basis, RootMotion rootMotion,
+FAnimation prepareExport(const FAnimation& in, float targetFps, float scale,
+                        const Mat3& basis, ERootMotion rootMotion,
                         std::string& report) {
-    Animation out = in;
+    FAnimation out = in;
     out.fps = targetFps;
     const int J = out.joints;
 
     // Resample frames if fps changed
     if (std::abs(in.fps - targetFps) > 0.1f && in.fps > 0.0f && targetFps > 0.0f) {
-        const float duration = in.duration();
+        const float duration = in.GetDuration();
         const int newFrames = std::max(1, static_cast<int>(std::round(duration * targetFps)));
         out.frames = newFrames;
         out.localRotationsXyzw.assign(static_cast<size_t>(newFrames) * J * 4, 0.0f);
@@ -197,7 +197,7 @@ Animation prepareExport(const Animation& in, float targetFps, float scale,
                     res = {a.x * wa + b.x * wb, a.y * wa + b.y * wb,
                            a.z * wa + b.z * wb, a.w * wa + b.w * wb};
                 }
-                res = quatNormalize(res);
+                res = QuatNormalize(res);
                 dstQ[j * 4 + 0] = res.x;
                 dstQ[j * 4 + 1] = res.y;
                 dstQ[j * 4 + 2] = res.z;
@@ -207,7 +207,7 @@ Animation prepareExport(const Animation& in, float targetFps, float scale,
     }
 
     // Apply scale & basis transformation to offsets
-    const Mat3 basisT = mat3Transpose(basis);
+    const Mat3 basisT = Mat3Transpose(basis);
     for (int j = 0; j < J; ++j) {
         const auto& o = out.offsets[j];
         float vx = o[0] * scale;
@@ -228,12 +228,12 @@ Animation prepareExport(const Animation& in, float targetFps, float scale,
         float ry = r[1] * scale;
         float rz = r[2] * scale;
 
-        if (rootMotion == RootMotion::LockX) {
+        if (rootMotion == ERootMotion::LockX) {
             rx = initRootX * scale;
-        } else if (rootMotion == RootMotion::LockXZ) {
+        } else if (rootMotion == ERootMotion::LockXZ) {
             rx = initRootX * scale;
             rz = initRootZ * scale;
-        } else if (rootMotion == RootMotion::Zero) {
+        } else if (rootMotion == ERootMotion::Zero) {
             rx = 0.0f;
             ry = 0.0f;
             rz = 0.0f;
@@ -246,9 +246,9 @@ Animation prepareExport(const Animation& in, float targetFps, float scale,
         float* qPtr = out.localRotationsXyzw.data() + static_cast<size_t>(f) * J * 4;
         for (int j = 0; j < J; ++j) {
             Quat q{qPtr[j * 4], qPtr[j * 4 + 1], qPtr[j * 4 + 2], qPtr[j * 4 + 3]};
-            Mat3 m = mat3FromQuat(q);
-            Mat3 mPrime = mat3Mul(basis, mat3Mul(m, basisT));
-            Quat qPrime = quatFromMat3(mPrime);
+            Mat3 m = Mat3FromQuat(q);
+            Mat3 mPrime = Mat3Mul(basis, Mat3Mul(m, basisT));
+            Quat qPrime = QuatFromMat3(mPrime);
             qPtr[j * 4 + 0] = qPrime.x;
             qPtr[j * 4 + 1] = qPrime.y;
             qPtr[j * 4 + 2] = qPrime.z;

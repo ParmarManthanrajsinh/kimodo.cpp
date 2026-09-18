@@ -4,7 +4,7 @@
 
 namespace studio {
 
-void GridRenderer::draw(bool grid, bool axes) const {
+void FGridRenderer::Draw(bool grid, bool axes) const {
     // Dark studio grid: minor lines subtle, major lines brighter.
     const int half = 20;
     if (grid) {

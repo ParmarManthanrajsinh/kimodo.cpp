@@ -5,36 +5,36 @@
 
 namespace studio {
 
-SkinningRenderer::~SkinningRenderer() {
-    shutdown();
+FSkinningRenderer::~FSkinningRenderer() {
+    Shutdown();
 }
 
-bool SkinningRenderer::init() {
-    initialized_ = true;
+bool FSkinningRenderer::Init() {
+    bInitialized = true;
     return true;
 }
 
-void SkinningRenderer::shutdown() {
-    if (initialized_) {
-        initialized_ = false;
+void FSkinningRenderer::Shutdown() {
+    if (bInitialized) {
+        bInitialized = false;
     }
 }
 
-void SkinningRenderer::drawCharacter(CharacterAsset& character,
+void FSkinningRenderer::drawCharacter(FCharacterAsset& character,
                                      const std::vector<Matrix>& skinMatrices,
                                      bool wireframe) {
-    if (!character.isLoaded() || character.skinningData().vertices.empty()) {
+    if (!character.IsLoaded() || character.GetSkinningData().vertices.empty()) {
         return;
     }
 
     // Update skinning matrices
     character.updateCpuSkinning(skinMatrices);
 
-    const auto& animVerts = character.animatedVertices();
-    const auto& animNorms = character.animatedNormals();
-    const auto& origVerts = character.skinningData().vertices;
-    const auto& indices = character.skinningData().indices;
-    const auto& submeshes = character.submeshes();
+    const auto& animVerts = character.GetAnimatedVertices();
+    const auto& animNorms = character.GetAnimatedNormals();
+    const auto& origVerts = character.GetSkinningData().vertices;
+    const auto& indices = character.GetSkinningData().indices;
+    const auto& submeshes = character.GetSubmeshes();
 
     // Default character material colors
     const Color defaultSkinColor = Color{210, 215, 225, 255};

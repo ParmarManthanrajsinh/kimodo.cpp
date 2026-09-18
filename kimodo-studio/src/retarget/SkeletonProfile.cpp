@@ -2,15 +2,15 @@
 
 namespace studio {
 
-const std::vector<SkeletonProfile>& targetProfiles() {
-    static const std::vector<SkeletonProfile> profiles = [] {
-        std::vector<SkeletonProfile> out;
+const std::vector<FSkeletonProfile>& targetProfiles() {
+    static const std::vector<FSkeletonProfile> profiles = [] {
+        std::vector<FSkeletonProfile> out;
 
         // Blender Generic Humanoid Profile
-        SkeletonProfile blender;
+        FSkeletonProfile blender;
         blender.id = "blender-generic";
         blender.name = "Blender (generic)";
-        blender.mode = RetargetMode::GenericLocal;
+        blender.mode = ERetargetMode::GenericLocal;
         blender.joints = {
             "Hips", "Spine1", "Spine2", "Chest", "Neck1", "Neck2",
             "Head", "LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand",
@@ -28,10 +28,10 @@ const std::vector<SkeletonProfile>& targetProfiles() {
         out.push_back(std::move(blender));
 
         // Generic Humanoid Profile (for general DCC & BVH pipelines)
-        SkeletonProfile generic;
+        FSkeletonProfile generic;
         generic.id = "generic-humanoid";
         generic.name = "Generic Humanoid";
-        generic.mode = RetargetMode::GenericLocal;
+        generic.mode = ERetargetMode::GenericLocal;
         generic.joints = {
             "Hips", "Spine", "Spine1", "Spine2", "Neck", "Head",
             "LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand",
@@ -61,8 +61,8 @@ const std::vector<SkeletonProfile>& targetProfiles() {
     return profiles;
 }
 
-const SkeletonProfile* findProfile(const std::string& id) {
-    for (const SkeletonProfile& p : targetProfiles()) {
+const FSkeletonProfile* FindProfile(const std::string& id) {
+    for (const FSkeletonProfile& p : targetProfiles()) {
         if (p.id == id) {
             return &p;
         }

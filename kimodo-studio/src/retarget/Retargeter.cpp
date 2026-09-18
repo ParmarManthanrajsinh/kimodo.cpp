@@ -14,7 +14,7 @@ int findIndex(const std::vector<std::string>& names, const std::string& name) {
     return -1;
 }
 
-std::string buildReport(const SkeletonProfile& target, const BoneMap& map,
+std::string buildReport(const FSkeletonProfile& target, const FBoneMap& map,
                         int mapped, int unmapped) {
     (void)map;
     std::ostringstream ss;
@@ -28,15 +28,15 @@ std::string buildReport(const SkeletonProfile& target, const BoneMap& map,
 
 } // namespace
 
-BoneMap Retargeter::autoMap(const SkeletonProfile& profile) {
-    BoneMap map;
+FBoneMap FRetargeter::autoMap(const FSkeletonProfile& profile) {
+    FBoneMap map;
     for (const auto& [tgt, src] : profile.defaultMap) {
         map[tgt] = src;
     }
     return map;
 }
 
-std::vector<std::string> Retargeter::unmapped(const SkeletonProfile& profile, const BoneMap& map) {
+std::vector<std::string> FRetargeter::unmapped(const FSkeletonProfile& profile, const FBoneMap& map) {
     std::vector<std::string> out;
     for (const auto& j : profile.joints) {
         const auto it = map.find(j);
@@ -47,9 +47,9 @@ std::vector<std::string> Retargeter::unmapped(const SkeletonProfile& profile, co
     return out;
 }
 
-bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target,
-                         const BoneMap& map, const Options& opts, Animation& out,
-                         std::string& error, RetargetReport* report) {
+bool FRetargeter::retarget(const FAnimation& source, const FSkeletonProfile& target,
+                         const FBoneMap& map, const Options& opts, FAnimation& out,
+                         std::string& error, FRetargetReport* report) {
     if (source.empty()) {
         error = "Source animation is empty";
         return false;
@@ -65,7 +65,7 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
         return findIndex(source.jointNames, name);
     };
 
-    Animation result;
+    FAnimation result;
     result.frames = source.frames;
     result.joints = T;
     result.fps = source.fps;

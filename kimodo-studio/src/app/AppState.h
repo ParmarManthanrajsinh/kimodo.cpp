@@ -5,7 +5,7 @@
 
 namespace studio {
 
-enum class Screen {
+enum class EScreen {
     Home,
     Generate,
     Models,
@@ -17,15 +17,15 @@ enum class Screen {
     Inspector
 };
 
-enum class ViewportMode {
+enum class EViewportMode {
     Character = 0,
-    Skeleton = 1,
+    FSkeleton = 1,
     Both = 2
 };
 
-struct AppState {
-    Screen screen = Screen::Home;
-    Screen lastToolScreen = Screen::Generate;
+struct FAppState {
+    EScreen screen = EScreen::Home;
+    EScreen lastToolScreen = EScreen::Generate;
     std::string gpuName = "RTX GPU";
     int fps = 0;
     bool vulkanAvailable = false;
@@ -42,7 +42,7 @@ struct AppState {
     // Selection state
     std::string retargetSource;    // Library ID selected for retargeting / character preview
     std::string activeCharacterId = "cesium-man"; // Character library ID
-    ViewportMode viewportMode = ViewportMode::Both;
+    EViewportMode viewportMode = EViewportMode::Both;
 
     // Viewport display flags
     bool showWireframe = false;

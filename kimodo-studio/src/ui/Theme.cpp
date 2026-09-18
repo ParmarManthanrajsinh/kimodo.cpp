@@ -4,31 +4,31 @@
 
 namespace studio {
 
-ImVec4 Theme::accent() {
+ImVec4 FTheme::accent() {
     return ImVec4(0.28f, 0.82f, 0.28f, 1.0f); // Vibrant Studio Green #47d147
 }
 
-ImVec4 Theme::accentDim() {
+ImVec4 FTheme::accentDim() {
     return ImVec4(0.28f, 0.82f, 0.28f, 0.22f);
 }
 
-ImVec4 Theme::accentBright() {
+ImVec4 FTheme::accentBright() {
     return ImVec4(0.35f, 0.95f, 0.35f, 1.0f);
 }
 
-ImVec4 Theme::bgDark() {
+ImVec4 FTheme::bgDark() {
     return ImVec4(0.06f, 0.06f, 0.07f, 1.0f);
 }
 
-ImVec4 Theme::bgPanel() {
+ImVec4 FTheme::bgPanel() {
     return ImVec4(0.08f, 0.08f, 0.10f, 1.0f);
 }
 
-ImVec4 Theme::bgCard() {
+ImVec4 FTheme::bgCard() {
     return ImVec4(0.12f, 0.12f, 0.15f, 1.0f);
 }
 
-void Theme::drawKimodoLogo(float x, float y, float size) {
+void FTheme::drawKimodoLogo(float x, float y, float size) {
     ImDrawList* dl = ImGui::GetWindowDrawList();
     if (!dl) return;
 
@@ -84,15 +84,15 @@ void Theme::drawKimodoLogo(float x, float y, float size) {
     dl->AddLine(p6, p2, colOutline, 1.2f);
 }
 
-void Theme::apply() {
+void FTheme::apply() {
     ImGuiStyle& s = ImGui::GetStyle();
-    s.WindowRounding = UIStyle::rounding;
-    s.ChildRounding = UIStyle::rounding;
-    s.FrameRounding = UIStyle::rounding;
-    s.PopupRounding = UIStyle::rounding;
-    s.ScrollbarRounding = UIStyle::rounding;
-    s.GrabRounding = UIStyle::rounding;
-    s.TabRounding = UIStyle::rounding;
+    s.WindowRounding = FUIStyle::rounding;
+    s.ChildRounding = FUIStyle::rounding;
+    s.FrameRounding = FUIStyle::rounding;
+    s.PopupRounding = FUIStyle::rounding;
+    s.ScrollbarRounding = FUIStyle::rounding;
+    s.GrabRounding = FUIStyle::rounding;
+    s.TabRounding = FUIStyle::rounding;
     s.WindowBorderSize = 1.0f;
     s.ChildBorderSize = 1.0f;
     s.FrameBorderSize = 1.0f;
@@ -153,13 +153,13 @@ void Theme::apply() {
     c[ImGuiCol_TextSelectedBg] = ImVec4(0.28f, 0.82f, 0.28f, 0.35f);
 }
 
-void Theme::sectionHeader(const char* label) {
+void FTheme::sectionHeader(const char* label) {
     ImGui::Spacing();
     ImGui::TextColored(ImVec4(0.85f, 0.86f, 0.90f, 1.0f), "%s", label);
     ImGui::Spacing();
 }
 
-void Theme::statusBadge(bool ok, const char* okText, const char* warnText) {
+void FTheme::statusBadge(bool ok, const char* okText, const char* warnText) {
     ImGui::PushStyleColor(ImGuiCol_Text, ok ? ImVec4(0.28f, 0.82f, 0.28f, 1.0f)
                                             : ImVec4(0.95f, 0.65f, 0.15f, 1.0f));
     ImGui::Bullet();

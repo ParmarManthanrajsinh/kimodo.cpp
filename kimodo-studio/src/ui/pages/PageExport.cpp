@@ -11,23 +11,24 @@
 #include "ui/Theme.h"
 #include "ui/Toast.h"
 #include "utils/AppPaths.h"
+#include "utils/FileDialog.h"
 
 #include <filesystem>
 
 namespace studio {
 
-void PageExport::draw(AppState& state, AnimationPlayer& player,
-                      AnimationLibrary& library, CharacterLibrary& chars,
-                      Toasts& toasts) {
+void SPageExport::Draw(FAppState& state, FAnimationPlayer& player,
+                      FAnimationLibrary& library, FCharacterLibrary& chars,
+                      SToasts& toasts) {
     (void)state;
     (void)library;
-    ImGui::TextColored(UIStyle::accent, "%s Motion Export", icons::kExport);
+    ImGui::TextColored(FUIStyle::accent, "%s Motion Export", icons::kExport);
     ImGui::TextDisabled("Export animation for Unreal Engine, Blender, Maya, and game engines");
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::Spacing();
 
-    const Animation& currentAnim = player.animation();
+    const FAnimation& currentAnim = player.GetAnimation();
     if (currentAnim.empty()) {
         ImGui::TextDisabled("No active animation loaded in viewport. Generate or load an animation first.");
         return;
@@ -45,17 +46,28 @@ void PageExport::draw(AppState& state, AnimationPlayer& player,
     ImGui::Spacing();
 
     // 2. Export Destination & Filename
-    auto& settings = SettingsManager::instance().settings();
+    auto& settings = FSettingsManager::GetInstance().GetSettings();
     static char exportDirBuf[512] = "";
     if (exportDirBuf[0] == '\0') {
-        std::string d = settings.exportDir.empty() ? AppPaths::defaultExportDir().string() : settings.exportDir;
+        std::string d = settings.exportDir.empty() ? FAppPaths::defaultExportDir().string() : settings.exportDir;
         strncpy_s(exportDirBuf, sizeof(exportDirBuf), d.c_str(), sizeof(exportDirBuf) - 1);
     }
     ImGui::Text("Export Directory:");
-    ImGui::SetNextItemWidth(-1);
+    ImGui::SetNextItemWidth(-84);
     if (ImGui::InputText("##ExportDir", exportDirBuf, sizeof(exportDirBuf))) {
         settings.exportDir = exportDirBuf;
-        SettingsManager::instance().save();
+        FSettingsManager::GetInstance().save();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_FOLDER " Browse...", ImVec2(76, 0))) {
+        std::string picked;
+        if (FFileDialog::pickFolder(exportDirBuf[0] != '\0' ? exportDirBuf : nullptr, picked)) {
+            strncpy_s(exportDirBuf, sizeof(exportDirBuf), picked.c_str(), _TRUNCATE);
+            settings.exportDir = exportDirBuf;
+            FSettingsManager::GetInstance().save();
+        } else if (FFileDialog::GetLastError() && FFileDialog::GetLastError()[0] != '\0') {
+            toasts.Push(std::string("Folder picker failed: ") + FFileDialog::GetLastError(), EToastKind::Error);
+        }
     }
 
     static char filenameBuf[256] = "kimodo_motion";
@@ -96,7 +108,7 @@ void PageExport::draw(AppState& state, AnimationPlayer& player,
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.15f, 0.20f, 0.9f));
         ImGui::BeginChild("##UeInfo", ImVec2(0, 75), true);
         {
-            ImGui::TextColored(UIStyle::accent, "%s Unreal Engine Export Ready:", icons::kInfo);
+            ImGui::TextColored(FUIStyle::accent, "%s Unreal Engine Export Ready:", icons::kInfo);
             ImGui::Text("Produces standard humanoid BVH with valid root hierarchy and Euler angles.");
             ImGui::TextDisabled("In UE5: Import BVH -> Create IK Rig -> Use IK Retargeter -> Retarget to Manny / MetaHuman.");
         }
@@ -106,7 +118,7 @@ void PageExport::draw(AppState& state, AnimationPlayer& player,
     }
 
     // 5. Export Action Button
-    ImGui::PushStyleColor(ImGuiCol_Button, UIStyle::accent);
+    ImGui::PushStyleColor(ImGuiCol_Button, FUIStyle::accent);
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05f, 0.05f, 0.08f, 1.0f));
 
     std::string btnLabel = (exportFormat == 0) ? (ICON_FA_EXPORT "  Export BVH Humanoid") :
@@ -115,14 +127,33 @@ void PageExport::draw(AppState& state, AnimationPlayer& player,
 
     if (ImGui::Button(btnLabel.c_str(), ImVec2(-1, 44))) {
         std::string ext = (exportFormat == 0) ? ".bvh" : ".glb";
-        std::filesystem::path outPath = std::filesystem::path(exportDirBuf) / (std::string(filenameBuf) + ext);
 
-        ExportOptions opts;
+        // Native Save As dialog starting in the current export directory.
+        // User confirms/edits the exact output file (filter enforces the right extension).
+        const std::string filter = ext.substr(1); // NFD filter format: extension without dot, e.g. "bvh"
+        std::string savePath;
+        if (!FFileDialog::saveFile(filter.c_str(), exportDirBuf[0] != '\0' ? exportDirBuf : nullptr, savePath)) {
+            if (FFileDialog::GetLastError() && FFileDialog::GetLastError()[0] != '\0') {
+                toasts.Push(std::string("Save dialog failed: ") + FFileDialog::GetLastError(), EToastKind::Error);
+            }
+            return; // user cancelled or dialog failed - keep previous state
+        }
+
+        // Reflect the user's dialog choice back into the directory field for next time.
+        std::filesystem::path chosen(savePath);
+        strncpy_s(exportDirBuf, sizeof(exportDirBuf), chosen.parent_path().string().c_str(), _TRUNCATE);
+        settings.exportDir = exportDirBuf;
+        FSettingsManager::GetInstance().save();
+        strncpy_s(filenameBuf, sizeof(filenameBuf), chosen.filename().replace_extension().string().c_str(), _TRUNCATE);
+
+        std::filesystem::path outPath = savePath;
+
+        FExportOptions opts;
         opts.path = outPath.string();
         opts.fps = exportFps;
-        opts.rootMotion = (rootMotionMode == 1) ? RootMotion::LockX :
-                          (rootMotionMode == 2) ? RootMotion::LockXZ :
-                          (rootMotionMode == 3) ? RootMotion::Zero : RootMotion::Preserve;
+        opts.rootMotion = (rootMotionMode == 1) ? ERootMotion::LockX :
+                          (rootMotionMode == 2) ? ERootMotion::LockXZ :
+                          (rootMotionMode == 3) ? ERootMotion::Zero : ERootMotion::Preserve;
 
         std::string err;
         std::string rep;
@@ -130,22 +161,22 @@ void PageExport::draw(AppState& state, AnimationPlayer& player,
 
         if (exportFormat == 0) {
             // BVH Exporter
-            ok = BVHExporter::exportWithRange(currentAnim, opts,
+            ok = FBVHExporter::ExportWithRange(currentAnim, opts,
                                              useFrameRange ? startFrame : -1,
                                              useFrameRange ? endFrame : -1,
                                              err, &rep);
         } else if (exportFormat == 1) {
             // Skeleton GLB Exporter
-            GLBExporter glbExp;
-            ok = glbExp.exportAnimation(currentAnim, opts, err);
-            rep = glbExp.lastReport();
+            FGLBExporter glbExp;
+            ok = glbExp.ExportAnimation(currentAnim, opts, err);
+            rep = glbExp.GetLastReport();
         } else {
             // Full Character GLB Exporter
-            const CharacterAsset* charAsset = chars.activeAsset();
-            if (charAsset && charAsset->isLoaded()) {
-                CharacterEntry curEntry;
-                chars.findEntry(chars.activeId(), curEntry);
-                ok = CharacterGLBExporter::exportCharacterGLB(*charAsset, currentAnim,
+            const FCharacterAsset* charAsset = chars.GetActiveAsset();
+            if (charAsset && charAsset->IsLoaded()) {
+                FCharacterEntry curEntry;
+                chars.FindEntry(chars.GetActiveId(), curEntry);
+                ok = FCharacterGLBExporter::exportCharacterGLB(*charAsset, currentAnim,
                                                              curEntry.mapping, opts, err, &rep);
             } else {
                 err = "No active character loaded for full mesh export. Select a character first.";
@@ -153,9 +184,9 @@ void PageExport::draw(AppState& state, AnimationPlayer& player,
         }
 
         if (ok) {
-            toasts.push("Export successful: " + outPath.filename().string(), ToastKind::Success);
+            toasts.Push("Export successful: " + outPath.filename().string(), EToastKind::Success);
         } else {
-            toasts.push("Export failed: " + err, ToastKind::Error);
+            toasts.Push("Export failed: " + err, EToastKind::Error);
         }
     }
     ImGui::PopStyleColor(2);

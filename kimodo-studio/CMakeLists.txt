@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(kimodo_studio LANGUAGES CXX)
+project(kimodo_studio LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -47,6 +47,38 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(rlimGui)
 set(_rlimgui_src "${rlimgui_SOURCE_DIR}")
 
+# --- Native File Dialog (native open/save/folder pickers) ---
+FetchContent_Declare(
+    nativefiledialog
+    GIT_REPOSITORY https://github.com/mlabbe/nativefiledialog.git
+    GIT_TAG 67345b80ebb429ecc2aeda94c478b3bcc5f7888e # master, 2019
+)
+FetchContent_MakeAvailable(nativefiledialog)
+set(_nfd_src "${nativefiledialog_SOURCE_DIR}")
+
+add_library(studio_nfd STATIC
+    "${_nfd_src}/src/nfd_common.c"
+)
+if(WIN32)
+    target_sources(studio_nfd PRIVATE "${_nfd_src}/src/nfd_win.cpp")
+elseif(APPLE)
+    enable_language(OBJC)
+    target_sources(studio_nfd PRIVATE "${_nfd_src}/src/nfd_cocoa.m")
+    target_compile_options(studio_nfd PRIVATE -fobjc-arc)
+else()
+    target_sources(studio_nfd PRIVATE "${_nfd_src}/src/nfd_gtk.c")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
+    target_include_directories(studio_nfd PRIVATE ${GTK3_INCLUDE_DIRS})
+    target_link_libraries(studio_nfd PUBLIC ${GTK3_LIBRARIES})
+endif()
+target_include_directories(studio_nfd PUBLIC "${_nfd_src}/src/include")
+if(MSVC)
+    target_compile_options(studio_nfd PRIVATE /W0)
+else()
+    target_compile_options(studio_nfd PRIVATE -w)
+endif()
+
 add_library(studio_imgui STATIC
     "${_imgui_src}/imgui.cpp"
     "${_imgui_src}/imgui_draw.cpp"
@@ -66,6 +98,7 @@ add_executable(kimodo_studio
     src/utils/AppPaths.cpp
     src/utils/Logger.cpp
     src/utils/Hash.cpp
+    src/utils/FileDialog.cpp
     src/animation/Animation.cpp
     src/animation/AnimationPlayer.cpp
     src/animation/Skeleton.cpp
@@ -108,7 +141,7 @@ add_executable(kimodo_studio
     src/tests/TestSuite.cpp
 )
 target_include_directories(kimodo_studio PRIVATE src "${raylib_SOURCE_DIR}/src")
-target_link_libraries(kimodo_studio PRIVATE studio_imgui ${_raylib_target})
+target_link_libraries(kimodo_studio PRIVATE studio_imgui studio_nfd ${_raylib_target})
 target_compile_definitions(kimodo_studio PRIVATE
     KIMODO_STUDIO_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
     KIMODO_ROOT_DIR="${KIMODO_ROOT}")

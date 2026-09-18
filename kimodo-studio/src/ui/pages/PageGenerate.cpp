@@ -9,33 +9,33 @@
 
 namespace studio {
 
-void PageGenerate::draw(AppState& state, KimodoEngine& engine, ModelManager& models, Toasts& toasts) {
-    ImGui::TextColored(UIStyle::accent, "%s Motion Generation", icons::kGenerate);
+void SPageGenerate::Draw(FAppState& state, FKimodoEngine& engine, FModelManager& models, SToasts& toasts) {
+    ImGui::TextColored(FUIStyle::accent, "%s Motion Generation", icons::kGenerate);
     ImGui::TextDisabled("Generate humanoid motion clips using the SOMA model");
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::Spacing();
 
     // Check active installed model
-    ModelEntry activeModel;
-    bool hasModel = models.findCopy(models.activeId(), activeModel) && activeModel.installed;
+    FModelEntry activeModel;
+    bool hasModel = models.findCopy(models.GetActiveId(), activeModel) && activeModel.installed;
 
     if (!hasModel) {
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.22f, 0.16f, 0.08f, 0.9f));
         ImGui::BeginChild("##NoModelWarning", ImVec2(0, 110), true);
         {
-            ImGui::TextColored(UIStyle::yellow, "%s No Motion Model Installed", icons::kWarn);
+            ImGui::TextColored(FUIStyle::yellow, "%s No Motion Model Installed", icons::kWarn);
             ImGui::TextWrapped("Diffusion weights are required to synthesize 3D human motion.");
             ImGui::Spacing();
             if (ImGui::Button(ICON_FA_CUBE " Open Model Manager to Download or Import", ImVec2(-1, 32))) {
-                state.screen = Screen::Models;
+                state.screen = EScreen::Models;
             }
         }
         ImGui::EndChild();
         ImGui::PopStyleColor();
         ImGui::Spacing();
     } else {
-        ImGui::TextColored(UIStyle::green, "%s Active Model: %s", icons::kCheck, activeModel.name.c_str());
+        ImGui::TextColored(FUIStyle::green, "%s Active Model: %s", icons::kCheck, activeModel.name.c_str());
         ImGui::Spacing();
     }
 
@@ -94,9 +94,9 @@ void PageGenerate::draw(AppState& state, KimodoEngine& engine, ModelManager& mod
     ImGui::Spacing();
 
     // Action Button / Status
-    EngineStatus est = engine.status();
-    if (est == EngineStatus::Generating) {
-        ImGui::ProgressBar(engine.progress(), ImVec2(-1, 32));
+    EEngineStatus est = engine.GetStatus();
+    if (est == EEngineStatus::Generating) {
+        ImGui::ProgressBar(engine.GetProgress(), ImVec2(-1, 32));
         ImGui::Spacing();
         if (ImGui::Button(ICON_FA_CLOSE " Cancel Generation", ImVec2(-1, 36))) {
             engine.cancel();
@@ -110,15 +110,15 @@ void PageGenerate::draw(AppState& state, KimodoEngine& engine, ModelManager& mod
                 ImGui::SetTooltip("Please install a motion model from the Models page first.");
             }
         } else {
-            ImGui::PushStyleColor(ImGuiCol_Button, UIStyle::accent);
+            ImGui::PushStyleColor(ImGuiCol_Button, FUIStyle::accent);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05f, 0.05f, 0.08f, 1.0f));
             if (ImGui::Button(ICON_FA_GENERATE "  Generate Animation", ImVec2(-1, 44))) {
                 if (state.prompt.empty()) {
-                    toasts.push("Please enter a text prompt to generate motion.", ToastKind::Warning);
+                    toasts.Push("Please enter a text prompt to generate motion.", EToastKind::Warning);
                 } else {
                     state.motionPath = activeModel.localPath;
-                    engine.setPaths(activeModel.localPath, AppPaths::resolveTextBundle("llm2vec-text-bundle").string());
-                    GenerationParams params;
+                    engine.SetPaths(activeModel.localPath, FAppPaths::resolveTextBundle("llm2vec-text-bundle").string());
+                    FGenerationParams params;
                     params.frames = static_cast<uint32_t>(state.frames);
                     params.steps = static_cast<uint32_t>(state.steps);
                     params.seed = state.seed;

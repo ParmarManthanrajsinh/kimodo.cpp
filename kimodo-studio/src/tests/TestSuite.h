@@ -2,15 +2,15 @@
 
 namespace studio {
 
-class TestSuite {
+class FTestSuite {
 public:
-    static int runAll();
-    static int runAnimationAndFK();
-    static int runSomaPresentation();
-    static int runCharacterAndSkinning();
-    static int runBVHRoundTrip();
-    static int runPathologicalCases();
-    static int runBlenderRetargeting();
+    static int RunAll();
+    static int RunAnimationAndFK();
+    static int RunSomaPresentation();
+    static int RunCharacterAndSkinning();
+    static int RunBVHRoundTrip();
+    static int RunPathologicalCases();
+    static int RunBlenderRetargeting();
 };
 
 } // namespace studio

@@ -72,16 +72,16 @@ bool findBool(const std::string& json, const std::string& key, bool& out) {
 
 } // namespace
 
-SettingsManager& SettingsManager::instance() {
-    static SettingsManager inst;
+FSettingsManager& FSettingsManager::GetInstance() {
+    static FSettingsManager inst;
     return inst;
 }
 
-bool SettingsManager::load() {
-    filePath_ = AppPaths::settingsFile();
-    std::ifstream file(filePath_);
+bool FSettingsManager::load() {
+    filePath = FAppPaths::GetSettingsFile();
+    std::ifstream file(filePath);
     if (!file.is_open()) {
-        settings_.exportDir = AppPaths::defaultExportDir().string();
+        Settings.exportDir = FAppPaths::defaultExportDir().string();
         return false;
     }
 
@@ -89,62 +89,62 @@ bool SettingsManager::load() {
     buffer << file.rdbuf();
     const std::string json = buffer.str();
 
-    findString(json, "theme", settings_.theme);
-    findInt(json, "targetFps", settings_.targetFps);
-    findInt(json, "viewportMode", settings_.viewportMode);
-    findBool(json, "showGrid", settings_.showGrid);
-    findBool(json, "showAxes", settings_.showAxes);
-    findBool(json, "showFloor", settings_.showFloor);
-    findBool(json, "showSkeleton", settings_.showSkeleton);
-    findBool(json, "showCharacter", settings_.showCharacter);
-    findBool(json, "showWireframe", settings_.showWireframe);
-    findBool(json, "showBoneNames", settings_.showBoneNames);
-    findString(json, "selectedCharacterId", settings_.selectedCharacterId);
-    findString(json, "selectedAnimationId", settings_.selectedAnimationId);
-    findString(json, "exportDir", settings_.exportDir);
-    findFloat(json, "defaultExportFps", settings_.defaultExportFps);
-    findInt(json, "defaultRootMotion", settings_.defaultRootMotion);
-    findBool(json, "playbackLoop", settings_.playbackLoop);
-    findFloat(json, "playbackSpeed", settings_.playbackSpeed);
+    findString(json, "theme", Settings.theme);
+    findInt(json, "targetFps", Settings.targetFps);
+    findInt(json, "viewportMode", Settings.viewportMode);
+    findBool(json, "showGrid", Settings.showGrid);
+    findBool(json, "showAxes", Settings.showAxes);
+    findBool(json, "showFloor", Settings.showFloor);
+    findBool(json, "showSkeleton", Settings.showSkeleton);
+    findBool(json, "showCharacter", Settings.showCharacter);
+    findBool(json, "showWireframe", Settings.showWireframe);
+    findBool(json, "showBoneNames", Settings.showBoneNames);
+    findString(json, "selectedCharacterId", Settings.selectedCharacterId);
+    findString(json, "selectedAnimationId", Settings.selectedAnimationId);
+    findString(json, "exportDir", Settings.exportDir);
+    findFloat(json, "defaultExportFps", Settings.defaultExportFps);
+    findInt(json, "defaultRootMotion", Settings.defaultRootMotion);
+    findBool(json, "playbackLoop", Settings.playbackLoop);
+    findFloat(json, "playbackSpeed", Settings.playbackSpeed);
 
-    if (settings_.exportDir.empty()) {
-        settings_.exportDir = AppPaths::defaultExportDir().string();
+    if (Settings.exportDir.empty()) {
+        Settings.exportDir = FAppPaths::defaultExportDir().string();
     }
 
-    Logger::instance().info("Loaded user settings from " + filePath_.string());
+    FLogger::GetInstance().info("Loaded user settings from " + filePath.string());
     return true;
 }
 
-bool SettingsManager::save() {
-    AppPaths::ensureDirectories();
-    filePath_ = AppPaths::settingsFile();
-    std::ofstream file(filePath_, std::ios::trunc);
+bool FSettingsManager::save() {
+    FAppPaths::ensureDirectories();
+    filePath = FAppPaths::GetSettingsFile();
+    std::ofstream file(filePath, std::ios::trunc);
     if (!file.is_open()) {
-        Logger::instance().warning("Failed to open settings file for writing: " + filePath_.string());
+        FLogger::GetInstance().warning("Failed to open settings file for writing: " + filePath.string());
         return false;
     }
 
     file << "{\n"
-         << "  \"theme\": \"" << jsonEscape(settings_.theme) << "\",\n"
-         << "  \"targetFps\": " << settings_.targetFps << ",\n"
-         << "  \"viewportMode\": " << settings_.viewportMode << ",\n"
-         << "  \"showGrid\": " << (settings_.showGrid ? "true" : "false") << ",\n"
-         << "  \"showAxes\": " << (settings_.showAxes ? "true" : "false") << ",\n"
-         << "  \"showFloor\": " << (settings_.showFloor ? "true" : "false") << ",\n"
-         << "  \"showSkeleton\": " << (settings_.showSkeleton ? "true" : "false") << ",\n"
-         << "  \"showCharacter\": " << (settings_.showCharacter ? "true" : "false") << ",\n"
-         << "  \"showWireframe\": " << (settings_.showWireframe ? "true" : "false") << ",\n"
-         << "  \"showBoneNames\": " << (settings_.showBoneNames ? "true" : "false") << ",\n"
-         << "  \"selectedCharacterId\": \"" << jsonEscape(settings_.selectedCharacterId) << "\",\n"
-         << "  \"selectedAnimationId\": \"" << jsonEscape(settings_.selectedAnimationId) << "\",\n"
-         << "  \"exportDir\": \"" << jsonEscape(settings_.exportDir) << "\",\n"
-         << "  \"defaultExportFps\": " << settings_.defaultExportFps << ",\n"
-         << "  \"defaultRootMotion\": " << settings_.defaultRootMotion << ",\n"
-         << "  \"playbackLoop\": " << (settings_.playbackLoop ? "true" : "false") << ",\n"
-         << "  \"playbackSpeed\": " << settings_.playbackSpeed << "\n"
+         << "  \"theme\": \"" << jsonEscape(Settings.theme) << "\",\n"
+         << "  \"targetFps\": " << Settings.targetFps << ",\n"
+         << "  \"viewportMode\": " << Settings.viewportMode << ",\n"
+         << "  \"showGrid\": " << (Settings.showGrid ? "true" : "false") << ",\n"
+         << "  \"showAxes\": " << (Settings.showAxes ? "true" : "false") << ",\n"
+         << "  \"showFloor\": " << (Settings.showFloor ? "true" : "false") << ",\n"
+         << "  \"showSkeleton\": " << (Settings.showSkeleton ? "true" : "false") << ",\n"
+         << "  \"showCharacter\": " << (Settings.showCharacter ? "true" : "false") << ",\n"
+         << "  \"showWireframe\": " << (Settings.showWireframe ? "true" : "false") << ",\n"
+         << "  \"showBoneNames\": " << (Settings.showBoneNames ? "true" : "false") << ",\n"
+         << "  \"selectedCharacterId\": \"" << jsonEscape(Settings.selectedCharacterId) << "\",\n"
+         << "  \"selectedAnimationId\": \"" << jsonEscape(Settings.selectedAnimationId) << "\",\n"
+         << "  \"exportDir\": \"" << jsonEscape(Settings.exportDir) << "\",\n"
+         << "  \"defaultExportFps\": " << Settings.defaultExportFps << ",\n"
+         << "  \"defaultRootMotion\": " << Settings.defaultRootMotion << ",\n"
+         << "  \"playbackLoop\": " << (Settings.playbackLoop ? "true" : "false") << ",\n"
+         << "  \"playbackSpeed\": " << Settings.playbackSpeed << "\n"
          << "}\n";
 
-    Logger::instance().info("Saved user settings to " + filePath_.string());
+    FLogger::GetInstance().info("Saved user settings to " + filePath.string());
     return true;
 }
 

@@ -4,18 +4,18 @@
 
 namespace studio {
 
-std::array<std::string_view, kSomaJoints> Soma30Spec::names{
+std::array<std::string_view, kSomaJoints> FSoma30Spec::names{
     "Hips", "Spine1", "Spine2", "Chest", "Neck1", "Neck2", "Head", "Jaw",
     "LeftEye", "RightEye", "LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand",
     "LeftHandThumbEnd", "LeftHandMiddleEnd", "RightShoulder", "RightArm", "RightForeArm",
     "RightHand", "RightHandThumbEnd", "RightHandMiddleEnd", "LeftLeg", "LeftShin", "LeftFoot",
     "LeftToeBase", "RightLeg", "RightShin", "RightFoot", "RightToeBase"};
 
-std::array<int, kSomaJoints> Soma30Spec::parents{
+std::array<int, kSomaJoints> FSoma30Spec::parents{
     -1, 0, 1, 2, 3, 4, 5, 6, 6, 6, 3, 10, 11, 12, 13, 13, 3, 16, 17, 18, 19, 19,
     0, 22, 23, 24, 0, 26, 27, 28};
 
-std::array<std::array<float, 3>, kSomaJoints> Soma30Spec::offsets{{
+std::array<std::array<float, 3>, kSomaJoints> FSoma30Spec::offsets{{
     {0, 0, 0},
     {-0.00013727F, 0.0500376256F, -0.00053726669F},
     {-1.86574103e-9F, 0.0712530139F, -0.000298248546F},
@@ -48,22 +48,22 @@ std::array<std::array<float, 3>, kSomaJoints> Soma30Spec::offsets{{
     {-3.42907669e-9F, -0.0507960932F, 0.132841956F},
 }};
 
-void Skeleton::forwardKinematics(const float* localXyzw, const float* root,
+void FSkeleton::ForwardKinematics(const float* localXyzw, const float* root,
                                  std::vector<Vector3>& out) {
-    std::vector<int> parents(Soma30Spec::parents.begin(), Soma30Spec::parents.end());
-    std::vector<std::array<float, 3>> offsets(Soma30Spec::offsets.begin(),
-                                              Soma30Spec::offsets.end());
-    forwardKinematicsGeneral(localXyzw, root, parents, offsets, out);
+    std::vector<int> parents(FSoma30Spec::parents.begin(), FSoma30Spec::parents.end());
+    std::vector<std::array<float, 3>> offsets(FSoma30Spec::offsets.begin(),
+                                              FSoma30Spec::offsets.end());
+    ForwardKinematicsGeneral(localXyzw, root, parents, offsets, out);
 }
 
-void Skeleton::forwardKinematicsGeneral(
+void FSkeleton::ForwardKinematicsGeneral(
     const float* localXyzw, const float* root, const std::vector<int>& parents,
     const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& out) {
     std::vector<Quaternion> worldRot;
-    forwardKinematicsFull(localXyzw, root, parents, offsets, out, worldRot);
+    ForwardKinematicsFull(localXyzw, root, parents, offsets, out, worldRot);
 }
 
-void Skeleton::forwardKinematicsFull(
+void FSkeleton::ForwardKinematicsFull(
     const float* localXyzw, const float* root, const std::vector<int>& parents,
     const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& outPos,
     std::vector<Quaternion>& outRot) {

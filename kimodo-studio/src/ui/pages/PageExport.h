@@ -3,16 +3,16 @@
 #include "app/AppState.h"
 
 namespace studio {
-class AnimationPlayer;
-class AnimationLibrary;
-class CharacterLibrary;
-class Toasts;
+class FAnimationPlayer;
+class FAnimationLibrary;
+class FCharacterLibrary;
+class SToasts;
 
-class PageExport {
+class SPageExport {
 public:
-    static void draw(AppState& state, AnimationPlayer& player,
-                     AnimationLibrary& library, CharacterLibrary& chars,
-                     Toasts& toasts);
+    static void Draw(FAppState& state, FAnimationPlayer& player,
+                     FAnimationLibrary& library, FCharacterLibrary& chars,
+                     SToasts& toasts);
 };
 
 } // namespace studio

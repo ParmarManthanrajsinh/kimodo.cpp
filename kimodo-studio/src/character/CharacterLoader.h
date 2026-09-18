@@ -5,14 +5,14 @@
 
 namespace studio {
 
-class CharacterLoader {
+class FCharacterLoader {
 public:
     // Load a glTF or GLB 3D humanoid character
-    static bool loadGLB(const std::string& filePath, CharacterAsset& outAsset,
+    static bool loadGLB(const std::string& filePath, FCharacterAsset& outAsset,
                         std::string& error);
 
     // Validate a loaded character asset
-    static CharacterValidationReport validate(const CharacterAsset& asset);
+    static FCharacterValidationReport validate(const FCharacterAsset& asset);
 };
 
 } // namespace studio

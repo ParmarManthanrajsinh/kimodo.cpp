@@ -7,8 +7,8 @@
 
 namespace studio {
 
-void PageHome::draw(AppState& state, AnimationLibrary& lib, CharacterLibrary& chars) {
-    ImGui::TextColored(UIStyle::accent, "%s Welcome to Kimodo Studio", icons::kKimodo);
+void SPageHome::Draw(FAppState& state, FAnimationLibrary& lib, FCharacterLibrary& chars) {
+    ImGui::TextColored(FUIStyle::accent, "%s Welcome to Kimodo Studio", icons::kKimodo);
     ImGui::TextDisabled("C++23 AI Character Motion Generation & Animation Workstation");
     ImGui::Spacing();
     ImGui::Separator();
@@ -17,7 +17,7 @@ void PageHome::draw(AppState& state, AnimationLibrary& lib, CharacterLibrary& ch
     // Quick Stats Overview
     ImGui::BeginGroup();
     {
-        ImGui::TextColored(UIStyle::text, "%s Pipeline Overview", icons::kPlay);
+        ImGui::TextColored(FUIStyle::text, "%s Pipeline Overview", icons::kPlay);
         ImGui::BulletText("Kimodo Generation -> SOMA30 Model Inference");
         ImGui::BulletText("Animation Library -> Real-time Forward Kinematics");
         ImGui::BulletText("Character Preview -> GLB Humanoid Rig + GPU Vertex Skinning");
@@ -31,21 +31,21 @@ void PageHome::draw(AppState& state, AnimationLibrary& lib, CharacterLibrary& ch
     ImGui::Spacing();
 
     // Quick Actions
-    ImGui::TextColored(UIStyle::text, "Quick Actions");
+    ImGui::TextColored(FUIStyle::text, "Quick Actions");
     ImGui::Spacing();
 
     if (ImGui::Button(ICON_FA_GENERATE "  New Motion Generation", ImVec2(240, 42))) {
-        state.screen = Screen::Generate;
-        state.lastToolScreen = Screen::Generate;
+        state.screen = EScreen::Generate;
+        state.lastToolScreen = EScreen::Generate;
     }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_USER "  Manage 3D Characters", ImVec2(240, 42))) {
-        state.screen = Screen::Characters;
+        state.screen = EScreen::Characters;
     }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_EXPORT "  Export for Unreal / Blender", ImVec2(240, 42))) {
-        state.screen = Screen::Export;
-        state.lastToolScreen = Screen::Export;
+        state.screen = EScreen::Export;
+        state.lastToolScreen = EScreen::Export;
     }
 
     ImGui::Spacing();
@@ -54,8 +54,8 @@ void PageHome::draw(AppState& state, AnimationLibrary& lib, CharacterLibrary& ch
 
     // Active Assets summary
     ImGui::TextDisabled("Loaded Assets: %llu Animations in Library | %llu Characters registered",
-                        static_cast<unsigned long long>(lib.entries().size()),
-                        static_cast<unsigned long long>(chars.entries().size()));
+                        static_cast<unsigned long long>(lib.GetEntries().size()),
+                        static_cast<unsigned long long>(chars.GetEntries().size()));
 }
 
 } // namespace studio

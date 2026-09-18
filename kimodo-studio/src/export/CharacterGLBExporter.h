@@ -9,13 +9,13 @@
 
 namespace studio {
 
-class CharacterGLBExporter {
+class FCharacterGLBExporter {
 public:
     // Export full character (Mesh + Skin + Skeleton + Animation) to binary glTF (.glb)
-    static bool exportCharacterGLB(const CharacterAsset& character,
-                                   const Animation& animation,
-                                   const CharacterBoneMap& mapping,
-                                   const ExportOptions& options,
+    static bool exportCharacterGLB(const FCharacterAsset& character,
+                                   const FAnimation& animation,
+                                   const FCharacterBoneMap& mapping,
+                                   const FExportOptions& options,
                                    std::string& error,
                                    std::string* report = nullptr);
 };

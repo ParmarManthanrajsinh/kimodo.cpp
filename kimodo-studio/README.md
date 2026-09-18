@@ -11,6 +11,7 @@
 - **Real Character System**: glTF/GLB character loader with GPU hardware skinning (and multi-threaded CPU fallback) and PBR materials. Bundled with default **CesiumMan.glb** (CC-BY 4.0).
 - **Pro 3D Viewport**: Character / Skeleton / Both display modes, wireframe toggle, 3D bone billboard names, infinite floor grid, and orbit camera controls.
 - **Production BVH Pipeline**: Export generic humanoid animations in BVH with deterministic XYZ Euler angles, configurable FPS, root motion preservation, and round-trip BVH parser validation.
+- **Native File Dialogs**: Cross-platform OS file/folder pickers (Windows `IFileDialog`, macOS `NSPanel`, Linux GTK) via [nativefiledialog](https://github.com/mlabbe/nativefiledialog) — browse for export folders, Save As export target, GLB/glTF character import, GGUF model import, and BVH clip import.
 - **Unreal Engine Direct Workflow**: Kimodo -> Generic Humanoid BVH -> Unreal IK Rig -> Unreal IK Retargeter -> Manny/MetaHuman.
 - **Blender Generic Retargeting**: First-class direct local rotation transfer to standard Blender humanoid rigs.
 - **Full Character GLB Exporter**: Export complete character meshes with embedded skinning, textures, and animated skeletal tracks.
@@ -26,7 +27,15 @@ cmake --preset windows-vs2022
 cmake --build --preset windows-vs2022 --config Release
 ```
 
-Requires MSVC with C++23 support (`/std:c++latest`) and kimodo runtime libraries. Raylib 5.5 and Dear ImGui are fetched automatically.
+Requires MSVC with C++23 support (`/std:c++latest`) and kimodo runtime libraries. Raylib 5.5, Dear ImGui, and nativefiledialog are fetched automatically.
+
+### Cross-Platform Notes
+
+The app itself is cross-platform (Raylib + ImGui + NFD); the kimodo.cpp backend libs are currently resolved for MSVC builds only.
+
+- **Windows**: No extra dependencies. NFD uses the built-in COM `IFileDialog`.
+- **Linux**: GTK 3 development packages are required for NFD (e.g. `sudo apt install libgtk-3-dev` or `sudo dnf install gtk3-devel`). CMake auto-detects them via pkg-config.
+- **macOS**: No extra dependencies. NFD compiles `nfd_cocoa.m` with ARC (`-fobjc-arc`); requires Xcode command line tools.
 
 ---
 

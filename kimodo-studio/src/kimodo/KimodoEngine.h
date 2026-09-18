@@ -9,7 +9,7 @@
 
 namespace studio {
 
-enum class EngineStatus {
+enum class EEngineStatus {
     Idle,
     LoadingModel,
     Generating,
@@ -19,56 +19,56 @@ enum class EngineStatus {
 
 // Owns adapter + single worker thread. UI polls status()/message()
 // each frame; worker never touches ImGui or Raylib.
-class KimodoEngine {
+class FKimodoEngine {
 public:
-    KimodoEngine() = default;
-    ~KimodoEngine() { shutdown(); }
+    FKimodoEngine() = default;
+    ~FKimodoEngine() { Shutdown(); }
 
-    KimodoEngine(const KimodoEngine&) = delete;
-    KimodoEngine& operator=(const KimodoEngine&) = delete;
+    FKimodoEngine(const FKimodoEngine&) = delete;
+    FKimodoEngine& operator=(const FKimodoEngine&) = delete;
 
-    void setPaths(std::string motionGguf, std::string textBundle);
+    void SetPaths(std::string motionGguf, std::string textBundle);
 
     // Starts async load (if needed) + generate. No-op while busy.
-    void requestGenerate(std::string prompt, GenerationParams params);
+    void requestGenerate(std::string prompt, FGenerationParams params);
     void cancel();
 
-    EngineStatus status() const { return status_.load(); }
-    std::string message() const;
-    std::string lastPrompt() const;
-    bool busy() const;
+    EEngineStatus GetStatus() const { return status.load(); }
+    std::string GetMessage() const;
+    std::string GetLastPrompt() const;
+    bool IsBusy() const;
 
     // Real sampler progress, written by worker callback, read by UI.
-    float progress() const;
-    unsigned stepsDone() const { return stepsDone_.load(); }
-    unsigned stepsTotal() const { return stepsTotal_.load(); }
-    bool sampling() const { return sampling_.load(); }
+    float GetProgress() const;
+    unsigned GetStepsDone() const { return stepsDone.load(); }
+    unsigned GetStepsTotal() const { return stepsTotal.load(); }
+    bool sampling() const { return bSampling.load(); }
 
     // Unloads model so new paths take effect. No-op while busy.
     void unloadModel();
 
     // Last successful result (copied under lock).
-    bool lastResult(MotionResult& out) const;
+    bool lastResult(FMotionResult& out) const;
 
-    void shutdown();
+    void Shutdown();
 
 private:
-    void run(std::string prompt, GenerationParams params);
+    void Run(std::string prompt, FGenerationParams params);
 
-    KimodoAdapter adapter_;
-    std::string motionPath_;
-    std::string textBundle_;
-    std::thread worker_;
-    std::atomic<EngineStatus> status_{EngineStatus::Idle};
-    std::atomic<unsigned> stepsDone_{0};
-    std::atomic<unsigned> stepsTotal_{0};
-    std::atomic<bool> sampling_{false};
-    std::atomic<bool> cancelRequested_{false};
-    mutable std::mutex mutex_;
-    std::string message_ = "idle";
-    std::string lastPrompt_;
-    MotionResult result_;
-    bool hasResult_ = false;
+    FKimodoAdapter Adapter;
+    std::string MotionPath;
+    std::string TextBundle;
+    std::thread worker;
+    std::atomic<EEngineStatus> status{EEngineStatus::Idle};
+    std::atomic<unsigned> stepsDone{0};
+    std::atomic<unsigned> stepsTotal{0};
+    std::atomic<bool> bSampling{false};
+    std::atomic<bool> bCancelRequested{false};
+    mutable std::mutex mutex;
+    std::string Message = "idle";
+    std::string LastPrompt;
+    FMotionResult result;
+    bool bHasResult = false;
 };
 
 } // namespace studio

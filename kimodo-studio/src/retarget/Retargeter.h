@@ -10,26 +10,26 @@
 
 namespace studio {
 
-using BoneMap = std::map<std::string, std::string>; // target joint -> source joint
+using FBoneMap = std::map<std::string, std::string>; // target joint -> source joint
 
-struct RetargetReport {
+struct FRetargetReport {
     std::string text;
     int mappedCount = 0;
     int unmappedCount = 0;
 };
 
-class Retargeter {
+class FRetargeter {
 public:
     struct Options {
         float rootScale = 1.0f;
     };
 
-    static BoneMap autoMap(const SkeletonProfile& profile);
-    static std::vector<std::string> unmapped(const SkeletonProfile& profile, const BoneMap& map);
+    static FBoneMap autoMap(const FSkeletonProfile& profile);
+    static std::vector<std::string> unmapped(const FSkeletonProfile& profile, const FBoneMap& map);
 
-    static bool retarget(const Animation& source, const SkeletonProfile& target,
-                         const BoneMap& map, const Options& opts, Animation& out,
-                         std::string& error, RetargetReport* report = nullptr);
+    static bool retarget(const FAnimation& source, const FSkeletonProfile& target,
+                         const FBoneMap& map, const Options& opts, FAnimation& out,
+                         std::string& error, FRetargetReport* report = nullptr);
 };
 
 } // namespace studio
