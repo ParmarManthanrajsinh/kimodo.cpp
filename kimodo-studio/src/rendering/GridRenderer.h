@@ -2,7 +2,7 @@
 
 namespace studio {
 
-struct FGridRenderer {
+struct GridRenderer {
     void Draw(bool grid = true, bool axes = true) const;
 };
 

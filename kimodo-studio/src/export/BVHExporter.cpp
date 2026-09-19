@@ -8,8 +8,7 @@
 
 namespace studio {
 
-void FBVHExporter::QuatToEulerXYZ(float x, float y, float z, float w, float& ex, float& ey,
-                                 float& ez) {
+void BVHExporter::QuatToEulerXYZ(float x, float y, float z, float w, float& ex, float& ey, float& ez) {
     if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) || !std::isfinite(w)) {
         ex = ey = ez = 0.0f;
         return;
@@ -48,38 +47,38 @@ void FBVHExporter::QuatToEulerXYZ(float x, float y, float z, float w, float& ex,
 
 namespace {
 
-std::string ftoa(float v) {
-    if (!std::isfinite(v)) return "0.0";
+std::string Ftoa(float v) {
+    if (!std::isfinite(v))
+        return "0.0";
     std::ostringstream ss;
     ss.precision(6);
     ss << std::fixed << v;
     std::string str = ss.str();
     // Trim trailing zeros after decimal point
     if (str.find('.') != std::string::npos) {
-        while (str.back() == '0') str.pop_back();
-        if (str.back() == '.') str.push_back('0');
+        while (str.back() == '0')
+            str.pop_back();
+        if (str.back() == '.')
+            str.push_back('0');
     }
     return str;
 }
 
 } // namespace
 
-bool FBVHExporter::ExportAnimation(const FAnimation& animation,
-                                  const FExportOptions& options, std::string& error) {
+bool BVHExporter::ExportAnimation(const Animation& animation, const ExportOptions& options, std::string& error) {
     return ExportWithRange(animation, options, -1, -1, error, &report);
 }
 
-bool FBVHExporter::ExportWithRange(const FAnimation& animation, const FExportOptions& options,
-                                  int startFrame, int endFrame, std::string& error,
-                                  std::string* report) {
+bool BVHExporter::ExportWithRange(const Animation& animation, const ExportOptions& options, int start_frame,
+                                  int end_frame, std::string& error, std::string* report) {
     if (animation.empty()) {
         error = "Animation is empty";
         return false;
     }
     const int J = animation.joints;
-    if (static_cast<int>(animation.parents.size()) != J ||
-        static_cast<int>(animation.offsets.size()) != J ||
-        static_cast<int>(animation.jointNames.size()) != J) {
+    if (static_cast<int>(animation.parents.size()) != J || static_cast<int>(animation.offsets.size()) != J ||
+        static_cast<int>(animation.joint_names.size()) != J) {
         error = "Animation hierarchy incomplete";
         return false;
     }
@@ -89,22 +88,23 @@ bool FBVHExporter::ExportWithRange(const FAnimation& animation, const FExportOpt
         return false;
     }
 
-    std::string preReport;
-    const FAnimation work = prepareExport(animation, fps, options.rootScale,
-                                         options.basis, options.rootMotion, preReport);
-    if (report) *report = preReport;
+    std::string pre_report;
+    const Animation work =
+        PrepareExport(animation, fps, options.root_scale, options.basis, options.root_motion, pre_report);
+    if (report)
+        *report = pre_report;
 
-    const int totalF = work.frames;
-    int f0 = (startFrame >= 0 && startFrame < totalF) ? startFrame : 0;
-    int f1 = (endFrame >= f0 && endFrame < totalF) ? endFrame : (totalF - 1);
-    const int outFrames = (f1 - f0 + 1);
+    const int total_f = work.frames;
+    int f0 = (start_frame >= 0 && start_frame < total_f) ? start_frame : 0;
+    int f1 = (end_frame >= f0 && end_frame < total_f) ? end_frame : (total_f - 1);
+    const int out_frames = (f1 - f0 + 1);
 
     std::vector<std::vector<int>> children(J);
-    int rootJoint = 0;
+    int root_joint = 0;
     for (int j = 0; j < J; ++j) {
         const int p = work.parents[j];
         if (p < 0 || p >= J) {
-            rootJoint = j;
+            root_joint = j;
         } else {
             children[p].push_back(j);
         }
@@ -113,7 +113,7 @@ bool FBVHExporter::ExportWithRange(const FAnimation& animation, const FExportOpt
     // Verify depth-first ordering
     {
         std::vector<int> order;
-        std::vector<int> stack{rootJoint};
+        std::vector<int> stack{root_joint};
         while (!stack.empty()) {
             const int j = stack.back();
             stack.pop_back();
@@ -135,11 +135,11 @@ bool FBVHExporter::ExportWithRange(const FAnimation& animation, const FExportOpt
 
     struct FrameItem {
         int joint;
-        size_t childIdx;
+        size_t child_idx;
         bool opened;
     };
-    std::vector<FrameItem> stack{{rootJoint, 0, false}};
-    auto indent = [](int depth) { return std::string(static_cast<size_t>(depth) * 2, ' '); };
+    std::vector<FrameItem> stack{{root_joint, 0, false}};
+    auto Indent = [](int depth) { return std::string(static_cast<size_t>(depth) * 2, ' '); };
 
     while (!stack.empty()) {
         FrameItem& fr = stack.back();
@@ -149,22 +149,19 @@ bool FBVHExporter::ExportWithRange(const FAnimation& animation, const FExportOpt
             fr.opened = true;
             const auto& o = work.offsets[j];
             if (depth == 0) {
-                out << "ROOT " << work.jointNames[j] << "\n"
-                    << indent(depth + 1) << "{\n"
-                    << indent(depth + 2) << "OFFSET " << ftoa(o[0]) << " "
-                    << ftoa(o[1]) << " " << ftoa(o[2]) << "\n"
-                    << indent(depth + 2)
-                    << "CHANNELS 6 Xposition Yposition Zposition Xrotation Yrotation Zrotation\n";
+                out << "ROOT " << work.joint_names[j] << "\n"
+                    << Indent(depth + 1) << "{\n"
+                    << Indent(depth + 2) << "OFFSET " << Ftoa(o[0]) << " " << Ftoa(o[1]) << " " << Ftoa(o[2]) << "\n"
+                    << Indent(depth + 2) << "CHANNELS 6 Xposition Yposition Zposition Xrotation Yrotation Zrotation\n";
             } else {
-                out << indent(depth) << "JOINT " << work.jointNames[j] << "\n"
-                    << indent(depth) << "{\n"
-                    << indent(depth + 1) << "OFFSET " << ftoa(o[0]) << " "
-                    << ftoa(o[1]) << " " << ftoa(o[2]) << "\n"
-                    << indent(depth + 1) << "CHANNELS 3 Xrotation Yrotation Zrotation\n";
+                out << Indent(depth) << "JOINT " << work.joint_names[j] << "\n"
+                    << Indent(depth) << "{\n"
+                    << Indent(depth + 1) << "OFFSET " << Ftoa(o[0]) << " " << Ftoa(o[1]) << " " << Ftoa(o[2]) << "\n"
+                    << Indent(depth + 1) << "CHANNELS 3 Xrotation Yrotation Zrotation\n";
             }
         }
-        if (fr.childIdx < children[j].size()) {
-            const int c = children[j][fr.childIdx++];
+        if (fr.child_idx < children[j].size()) {
+            const int c = children[j][fr.child_idx++];
             stack.push_back({c, 0, false});
         } else {
             if (children[j].empty()) {
@@ -177,31 +174,32 @@ bool FBVHExporter::ExportWithRange(const FAnimation& animation, const FExportOpt
                     dz = o[2] / len;
                 }
                 const float ext = std::max(0.05f, len * 0.25f);
-                out << indent(depth + 1) << "End Site\n"
-                    << indent(depth + 1) << "{\n"
-                    << indent(depth + 2) << "OFFSET " << ftoa(dx * ext) << " "
-                    << ftoa(dy * ext) << " " << ftoa(dz * ext) << "\n"
-                    << indent(depth + 1) << "}\n";
+                out << Indent(depth + 1) << "End Site\n"
+                    << Indent(depth + 1) << "{\n"
+                    << Indent(depth + 2) << "OFFSET " << Ftoa(dx * ext) << " " << Ftoa(dy * ext) << " "
+                    << Ftoa(dz * ext) << "\n"
+                    << Indent(depth + 1) << "}\n";
             }
-            out << indent(depth) << "}\n";
+            out << Indent(depth) << "}\n";
             stack.pop_back();
         }
     }
 
-    out << "MOTION\nFrames: " << outFrames << "\nFrame Time: " << ftoa(1.0f / fps) << "\n";
+    out << "MOTION\nFrames: " << out_frames << "\nFrame Time: " << Ftoa(1.0f / fps) << "\n";
     for (int f = f0; f <= f1; ++f) {
         bool first = true;
         for (int j = 0; j < J; ++j) {
-            if (!first) out << " ";
+            if (!first)
+                out << " ";
             first = false;
-            if (j == rootJoint) {
-                const float* p = work.rootPositions.data() + f * 3;
-                out << ftoa(p[0]) << " " << ftoa(p[1]) << " " << ftoa(p[2]) << " ";
+            if (j == root_joint) {
+                const float* p = work.root_positions.data() + f * 3;
+                out << Ftoa(p[0]) << " " << Ftoa(p[1]) << " " << Ftoa(p[2]) << " ";
             }
-            const float* q = work.localRotationsXyzw.data() + (static_cast<size_t>(f) * J + j) * 4;
+            const float* q = work.local_rotations_xyzw.data() + (static_cast<size_t>(f) * J + j) * 4;
             float ex, ey, ez;
             QuatToEulerXYZ(q[0], q[1], q[2], q[3], ex, ey, ez);
-            out << ftoa(ex) << " " << ftoa(ey) << " " << ftoa(ez);
+            out << Ftoa(ex) << " " << Ftoa(ey) << " " << Ftoa(ez);
         }
         out << "\n";
     }

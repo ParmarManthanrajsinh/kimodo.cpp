@@ -7,8 +7,8 @@
 
 namespace studio {
 
-void SPageHome::Draw(FAppState& state, FAnimationLibrary& lib, FCharacterLibrary& chars) {
-    ImGui::TextColored(FUIStyle::accent, "%s Welcome to Kimodo Studio", icons::kKimodo);
+void PageHome::Draw(AppState& state, AnimationLibrary& lib, CharacterLibrary& chars) {
+    ImGui::TextColored(UIStyle::accent, "%s Welcome to Kimodo Studio", icons::kKimodo);
     ImGui::TextDisabled("C++23 AI Character Motion Generation & Animation Workstation");
     ImGui::Spacing();
     ImGui::Separator();
@@ -17,7 +17,7 @@ void SPageHome::Draw(FAppState& state, FAnimationLibrary& lib, FCharacterLibrary
     // Quick Stats Overview
     ImGui::BeginGroup();
     {
-        ImGui::TextColored(FUIStyle::text, "%s Pipeline Overview", icons::kPlay);
+        ImGui::TextColored(UIStyle::text, "%s Pipeline Overview", icons::kPlay);
         ImGui::BulletText("Kimodo Generation -> SOMA30 Model Inference");
         ImGui::BulletText("Animation Library -> Real-time Forward Kinematics");
         ImGui::BulletText("Character Preview -> GLB Humanoid Rig + GPU Vertex Skinning");
@@ -31,21 +31,21 @@ void SPageHome::Draw(FAppState& state, FAnimationLibrary& lib, FCharacterLibrary
     ImGui::Spacing();
 
     // Quick Actions
-    ImGui::TextColored(FUIStyle::text, "Quick Actions");
+    ImGui::TextColored(UIStyle::text, "Quick Actions");
     ImGui::Spacing();
 
     if (ImGui::Button(ICON_FA_GENERATE "  New Motion Generation", ImVec2(240, 42))) {
-        state.screen = EScreen::Generate;
-        state.lastToolScreen = EScreen::Generate;
+        state.screen = Screen::Generate;
+        state.last_tool_screen = Screen::Generate;
     }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_USER "  Manage 3D Characters", ImVec2(240, 42))) {
-        state.screen = EScreen::Characters;
+        state.screen = Screen::Characters;
     }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_EXPORT "  Export for Unreal / Blender", ImVec2(240, 42))) {
-        state.screen = EScreen::Export;
-        state.lastToolScreen = EScreen::Export;
+        state.screen = Screen::Export;
+        state.last_tool_screen = Screen::Export;
     }
 
     ImGui::Spacing();

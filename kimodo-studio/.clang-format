@@ -1,37 +1,41 @@
-# Kimodo Studio — based on Epic Games' Unreal Engine C++ .clang-format
-# Applied manually: clang-format -i $(git ls-files 'src/*.h' 'src/*.cpp')
+# Kimodo Studio — C++23 coding style
+# Apply with: clang-format -i $(git ls-files 'src/**/*.h' 'src/**/*.cpp')
 ---
 Language: Cpp
-Standard: c++20
+Standard: Latest
 BasedOnStyle: LLVM
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
 ColumnLimit: 120
 
-# UE uses Allman braces: every opening brace on its own line.
-BreakBeforeBraces: Allman
+# Opening braces stay on the end of the line (standard modern C++ style).
+BreakBeforeBraces: Attach
 
-# UE puts pointers/references with the type: FString* Foo, const FString& Bar
+# Pointers/references bind to the type: Texture* tex, const Animation& anim.
 PointerAlignment: Left
 DerivePointerAlignment: false
 
-# UE writes short inline accessors on one line.
 AllowShortFunctionsOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: true
 
-# Template declarations break before the declaration.
-AlwaysBreakTemplateDeclarations: Yes
-
-# UE controls include order manually (its own build tooling); do not reshuffle.
+# Sort includes deterministically: matching header, C headers, C++ headers,
+# then project headers, each block sorted lexically.
+# Keep author-controlled include order: Windows.h must precede bcrypt.h etc.
 SortIncludes: Never
+IncludeBlocks: Preserve
+IncludeCategories:
+  - Regex: '^"'
+    Priority: 4
+  - Regex: '^<[^/]+\.h>'
+    Priority: 2
+  - Regex: '^<'
+    Priority: 1
 
-# Access modifiers: no extra indent (UE style).
 AccessModifierOffset: -4
 
-# Keep UE's tight parameter packing behavior reasonable.
 AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
@@ -42,7 +46,5 @@ SpaceBeforeParens: ControlStatements
 SpaceBeforeRangeBasedForLoopColon: true
 SpaceAfterLogicalNot: false
 
-# Numeric literals in UE code stay as authored; do not pad.
 Cpp11BracedListStyle: true
-
 FixNamespaceComments: true

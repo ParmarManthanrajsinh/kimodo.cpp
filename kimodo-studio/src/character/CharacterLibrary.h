@@ -1,52 +1,51 @@
 #pragma once
 
-#include "character/CharacterAsset.h"
-#include "character/CharacterMapper.h"
-#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
+#include "character/CharacterAsset.h"
+#include "character/CharacterMapper.h"
 
 namespace studio {
 
-struct FCharacterEntry {
+struct CharacterEntry {
     std::string id;
     std::string name;
-    std::string filePath;
+    std::string file_path;
     std::string license;
     std::string author;
-    int boneCount = 0;
-    int vertexCount = 0;
+    int bone_count = 0;
+    int vertex_count = 0;
     float scale = 1.0f;
-    FCharacterBoneMap mapping;
-    std::string thumbnailPath;
+    CharacterBoneMap mapping;
+    std::string thumbnail_path;
     bool installed = true;
 };
 
-class FCharacterLibrary {
+class CharacterLibrary {
 public:
-    FCharacterLibrary() = default;
+    CharacterLibrary() = default;
 
     bool Init();
     void Rescan();
 
-    const std::vector<FCharacterEntry>& GetEntries() const { return entries; }
-    const std::string& GetActiveId() const { return ActiveId; }
+    const std::vector<CharacterEntry>& GetEntries() const { return entries; }
+    const std::string& GetActiveId() const { return active_id; }
 
-    FCharacterAsset* GetActiveAsset() { return ActiveAsset.get(); }
-    const FCharacterAsset* GetActiveAsset() const { return ActiveAsset.get(); }
+    CharacterAsset* GetActiveAsset() { return active_asset.get(); }
+    const CharacterAsset* GetActiveAsset() const { return active_asset.get(); }
 
     bool SelectCharacter(const std::string& id);
-    bool ImportCharacter(const std::string& sourcePath, std::string& error);
+    bool ImportCharacter(const std::string& source_path, std::string& error);
     bool RemoveCharacter(const std::string& id);
 
-    bool SaveMapping(const std::string& id, const FCharacterBoneMap& mapping);
-    bool FindEntry(const std::string& id, FCharacterEntry& outEntry) const;
+    bool SaveMapping(const std::string& id, const CharacterBoneMap& mapping);
+    bool FindEntry(const std::string& id, CharacterEntry& out_entry) const;
 
 private:
-    std::vector<FCharacterEntry> entries;
-    std::string ActiveId;
-    std::unique_ptr<FCharacterAsset> ActiveAsset;
+    std::vector<CharacterEntry> entries;
+    std::string active_id;
+    std::unique_ptr<CharacterAsset> active_asset;
 
     void LoadRegistry();
     void SaveRegistry();

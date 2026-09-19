@@ -5,23 +5,23 @@
 
 namespace studio {
 
-enum class EToastKind { Info, Success, Warning, Error };
+enum class ToastKind { Info, Success, Warning, Error };
 
-struct FToast {
+struct Toast {
     std::string text;
-    EToastKind kind = EToastKind::Info;
+    ToastKind kind = ToastKind::Info;
     double expiresAt = 0.0;
 };
 
 // Transient notifications (plan section 38). UI thread only:
 // push from event sites, draw once per frame.
-class SToasts {
+class Toasts {
 public:
-    void Push(const std::string& text, EToastKind kind = EToastKind::Info);
+    void Push(const std::string& text, ToastKind kind = ToastKind::Info);
     void Draw();
 
 private:
-    std::vector<FToast> items;
+    std::vector<Toast> items;
 };
 
 } // namespace studio

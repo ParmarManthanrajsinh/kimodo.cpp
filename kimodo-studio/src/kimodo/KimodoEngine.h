@@ -9,7 +9,7 @@
 
 namespace studio {
 
-enum class EEngineStatus {
+enum class EngineStatus {
     Idle,
     LoadingModel,
     Generating,
@@ -19,56 +19,56 @@ enum class EEngineStatus {
 
 // Owns adapter + single worker thread. UI polls status()/message()
 // each frame; worker never touches ImGui or Raylib.
-class FKimodoEngine {
+class KimodoEngine {
 public:
-    FKimodoEngine() = default;
-    ~FKimodoEngine() { Shutdown(); }
+    KimodoEngine() = default;
+    ~KimodoEngine() { Shutdown(); }
 
-    FKimodoEngine(const FKimodoEngine&) = delete;
-    FKimodoEngine& operator=(const FKimodoEngine&) = delete;
+    KimodoEngine(const KimodoEngine&) = delete;
+    KimodoEngine& operator=(const KimodoEngine&) = delete;
 
-    void SetPaths(std::string motionGguf, std::string textBundle);
+    void SetPaths(std::string motion_gguf, std::string text_bundle);
 
     // Starts async load (if needed) + generate. No-op while busy.
-    void requestGenerate(std::string prompt, FGenerationParams params);
-    void cancel();
+    void RequestGenerate(std::string prompt, GenerationParams params);
+    void Cancel();
 
-    EEngineStatus GetStatus() const { return status.load(); }
+    EngineStatus GetStatus() const { return status.load(); }
     std::string GetMessage() const;
     std::string GetLastPrompt() const;
     bool IsBusy() const;
 
     // Real sampler progress, written by worker callback, read by UI.
     float GetProgress() const;
-    unsigned GetStepsDone() const { return stepsDone.load(); }
-    unsigned GetStepsTotal() const { return stepsTotal.load(); }
-    bool sampling() const { return bSampling.load(); }
+    unsigned GetStepsDone() const { return steps_done.load(); }
+    unsigned GetStepsTotal() const { return steps_total.load(); }
+    bool Sampling() const { return sampling.load(); }
 
     // Unloads model so new paths take effect. No-op while busy.
-    void unloadModel();
+    void UnloadModel();
 
     // Last successful result (copied under lock).
-    bool lastResult(FMotionResult& out) const;
+    bool LastResult(MotionResult& out) const;
 
     void Shutdown();
 
 private:
-    void Run(std::string prompt, FGenerationParams params);
+    void Run(std::string prompt, GenerationParams params);
 
-    FKimodoAdapter Adapter;
-    std::string MotionPath;
-    std::string TextBundle;
+    KimodoAdapter adapter;
+    std::string motion_path;
+    std::string text_bundle;
     std::thread worker;
-    std::atomic<EEngineStatus> status{EEngineStatus::Idle};
-    std::atomic<unsigned> stepsDone{0};
-    std::atomic<unsigned> stepsTotal{0};
-    std::atomic<bool> bSampling{false};
-    std::atomic<bool> bCancelRequested{false};
+    std::atomic<EngineStatus> status{EngineStatus::Idle};
+    std::atomic<unsigned> steps_done{0};
+    std::atomic<unsigned> steps_total{0};
+    std::atomic<bool> sampling{false};
+    std::atomic<bool> cancel_requested{false};
     mutable std::mutex mutex;
-    std::string Message = "idle";
-    std::string LastPrompt;
-    FMotionResult result;
-    bool bHasResult = false;
+    std::string message = "idle";
+    std::string last_prompt;
+    MotionResult result;
+    bool has_result = false;
 };
 
 } // namespace studio

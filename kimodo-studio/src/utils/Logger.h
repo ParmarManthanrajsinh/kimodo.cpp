@@ -7,26 +7,26 @@
 
 namespace studio {
 
-enum class ELogLevel { Trace, Debug, Info, Warning, Error };
+enum class LogLevel { Trace, Debug, Info, Warning, Error };
 
-class FLogger {
+class Logger {
 public:
-    static FLogger& GetInstance();
+    static Logger& GetInstance();
 
     void Init(const std::filesystem::path& file);
-    void Log(ELogLevel level, const std::string& msg);
+    void Log(LogLevel level, const std::string& msg);
 
-    void trace(const std::string& msg) { Log(ELogLevel::Trace, msg); }
-    void debug(const std::string& msg) { Log(ELogLevel::Debug, msg); }
-    void info(const std::string& msg) { Log(ELogLevel::Info, msg); }
-    void warning(const std::string& msg) { Log(ELogLevel::Warning, msg); }
-    void error(const std::string& msg) { Log(ELogLevel::Error, msg); }
+    void trace(const std::string& msg) { Log(LogLevel::Trace, msg); }
+    void Debug(const std::string& msg) { Log(LogLevel::Debug, msg); }
+    void Info(const std::string& msg) { Log(LogLevel::Info, msg); }
+    void Warning(const std::string& msg) { Log(LogLevel::Warning, msg); }
+    void Error(const std::string& msg) { Log(LogLevel::Error, msg); }
 
     static std::filesystem::path DefaultLogFile();
 
 private:
-    FLogger() = default;
-    static const char* LevelName(ELogLevel level);
+    Logger() = default;
+    static const char* LevelName(LogLevel level);
 
     std::mutex mutex;
     std::ofstream stream;

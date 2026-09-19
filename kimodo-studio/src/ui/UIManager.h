@@ -1,30 +1,29 @@
 #pragma once
 
-#include "app/AppState.h"
-#include "raylib.h"
 #include <functional>
 #include <map>
 #include <string>
+#include "app/AppState.h"
+#include "raylib.h"
 
 namespace studio {
 
-class FViewport;
-class FKimodoEngine;
-class FAnimationPlayer;
-class FAnimationLibrary;
-struct FLibraryEntry;
-class FCharacterLibrary;
-class FModelManager;
-class SToasts;
+class Viewport;
+class KimodoEngine;
+class AnimationPlayer;
+class AnimationLibrary;
+struct LibraryEntry;
+class CharacterLibrary;
+class ModelManager;
+class Toasts;
 
-class FUIManager {
+class UIManager {
 public:
-    using CaptureFn = std::function<void(const FLibraryEntry&)>;
+    using CaptureFn = std::function<void(const LibraryEntry&)>;
 
-    void Draw(FAppState& state, FViewport& viewport, FKimodoEngine& engine,
-              FAnimationPlayer& player, FAnimationLibrary& library,
-              FCharacterLibrary& characters, FModelManager& models,
-              SToasts& toasts, CaptureFn capture = {});
+    void Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, AnimationPlayer& player,
+              AnimationLibrary& library, CharacterLibrary& characters, ModelManager& models, Toasts& toasts,
+              CaptureFn capture = {});
 
     void Shutdown();
 

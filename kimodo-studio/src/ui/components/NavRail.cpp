@@ -6,16 +6,16 @@
 namespace studio {
 namespace {
 
-bool drawNavButton(const char* icon, const char* label, bool active) {
+bool draw_nav_button(const char* icon, const char* label, bool active) {
     ImVec2 size(ImGui::GetContentRegionAvail().x, 36.0f);
     if (active) {
-        ImGui::PushStyleColor(ImGuiCol_Button, FUIStyle::accent);
+        ImGui::PushStyleColor(ImGuiCol_Button, UIStyle::accent);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.85f, 0.44f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05f, 0.05f, 0.08f, 1.0f));
     } else {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.12f, 0.14f, 0.18f, 0.5f));
-        ImGui::PushStyleColor(ImGuiCol_Text, FUIStyle::text);
+        ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::text);
     }
     ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.0f, 0.5f));
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0f, 6.0f));
@@ -30,38 +30,38 @@ bool drawNavButton(const char* icon, const char* label, bool active) {
 
 } // namespace
 
-void SNavRail::Draw(FAppState& state) {
+void NavRail::Draw(AppState& state) {
     ImGuiViewport* vp = ImGui::GetMainViewport();
-    const float sideW = state.sideWidth;
-    ImGui::SetNextWindowPos(ImVec2(vp->Pos.x, vp->Pos.y + FUIStyle::topH));
-    ImGui::SetNextWindowSize(ImVec2(sideW, vp->Size.y - FUIStyle::topH - FUIStyle::statusH));
+    const float side_w = state.side_width;
+    ImGui::SetNextWindowPos(ImVec2(vp->Pos.x, vp->Pos.y + UIStyle::top_h));
+    ImGui::SetNextWindowSize(ImVec2(side_w, vp->Size.y - UIStyle::top_h - UIStyle::status_h));
     ImGui::SetNextWindowViewport(vp->ID);
 
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
-                            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
-                            ImGuiWindowFlags_NoBringToFrontOnFocus;
+                             ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
+                             ImGuiWindowFlags_NoBringToFrontOnFocus;
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 12));
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, FUIStyle::panel);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, UIStyle::panel);
 
     if (ImGui::Begin("##NavRail", nullptr, flags)) {
         ImGui::TextDisabled("WORKSPACE");
         ImGui::Spacing();
 
-        if (drawNavButton(icons::kHome, "Home", state.screen == EScreen::Home)) {
-            state.screen = EScreen::Home;
+        if (draw_nav_button(icons::kHome, "Home", state.screen == Screen::Home)) {
+            state.screen = Screen::Home;
         }
-        if (drawNavButton(icons::kGenerate, "Generate", state.screen == EScreen::Generate)) {
-            state.screen = EScreen::Generate;
-            state.lastToolScreen = EScreen::Generate;
+        if (draw_nav_button(icons::kGenerate, "Generate", state.screen == Screen::Generate)) {
+            state.screen = Screen::Generate;
+            state.last_tool_screen = Screen::Generate;
         }
-        if (drawNavButton(icons::kRetarget, "Retarget", state.screen == EScreen::Retarget)) {
-            state.screen = EScreen::Retarget;
-            state.lastToolScreen = EScreen::Retarget;
+        if (draw_nav_button(icons::kRetarget, "Retarget", state.screen == Screen::Retarget)) {
+            state.screen = Screen::Retarget;
+            state.last_tool_screen = Screen::Retarget;
         }
-        if (drawNavButton(icons::kExport, "Export", state.screen == EScreen::Export)) {
-            state.screen = EScreen::Export;
-            state.lastToolScreen = EScreen::Export;
+        if (draw_nav_button(icons::kExport, "Export", state.screen == Screen::Export)) {
+            state.screen = Screen::Export;
+            state.last_tool_screen = Screen::Export;
         }
 
         ImGui::Spacing();
@@ -71,14 +71,14 @@ void SNavRail::Draw(FAppState& state) {
         ImGui::TextDisabled("ASSETS");
         ImGui::Spacing();
 
-        if (drawNavButton(icons::kFolder, "Library", state.screen == EScreen::Library)) {
-            state.screen = EScreen::Library;
+        if (draw_nav_button(icons::kFolder, "Library", state.screen == Screen::Library)) {
+            state.screen = Screen::Library;
         }
-        if (drawNavButton(icons::kUser, "Characters", state.screen == EScreen::Characters)) {
-            state.screen = EScreen::Characters;
+        if (draw_nav_button(icons::kUser, "Characters", state.screen == Screen::Characters)) {
+            state.screen = Screen::Characters;
         }
-        if (drawNavButton(icons::kCube, "Models", state.screen == EScreen::Models)) {
-            state.screen = EScreen::Models;
+        if (draw_nav_button(icons::kCube, "Models", state.screen == Screen::Models)) {
+            state.screen = Screen::Models;
         }
 
         ImGui::Spacing();
@@ -88,8 +88,8 @@ void SNavRail::Draw(FAppState& state) {
         ImGui::TextDisabled("SYSTEM");
         ImGui::Spacing();
 
-        if (drawNavButton(icons::kSettings, "Settings", state.screen == EScreen::Settings)) {
-            state.screen = EScreen::Settings;
+        if (draw_nav_button(icons::kSettings, "Settings", state.screen == Screen::settings)) {
+            state.screen = Screen::settings;
         }
     }
     ImGui::End();

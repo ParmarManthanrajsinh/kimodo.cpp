@@ -1,136 +1,124 @@
 #include "character/CharacterAsset.h"
 #include "raymath.h"
 
-#include <cmath>
 
 namespace studio {
 
-FCharacterAsset::~FCharacterAsset() {
-    unload();
+CharacterAsset::~CharacterAsset() { Unload(); }
+
+CharacterAsset::CharacterAsset(CharacterAsset&& other) noexcept
+    : loaded(other.loaded), Id(std::move(other.Id)), Name(std::move(other.Name)), file_path(std::move(other.file_path)),
+      license(std::move(other.license)), author(std::move(other.author)), scale(other.scale), bounds(other.bounds),
+      bones(std::move(other.bones)), submeshes(std::move(other.submeshes)),
+      skinning_data(std::move(other.skinning_data)), report(std::move(other.report)),
+      anim_vertices(std::move(other.anim_vertices)), anim_normals(std::move(other.anim_normals)) {
+    other.loaded = false;
 }
 
-FCharacterAsset::FCharacterAsset(FCharacterAsset&& other) noexcept
-    : bLoaded(other.bLoaded),
-      Id(std::move(other.Id)),
-      Name(std::move(other.Name)),
-      filePath(std::move(other.filePath)),
-      license(std::move(other.license)),
-      Author(std::move(other.Author)),
-      Scale(other.Scale),
-      Bounds(other.Bounds),
-      Bones(std::move(other.Bones)),
-      submeshes(std::move(other.submeshes)),
-      skinningData(std::move(other.skinningData)),
-      report(std::move(other.report)),
-      AnimVertices(std::move(other.AnimVertices)),
-      AnimNormals(std::move(other.AnimNormals)) {
-    other.bLoaded = false;
-}
-
-FCharacterAsset& FCharacterAsset::operator=(FCharacterAsset&& other) noexcept {
+CharacterAsset& CharacterAsset::operator=(CharacterAsset&& other) noexcept {
     if (this != &other) {
-        unload();
-        bLoaded = other.bLoaded;
+        Unload();
+        loaded = other.loaded;
         Id = std::move(other.Id);
         Name = std::move(other.Name);
-        filePath = std::move(other.filePath);
+        file_path = std::move(other.file_path);
         license = std::move(other.license);
-        Author = std::move(other.Author);
-        Scale = other.Scale;
-        Bounds = other.Bounds;
-        Bones = std::move(other.Bones);
+        author = std::move(other.author);
+        scale = other.scale;
+        bounds = other.bounds;
+        bones = std::move(other.bones);
         submeshes = std::move(other.submeshes);
-        skinningData = std::move(other.skinningData);
+        skinning_data = std::move(other.skinning_data);
         report = std::move(other.report);
-        AnimVertices = std::move(other.AnimVertices);
-        AnimNormals = std::move(other.AnimNormals);
-        other.bLoaded = false;
+        anim_vertices = std::move(other.anim_vertices);
+        anim_normals = std::move(other.anim_normals);
+        other.loaded = false;
     }
     return *this;
 }
 
-void FCharacterAsset::unload() {
+void CharacterAsset::Unload() {
     for (auto& sub : submeshes) {
-        if (sub.hasTexture && sub.diffuseTexture.id > 0) {
+        if (sub.has_texture && sub.diffuse_texture.id > 0) {
             if (IsWindowReady()) {
-                UnloadTexture(sub.diffuseTexture);
+                UnloadTexture(sub.diffuse_texture);
             }
-            sub.diffuseTexture.id = 0;
-            sub.hasTexture = false;
+            sub.diffuse_texture.id = 0;
+            sub.has_texture = false;
         }
     }
     submeshes.clear();
-    Bones.clear();
-    skinningData.vertices.clear();
-    skinningData.indices.clear();
-    skinningData.inverseBindMatrices.clear();
-    skinningData.currentBoneMatrices.clear();
-    AnimVertices.clear();
-    AnimNormals.clear();
-    bLoaded = false;
+    bones.clear();
+    skinning_data.vertices.clear();
+    skinning_data.indices.clear();
+    skinning_data.inverse_bind_matrices.clear();
+    skinning_data.current_bone_matrices.clear();
+    anim_vertices.clear();
+    anim_normals.clear();
+    loaded = false;
 }
 
-int FCharacterAsset::findBoneIndex(const std::string& boneName) const {
-    for (size_t i = 0; i < Bones.size(); ++i) {
-        if (Bones[i].name == boneName) {
+int CharacterAsset::FindBoneIndex(const std::string& bone_name) const {
+    for (size_t i = 0; i < bones.size(); ++i) {
+        if (bones[i].name == bone_name) {
             return static_cast<int>(i);
         }
     }
     return -1;
 }
 
-void FCharacterAsset::finalizeGeometry(BoundingBox b) {
-    Bounds = b;
-    const size_t vcount = skinningData.vertices.size();
-    AnimVertices.resize(vcount);
-    AnimNormals.resize(vcount);
+void CharacterAsset::FinalizeGeometry(BoundingBox b) {
+    bounds = b;
+    const size_t vcount = skinning_data.vertices.size();
+    anim_vertices.resize(vcount);
+    anim_normals.resize(vcount);
     for (size_t i = 0; i < vcount; ++i) {
-        AnimVertices[i] = skinningData.vertices[i].position;
-        AnimNormals[i] = skinningData.vertices[i].normal;
+        anim_vertices[i] = skinning_data.vertices[i].position;
+        anim_normals[i] = skinning_data.vertices[i].normal;
     }
-    bLoaded = !skinningData.vertices.empty();
+    loaded = !skinning_data.vertices.empty();
 }
 
-void FCharacterAsset::updateCpuSkinning(const std::vector<Matrix>& skinMatrices) {
-    const size_t vcount = skinningData.vertices.size();
-    if (skinMatrices.empty() || AnimVertices.size() != vcount) {
+void CharacterAsset::UpdateCpuSkinning(const std::vector<Matrix>& skin_matrices) {
+    const size_t vcount = skinning_data.vertices.size();
+    if (skin_matrices.empty() || anim_vertices.size() != vcount) {
         return;
     }
 
-    const int numBones = static_cast<int>(skinMatrices.size());
+    const int num_bones = static_cast<int>(skin_matrices.size());
 
     for (size_t i = 0; i < vcount; ++i) {
-        const FSkinVertex& v = skinningData.vertices[i];
-        Vector3 posAccum{0, 0, 0};
-        Vector3 normAccum{0, 0, 0};
-        float totalWeight = 0.0f;
+        const SkinVertex& v = skinning_data.vertices[i];
+        Vector3 pos_accum{0, 0, 0};
+        Vector3 norm_accum{0, 0, 0};
+        float total_weight = 0.0f;
 
         for (int k = 0; k < kMaxInfluences; ++k) {
-            const float w = v.boneWeights[k];
-            if (w <= 1e-4f) continue;
-            const uint16_t bIdx = v.boneIndices[k];
-            if (bIdx >= numBones) continue;
+            const float w = v.bone_weights[k];
+            if (w <= 1e-4f)
+                continue;
+            const uint16_t b_idx = v.bone_indices[k];
+            if (b_idx >= num_bones)
+                continue;
 
-            const Matrix& m = skinMatrices[bIdx];
+            const Matrix& m = skin_matrices[b_idx];
             Vector3 p = Vector3Transform(v.position, m);
-            posAccum = Vector3Add(posAccum, Vector3Scale(p, w));
+            pos_accum = Vector3Add(pos_accum, Vector3Scale(p, w));
 
             // Transform normal (rotational part)
-            Vector3 normRot{
-                m.m0 * v.normal.x + m.m4 * v.normal.y + m.m8 * v.normal.z,
-                m.m1 * v.normal.x + m.m5 * v.normal.y + m.m9 * v.normal.z,
-                m.m2 * v.normal.x + m.m6 * v.normal.y + m.m10 * v.normal.z
-            };
-            normAccum = Vector3Add(normAccum, Vector3Scale(normRot, w));
-            totalWeight += w;
+            Vector3 norm_rot{m.m0 * v.normal.x + m.m4 * v.normal.y + m.m8 * v.normal.z,
+                             m.m1 * v.normal.x + m.m5 * v.normal.y + m.m9 * v.normal.z,
+                             m.m2 * v.normal.x + m.m6 * v.normal.y + m.m10 * v.normal.z};
+            norm_accum = Vector3Add(norm_accum, Vector3Scale(norm_rot, w));
+            total_weight += w;
         }
 
-        if (totalWeight > 1e-4f) {
-            AnimVertices[i] = posAccum;
-            AnimNormals[i] = Vector3Normalize(normAccum);
+        if (total_weight > 1e-4f) {
+            anim_vertices[i] = pos_accum;
+            anim_normals[i] = Vector3Normalize(norm_accum);
         } else {
-            AnimVertices[i] = v.position;
-            AnimNormals[i] = v.normal;
+            anim_vertices[i] = v.position;
+            anim_normals[i] = v.normal;
         }
     }
 }

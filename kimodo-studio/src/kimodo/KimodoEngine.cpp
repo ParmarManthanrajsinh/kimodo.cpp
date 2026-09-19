@@ -4,159 +4,158 @@
 
 namespace studio {
 
-void FKimodoEngine::SetPaths(std::string inMotionGguf, std::string inTextBundle) {
+void KimodoEngine::SetPaths(std::string in_motion_gguf, std::string in_text_bundle) {
     std::lock_guard<std::mutex> lock(mutex);
-    MotionPath = std::move(inMotionGguf);
-    TextBundle = std::move(inTextBundle);
+    motion_path = std::move(in_motion_gguf);
+    text_bundle = std::move(in_text_bundle);
 }
 
-void FKimodoEngine::requestGenerate(std::string prompt, FGenerationParams params) {
+void KimodoEngine::RequestGenerate(std::string prompt, GenerationParams params) {
     if (IsBusy()) {
         return;
     }
     if (worker.joinable()) {
         worker.join();
     }
-    status.store(EEngineStatus::Generating);
-    stepsDone.store(0);
-    stepsTotal.store(params.steps);
-    bSampling.store(false);
-    bCancelRequested.store(false);
+    status.store(EngineStatus::Generating);
+    steps_done.store(0);
+    steps_total.store(params.steps);
+    sampling.store(false);
+    cancel_requested.store(false);
     {
         std::lock_guard<std::mutex> lock(mutex);
-        Message = "starting worker";
-        LastPrompt = prompt;
+        message = "starting worker";
+        last_prompt = prompt;
     }
-    worker = std::thread(&FKimodoEngine::Run, this, std::move(prompt), params);
+    worker = std::thread(&KimodoEngine::Run, this, std::move(prompt), params);
 }
 
-void FKimodoEngine::cancel() {
-    bCancelRequested.store(true);
-}
+void KimodoEngine::Cancel() { cancel_requested.store(true); }
 
-float FKimodoEngine::GetProgress() const {
-    const unsigned total = stepsTotal.load();
+float KimodoEngine::GetProgress() const {
+    const unsigned total = steps_total.load();
     if (total == 0) {
         return 0.0f;
     }
-    float p = static_cast<float>(stepsDone.load()) / static_cast<float>(total);
+    float p = static_cast<float>(steps_done.load()) / static_cast<float>(total);
     return p < 0.0f ? 0.0f : (p > 1.0f ? 1.0f : p);
 }
 
-std::string FKimodoEngine::GetMessage() const {
+std::string KimodoEngine::GetMessage() const {
     std::lock_guard<std::mutex> lock(mutex);
-    return Message;
+    return message;
 }
 
-std::string FKimodoEngine::GetLastPrompt() const {
+std::string KimodoEngine::GetLastPrompt() const {
     std::lock_guard<std::mutex> lock(mutex);
-    return LastPrompt;
+    return last_prompt;
 }
 
-void FKimodoEngine::unloadModel() {
+void KimodoEngine::UnloadModel() {
     if (IsBusy()) {
         return;
     }
     if (worker.joinable()) {
         worker.join();
     }
-    Adapter.unload();
+    adapter.Unload();
     std::lock_guard<std::mutex> lock(mutex);
-    Message = "model unloaded (paths apply on next generate)";
-    status.store(EEngineStatus::Idle);
+    message = "model unloaded (paths apply on next generate)";
+    status.store(EngineStatus::Idle);
 }
 
-bool FKimodoEngine::IsBusy() const {
-    EEngineStatus s = status.load();
-    return s == EEngineStatus::LoadingModel || s == EEngineStatus::Generating;
+bool KimodoEngine::IsBusy() const {
+    EngineStatus s = status.load();
+    return s == EngineStatus::LoadingModel || s == EngineStatus::Generating;
 }
 
-bool FKimodoEngine::lastResult(FMotionResult& out) const {
+bool KimodoEngine::LastResult(MotionResult& out) const {
     std::lock_guard<std::mutex> lock(mutex);
-    if (!bHasResult) {
+    if (!has_result) {
         return false;
     }
     out = result;
     return true;
 }
 
-void FKimodoEngine::Shutdown() {
+void KimodoEngine::Shutdown() {
     if (worker.joinable()) {
         worker.join();
     }
-    Adapter.unload();
+    adapter.Unload();
 }
 
-void FKimodoEngine::Run(std::string prompt, FGenerationParams params) {
-    std::string localMotionPath;
-    std::string localTextBundle;
+void KimodoEngine::Run(std::string prompt, GenerationParams params) {
+    std::string local_motion_path;
+    std::string local_text_bundle;
     {
         std::lock_guard<std::mutex> lock(mutex);
-        localMotionPath = MotionPath;
-        localTextBundle = TextBundle;
+        local_motion_path = motion_path;
+        local_text_bundle = text_bundle;
     }
-    if (!Adapter.IsLoaded()) {
-        if (localMotionPath.empty()) {
+    if (!adapter.IsLoaded()) {
+        if (local_motion_path.empty()) {
             std::lock_guard<std::mutex> lock(mutex);
-            Message = "No motion model installed. Please open Models page to download or import SOMA weights.";
-            status.store(EEngineStatus::Error);
-            FLogger::GetInstance().error("Kimodo load aborted: No motion model installed (motion_gguf path is empty). Open Models page.");
+            message = "No motion model installed. Please open Models page to download or import SOMA weights.";
+            status.store(EngineStatus::Error);
+            Logger::GetInstance().Error(
+                "Kimodo load aborted: No motion model installed (motion_gguf path is empty). Open Models page.");
             return;
         }
 
-        status.store(EEngineStatus::LoadingModel);
+        status.store(EngineStatus::LoadingModel);
         {
             std::lock_guard<std::mutex> lock(mutex);
-            Message = "Loading model...";
+            message = "Loading model...";
         }
-        FLogger::GetInstance().info("Kimodo: loading model from " + localMotionPath);
+        Logger::GetInstance().Info("Kimodo: loading model from " + local_motion_path);
         std::string error;
-        if (!Adapter.load(localMotionPath, localTextBundle, error)) {
+        if (!adapter.Load(local_motion_path, local_text_bundle, error)) {
             std::lock_guard<std::mutex> lock(mutex);
-            Message = "Model load failed: " + error;
-            status.store(EEngineStatus::Error);
-            FLogger::GetInstance().error("Kimodo load failed: " + error);
+            message = "Model load failed: " + error;
+            status.store(EngineStatus::Error);
+            Logger::GetInstance().Error("Kimodo load failed: " + error);
             return;
         }
-        FLogger::GetInstance().info("Kimodo: model loaded successfully");
+        Logger::GetInstance().Info("Kimodo: model loaded successfully");
     }
 
-    status.store(EEngineStatus::Generating);
+    status.store(EngineStatus::Generating);
     {
         std::lock_guard<std::mutex> lock(mutex);
-        Message = "Preparing (weights / encoding)...";
+        message = "Preparing (weights / encoding)...";
     }
-    FLogger::GetInstance().info("Kimodo: generation started: " + prompt);
-    FMotionResult localResult;
+    Logger::GetInstance().Info("Kimodo: generation started: " + prompt);
+    MotionResult local_result;
     std::string error;
-    auto onProgress = [this](unsigned done, unsigned total) {
-        stepsDone.store(done);
-        stepsTotal.store(total);
-        bSampling.store(true);
-        return bCancelRequested.load();
+    auto on_progress = [this](unsigned done, unsigned total) {
+        steps_done.store(done);
+        steps_total.store(total);
+        sampling.store(true);
+        return cancel_requested.load();
     };
-    if (!Adapter.generate(prompt, params, result, error, onProgress)) {
+    if (!adapter.Generate(prompt, params, result, error, on_progress)) {
         std::lock_guard<std::mutex> lock(mutex);
-        if (error == "generation cancelled" || bCancelRequested.load()) {
-            Message = "Generation cancelled";
-            status.store(EEngineStatus::Idle);
-            FLogger::GetInstance().info("Kimodo: generation cancelled by user");
+        if (error == "generation cancelled" || cancel_requested.load()) {
+            message = "Generation cancelled";
+            status.store(EngineStatus::Idle);
+            Logger::GetInstance().Info("Kimodo: generation cancelled by user");
         } else {
-            Message = "Generation failed: " + error;
-            status.store(EEngineStatus::Error);
-            FLogger::GetInstance().error("Kimodo generate failed: " + error);
+            message = "Generation failed: " + error;
+            status.store(EngineStatus::Error);
+            Logger::GetInstance().Error("Kimodo generate failed: " + error);
         }
         return;
     }
     {
         std::lock_guard<std::mutex> lock(mutex);
-        result = std::move(localResult);
-        bHasResult = true;
-        Message = "Finished: " + std::to_string(localResult.frames) + " frames, " +
-                   std::to_string(localResult.joints) + " joints";
+        result = std::move(local_result);
+        has_result = true;
+        message = "Finished: " + std::to_string(local_result.frames) + " frames, " +
+                  std::to_string(local_result.joints) + " joints";
     }
-    status.store(EEngineStatus::Finished);
-    FLogger::GetInstance().info("Kimodo: generation finished");
+    status.store(EngineStatus::Finished);
+    Logger::GetInstance().Info("Kimodo: generation finished");
 }
 
 } // namespace studio

@@ -1,0 +1,19 @@
+CompileFlags:
+  CompilationDatabase: "."
+  Add:
+    - -std=c++23
+    - -D_CRT_SECURE_NO_WARNINGS
+    - -DKIMODO_HAVE_BACKEND=1
+    - -Ie:/kimodo.cpp/kimodo-studio/src
+    - -Ie:/kimodo.cpp/kimodo-studio/build/windows-vs2022/_deps/raylib-src/src
+    - -Ie:/kimodo.cpp/kimodo-studio/build/windows-vs2022/_deps/imgui-src
+    - -Ie:/kimodo.cpp/kimodo-studio/build/windows-vs2022/_deps/rlimgui-src
+    - -Ie:/kimodo.cpp/kimodo-studio/build/windows-vs2022/_deps/nativefiledialog-src/src/include
+    - -IE:/kimodo.cpp/include
+Diagnostics:
+  Suppress:
+    - "drv_unknown_argument"
+  ClangTidy:
+    Remove:
+      - "*"
+  UnusedIncludes: None

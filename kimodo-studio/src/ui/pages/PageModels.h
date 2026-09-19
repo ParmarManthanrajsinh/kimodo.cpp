@@ -3,12 +3,12 @@
 #include "app/AppState.h"
 
 namespace studio {
-class FModelManager;
-class SToasts;
+class ModelManager;
+class Toasts;
 
-class SPageModels {
+class PageModels {
 public:
-    static void Draw(FAppState& state, FModelManager& models, SToasts& toasts);
+    static void Draw(AppState& state, ModelManager& models, Toasts& toasts);
 };
 
 } // namespace studio

@@ -10,49 +10,48 @@
 // runs them on a worker thread, never on UI thread.
 namespace studio {
 
-struct FGenerationParams {
+struct GenerationParams {
     uint64_t seed = 42;
     uint32_t frames = 120;
     uint32_t steps = 50;
-    float textCfg = 2.0f;
-    float constraintCfg = 2.0f;
+    float text_cfg = 2.0f;
+    float constraint_cfg = 2.0f;
 };
 
-struct FMotionResult {
+struct MotionResult {
     int frames = 0;
     int joints = 0;
-    std::vector<float> localRotationsXyzw; // [frames, joints, 4]
-    std::vector<float> rootPositions;      // [frames, 3]
+    std::vector<float> local_rotations_xyzw; // [frames, joints, 4]
+    std::vector<float> root_positions;       // [frames, 3]
 };
 
-class FKimodoAdapter {
+class KimodoAdapter {
 public:
-    FKimodoAdapter() = default;
-    ~FKimodoAdapter();
+    KimodoAdapter() = default;
+    ~KimodoAdapter();
 
-    FKimodoAdapter(const FKimodoAdapter&) = delete;
-    FKimodoAdapter& operator=(const FKimodoAdapter&) = delete;
+    KimodoAdapter(const KimodoAdapter&) = delete;
+    KimodoAdapter& operator=(const KimodoAdapter&) = delete;
 
-    static int abiVersion();
+    static int AbiVersion();
 
-    bool load(const std::string& motionGguf, const std::string& textBundle,
-              std::string& error);
-    bool IsLoaded() const { return bLoaded; }
+    bool Load(const std::string& motion_gguf, const std::string& text_bundle, std::string& error);
+    bool IsLoaded() const { return loaded; }
 
     // progress(done, total) runs on the worker thread; return true to cancel.
     using ProgressFn = std::function<bool(unsigned done, unsigned total)>;
 
-    bool generate(const std::string& prompt, const FGenerationParams& params,
-                  FMotionResult& out, std::string& error, ProgressFn progress = {});
-    void unload();
+    bool Generate(const std::string& prompt, const GenerationParams& params, MotionResult& out, std::string& error,
+                  ProgressFn progress = {});
+    void Unload();
 
-    const std::string& GetLastError() const { return lastError; }
+    const std::string& GetLastError() const { return last_error; }
 
 private:
-    struct Handle;
-    Handle* HandlePtr = nullptr;
-    bool bLoaded = false;
-    std::string lastError;
+    struct handle;
+    handle* HandlePtr = nullptr;
+    bool loaded = false;
+    std::string last_error;
 };
 
 } // namespace studio

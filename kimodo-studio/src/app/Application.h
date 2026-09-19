@@ -12,29 +12,29 @@
 
 namespace studio {
 
-class FApplication {
+class Application {
 public:
     bool Init(int width = 1280, int height = 800);
-    void Run(int maxFrames = 0, const char* screenshotPath = nullptr);
+    void Run(int max_frames = 0, const char* screenshot_path = nullptr);
     void Shutdown();
 
 private:
     void PollEngine();
     void UpdateAnimationAndSkinning();
 
-    FAppState state;
-    FViewport viewport;
-    FUIManager ui;
-    FKimodoEngine engine;
-    FAnimationPlayer player;
-    FAnimationLibrary library;
-    FCharacterLibrary characters;
-    FModelManager models;
-    SToasts toasts;
+    AppState state;
+    Viewport viewport;
+    UIManager ui;
+    KimodoEngine engine;
+    AnimationPlayer player;
+    AnimationLibrary library;
+    CharacterLibrary characters;
+    ModelManager models;
+    Toasts toasts;
 
-    EEngineStatus lastEngineStatus = EEngineStatus::Idle;
+    EngineStatus last_engine_status = EngineStatus::Idle;
     std::string pendingThumb;
-    bool bRunning = false;
+    bool running = false;
 };
 
 } // namespace studio

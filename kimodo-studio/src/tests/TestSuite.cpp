@@ -2,15 +2,13 @@
 #include "animation/Animation.h"
 #include "animation/Skeleton.h"
 #include "animation/SomaPresentation.h"
+#include "app/AppState.h"
 #include "character/CharacterAsset.h"
 #include "character/CharacterLoader.h"
 #include "character/CharacterMapper.h"
 #include "export/BVHExporter.h"
 #include "export/BVHParser.h"
-#include "export/ExportPreset.h"
 #include "library/AnimationLibrary.h"
-#include "raymath.h"
-#include "app/AppState.h"
 #include "retarget/Retargeter.h"
 #include "retarget/SkeletonProfile.h"
 #include "utils/AppPaths.h"
@@ -23,46 +21,46 @@
 namespace studio {
 namespace {
 
-FAnimation makeSynthSoma(int frames = 4) {
-    FAnimation a;
+Animation make_synth_soma(int frames = 4) {
+    Animation a;
     a.frames = frames;
     a.fps = 30.0f;
     a.joints = kSomaJoints;
-    a.skeletonName = "soma30";
-    a.jointNames.assign(FSoma30Spec::names.begin(), FSoma30Spec::names.end());
-    a.parents.assign(FSoma30Spec::parents.begin(), FSoma30Spec::parents.end());
-    a.offsets.assign(FSoma30Spec::offsets.begin(), FSoma30Spec::offsets.end());
-    a.localRotationsXyzw.assign(static_cast<size_t>(frames) * kSomaJoints * 4, 0.0f);
-    a.rootPositions.assign(static_cast<size_t>(frames) * 3, 0.0f);
+    a.skeleton_name = "soma30";
+    a.joint_names.assign(Soma30Spec::names.begin(), Soma30Spec::names.end());
+    a.parents.assign(Soma30Spec::parents.begin(), Soma30Spec::parents.end());
+    a.offsets.assign(Soma30Spec::offsets.begin(), Soma30Spec::offsets.end());
+    a.local_rotations_xyzw.assign(static_cast<size_t>(frames) * kSomaJoints * 4, 0.0f);
+    a.root_positions.assign(static_cast<size_t>(frames) * 3, 0.0f);
 
     for (int f = 0; f < frames; ++f) {
-        a.rootPositions[f * 3 + 0] = 0.0f;
-        a.rootPositions[f * 3 + 1] = 0.95f + 0.02f * static_cast<float>(f);
-        a.rootPositions[f * 3 + 2] = 0.05f * static_cast<float>(f);
+        a.root_positions[f * 3 + 0] = 0.0f;
+        a.root_positions[f * 3 + 1] = 0.95f + 0.02f * static_cast<float>(f);
+        a.root_positions[f * 3 + 2] = 0.05f * static_cast<float>(f);
 
         for (int j = 0; j < kSomaJoints; ++j) {
-            a.localRotationsXyzw[(static_cast<size_t>(f) * kSomaJoints + j) * 4 + 3] = 1.0f;
+            a.local_rotations_xyzw[(static_cast<size_t>(f) * kSomaJoints + j) * 4 + 3] = 1.0f;
         }
 
         // Slight arm swing
         float angle = (f - frames / 2.0f) * 0.1f;
         float h = angle * 0.5f;
-        int lArm = 11, rArm = 17;
-        a.localRotationsXyzw[(static_cast<size_t>(f) * kSomaJoints + lArm) * 4 + 0] = std::sin(h);
-        a.localRotationsXyzw[(static_cast<size_t>(f) * kSomaJoints + lArm) * 4 + 3] = std::cos(h);
-        a.localRotationsXyzw[(static_cast<size_t>(f) * kSomaJoints + rArm) * 4 + 0] = -std::sin(h);
-        a.localRotationsXyzw[(static_cast<size_t>(f) * kSomaJoints + rArm) * 4 + 3] = std::cos(h);
+        int l_arm = 11, r_arm = 17;
+        a.local_rotations_xyzw[(static_cast<size_t>(f) * kSomaJoints + l_arm) * 4 + 0] = std::sin(h);
+        a.local_rotations_xyzw[(static_cast<size_t>(f) * kSomaJoints + l_arm) * 4 + 3] = std::cos(h);
+        a.local_rotations_xyzw[(static_cast<size_t>(f) * kSomaJoints + r_arm) * 4 + 0] = -std::sin(h);
+        a.local_rotations_xyzw[(static_cast<size_t>(f) * kSomaJoints + r_arm) * 4 + 3] = std::cos(h);
     }
     return a;
 }
 
 } // namespace
 
-int FTestSuite::RunAnimationAndFK() {
+int TestSuite::RunAnimationAndFK() {
     int fails = 0;
     std::printf("[TEST] Running Animation & Skeleton FK tests...\n");
 
-    FAnimation anim = makeSynthSoma(5);
+    Animation anim = make_synth_soma(5);
     if (anim.frames != 5 || anim.joints != 30) {
         std::printf("  FAIL: Synthetic animation dimension mismatch\n");
         fails++;
@@ -71,10 +69,10 @@ int FTestSuite::RunAnimationAndFK() {
     // Forward kinematics test
     std::vector<Vector3> pos;
     std::vector<Quaternion> rot;
-    const float* root = anim.rootPositions.data();
-    const float* rots = anim.localRotationsXyzw.data();
+    const float* root = anim.root_positions.data();
+    const float* rots = anim.local_rotations_xyzw.data();
 
-    FSkeleton::ForwardKinematicsFull(rots, root, anim.parents, anim.offsets, pos, rot);
+    Skeleton::ForwardKinematicsFull(rots, root, anim.parents, anim.offsets, pos, rot);
 
     if (pos.size() != 30 || rot.size() != 30) {
         std::printf("  FAIL: FK result joint count != 30\n");
@@ -94,15 +92,15 @@ int FTestSuite::RunAnimationAndFK() {
     return fails;
 }
 
-int FTestSuite::RunSomaPresentation() {
+int TestSuite::RunSomaPresentation() {
     int fails = 0;
     std::printf("[TEST] Running SOMA Presentation Skeleton tests...\n");
 
-    FAnimation src = makeSynthSoma(3);
-    FAnimation pres;
+    Animation src = make_synth_soma(3);
+    Animation pres;
     std::string err;
 
-    if (!FSomaPresentation::expandSoma30(src, pres, err)) {
+    if (!SomaPresentation::ExpandSoma30(src, pres, err)) {
         std::printf("  FAIL: SomaPresentation::expandSoma30 failed: %s\n", err.c_str());
         fails++;
     }
@@ -113,10 +111,11 @@ int FTestSuite::RunSomaPresentation() {
     }
 
     // Validation
-    auto val = FSomaPresentation::validate(pres);
-    if (!val.valid || !val.hierarchyValid || !val.isFinite) {
+    auto val = SomaPresentation::Validate(pres);
+    if (!val.valid || !val.hierarchy_valid || !val.is_finite) {
         std::printf("  FAIL: SomaPresentation validation failed\n");
-        for (const auto& e : val.errors) std::printf("    Error: %s\n", e.c_str());
+        for (const auto& e : val.errors)
+            std::printf("    Error: %s\n", e.c_str());
         fails++;
     }
 
@@ -124,17 +123,17 @@ int FTestSuite::RunSomaPresentation() {
     return fails;
 }
 
-int FTestSuite::RunCharacterAndSkinning() {
+int TestSuite::RunCharacterAndSkinning() {
     int fails = 0;
     std::printf("[TEST] Running Character & Skinning tests...\n");
 
-    std::filesystem::path charPath = FAppPaths::resolveAsset("assets/characters/CesiumMan.glb");
-    FCharacterAsset character;
+    std::filesystem::path char_path = AppPaths::ResolveAsset("assets/characters/CesiumMan.glb");
+    CharacterAsset character;
     std::string err;
 
-    if (!FCharacterLoader::loadGLB(charPath.string(), character, err)) {
-        std::printf("  WARN: CharacterLoader on %s: %s (skipping if file not present)\n",
-                    charPath.string().c_str(), err.c_str());
+    if (!CharacterLoader::LoadGLB(char_path.string(), character, err)) {
+        std::printf("  WARN: CharacterLoader on %s: %s (skipping if file not present)\n", char_path.string().c_str(),
+                    err.c_str());
     } else {
         if (!character.IsLoaded() || character.GetSkinningData().vertices.empty()) {
             std::printf("  FAIL: Loaded character has no vertices\n");
@@ -142,21 +141,21 @@ int FTestSuite::RunCharacterAndSkinning() {
         }
 
         const auto& rep = character.GetValidationReport();
-        if (!rep.hasMesh || !rep.hasSkeleton) {
+        if (!rep.has_mesh || !rep.has_skeleton) {
             std::printf("  FAIL: Character validation checklist failed\n");
             fails++;
         }
 
         // Test Auto Mapper
-        FAnimation anim = makeSynthSoma(2);
-        auto mapping = FCharacterMapper::autoMap(character, anim.jointNames);
+        Animation anim = make_synth_soma(2);
+        auto mapping = CharacterMapper::AutoMap(character, anim.joint_names);
         if (mapping.empty()) {
-            std::printf("  FAIL: CharacterMapper autoMap returned empty map\n");
+            std::printf("  FAIL: CharacterMapper AutoMap returned empty map\n");
             fails++;
         }
 
-        std::vector<Matrix> skinMats;
-        if (!FCharacterMapper::evaluateSkinMatrices(character, anim, 0, mapping, skinMats)) {
+        std::vector<Matrix> skin_mats;
+        if (!CharacterMapper::EvaluateSkinMatrices(character, anim, 0, mapping, skin_mats)) {
             std::printf("  FAIL: evaluateSkinMatrices returned false\n");
             fails++;
         }
@@ -178,83 +177,96 @@ int FTestSuite::RunCharacterAndSkinning() {
             fails++;
         }
 
-        FAnimationLibrary lib;
-        lib.Init(FAppPaths::defaultAnimationsDir());
+        AnimationLibrary lib;
+        lib.Init(AppPaths::DefaultAnimationsDir());
         std::printf("  [DEBUG] Library has %zu animation clips\n", lib.GetEntries().size());
         for (const auto& entry : lib.GetEntries()) {
-            std::printf("    Clip: '%s', frames=%d, skeleton='%s'\n", entry.prompt.c_str(), entry.frames, entry.skeleton.c_str());
-            FAnimation realAnim;
-            if (lib.loadAnimation(entry, realAnim)) {
+            std::printf("    Clip: '%s', frames=%d, skeleton='%s'\n", entry.prompt.c_str(), entry.frames,
+                        entry.skeleton.c_str());
+            Animation real_anim;
+            if (lib.LoadAnimation(entry, real_anim)) {
                 if (entry.prompt.find("apple") != std::string::npos) {
                     std::printf("    === INSPECTING CLIP: %s ===\n", entry.prompt.c_str());
-                    int testFrames[] = {0, 20, 40, 60, 80, 100, std::min(119, realAnim.frames - 1)};
-                    for (int tf : testFrames) {
+                    int test_frames[] = {0, 20, 40, 60, 80, 100, std::min(119, real_anim.frames - 1)};
+                    for (int tf : test_frames) {
                         // SOMA FK
-                        const float* r = realAnim.localRotationsXyzw.data() + static_cast<size_t>(tf) * realAnim.joints * 4;
-                        const float* p = realAnim.rootPositions.data() + tf * 3;
-                        std::vector<Vector3> somaPos;
-                        std::vector<Quaternion> somaRot;
-                        FSkeleton::ForwardKinematicsFull(r, p, realAnim.parents, realAnim.offsets, somaPos, somaRot);
+                        const float* r =
+                            real_anim.local_rotations_xyzw.data() + static_cast<size_t>(tf) * real_anim.joints * 4;
+                        const float* p = real_anim.root_positions.data() + tf * 3;
+                        std::vector<Vector3> soma_pos;
+                        std::vector<Quaternion> soma_rot;
+                        Skeleton::ForwardKinematicsFull(r, p, real_anim.parents, real_anim.offsets, soma_pos, soma_rot);
 
                         // Character FK
-                        std::vector<Matrix> curSkinMats;
-                        std::vector<Vector3> charPos;
-                        FCharacterMapper::evaluateSkinMatrices(character, realAnim, tf, mapping, curSkinMats, &charPos);
+                        std::vector<Matrix> cur_skin_mats;
+                        std::vector<Vector3> char_pos;
+                        CharacterMapper::EvaluateSkinMatrices(character, real_anim, tf, mapping, cur_skin_mats,
+                                                              &char_pos);
 
                         // Joint 17 = RightArm, Joint 18 = RightForeArm, Joint 19 = RightHand, Joint 6 = Head
                         std::printf("      Frame %d:\n", tf);
-                        std::printf("        SOMA Root (Hips): (%.3f, %.3f, %.3f)\n", somaPos[0].x, somaPos[0].y, somaPos[0].z);
-                        std::printf("        SOMA Head: (%.3f, %.3f, %.3f)\n", somaPos[6].x, somaPos[6].y, somaPos[6].z);
-                        std::printf("        SOMA RightArm: (%.3f, %.3f, %.3f)\n", somaPos[17].x, somaPos[17].y, somaPos[17].z);
-                        std::printf("        SOMA RightForeArm: (%.3f, %.3f, %.3f)\n", somaPos[18].x, somaPos[18].y, somaPos[18].z);
-                        std::printf("        SOMA RightHand: (%.3f, %.3f, %.3f)\n", somaPos[19].x, somaPos[19].y, somaPos[19].z);
+                        std::printf("        SOMA Root (Hips): (%.3f, %.3f, %.3f)\n", soma_pos[0].x, soma_pos[0].y,
+                                    soma_pos[0].z);
+                        std::printf("        SOMA Head: (%.3f, %.3f, %.3f)\n", soma_pos[6].x, soma_pos[6].y,
+                                    soma_pos[6].z);
+                        std::printf("        SOMA RightArm: (%.3f, %.3f, %.3f)\n", soma_pos[17].x, soma_pos[17].y,
+                                    soma_pos[17].z);
+                        std::printf("        SOMA RightForeArm: (%.3f, %.3f, %.3f)\n", soma_pos[18].x, soma_pos[18].y,
+                                    soma_pos[18].z);
+                        std::printf("        SOMA RightHand: (%.3f, %.3f, %.3f)\n", soma_pos[19].x, soma_pos[19].y,
+                                    soma_pos[19].z);
 
                         // Char Bone 4 = Head (Skeleton_neck_joint_2), Bone 8 = RightArm, Bone 10 = RightForeArm
-                        std::printf("        CHAR Head: (%.3f, %.3f, %.3f)\n", charPos[4].x, charPos[4].y, charPos[4].z);
-                        std::printf("        CHAR RightArm: (%.3f, %.3f, %.3f)\n", charPos[8].x, charPos[8].y, charPos[8].z);
-                        std::printf("        CHAR RightForeArm: (%.3f, %.3f, %.3f)\n", charPos[10].x, charPos[10].y, charPos[10].z);
+                        std::printf("        CHAR Head: (%.3f, %.3f, %.3f)\n", char_pos[4].x, char_pos[4].y,
+                                    char_pos[4].z);
+                        std::printf("        CHAR RightArm: (%.3f, %.3f, %.3f)\n", char_pos[8].x, char_pos[8].y,
+                                    char_pos[8].z);
+                        std::printf("        CHAR RightForeArm: (%.3f, %.3f, %.3f)\n", char_pos[10].x, char_pos[10].y,
+                                    char_pos[10].z);
                     }
                 }
             }
         }
 
         // Test Skin Matrix Evaluation
-        if (skinMats.size() != character.GetBones().size()) {
+        if (skin_mats.size() != character.GetBones().size()) {
             std::printf("  FAIL: Skin matrix count != bone count\n");
             fails++;
         }
 
         // Test CPU skinning
-        character.updateCpuSkinning(skinMats);
-        const auto& animVerts = character.GetAnimatedVertices();
-        if (animVerts.size() != character.GetSkinningData().vertices.size()) {
+        character.UpdateCpuSkinning(skin_mats);
+        const auto& anim_verts = character.GetAnimatedVertices();
+        if (anim_verts.size() != character.GetSkinningData().vertices.size()) {
             std::printf("  FAIL: Animated vertices count mismatch\n");
             fails++;
         } else {
             // Verify animated mesh is upright in Y-UP space (height Y >= 1.0m, Z extends reasonably)
-            float minY = 1e9f, maxY = -1e9f;
-            for (const auto& v : animVerts) {
-                if (v.y < minY) minY = v.y;
-                if (v.y > maxY) maxY = v.y;
+            float min_y = 1e9f, max_y = -1e9f;
+            for (const auto& v : anim_verts) {
+                if (v.y < min_y)
+                    min_y = v.y;
+                if (v.y > max_y)
+                    max_y = v.y;
             }
-            if (maxY < 1.2f || minY < -0.3f) {
-                std::printf("  FAIL: Animated character not upright! Y bounds: [%.2f, %.2f]\n", minY, maxY);
+            if (max_y < 1.2f || min_y < -0.3f) {
+                std::printf("  FAIL: Animated character not upright! Y bounds: [%.2f, %.2f]\n", min_y, max_y);
                 fails++;
             }
         }
     }
 
     // Test UI Panel Width Clamping
-    FAppState testState;
-    testState.sideWidth = 50.0f; // Below min 120
-    testState.sideWidth = std::clamp(testState.sideWidth, 120.0f, 320.0f);
-    if (testState.sideWidth != 120.0f) {
+    AppState test_state;
+    test_state.side_width = 50.0f; // Below min 120
+    test_state.side_width = std::clamp(test_state.side_width, 120.0f, 320.0f);
+    if (test_state.side_width != 120.0f) {
         std::printf("  FAIL: sideWidth clamp failed min\n");
         fails++;
     }
-    testState.panelWidth = 1000.0f; // Above max 640
-    testState.panelWidth = std::clamp(testState.panelWidth, 260.0f, 640.0f);
-    if (testState.panelWidth != 640.0f) {
+    test_state.panel_width = 1000.0f; // Above max 640
+    test_state.panel_width = std::clamp(test_state.panel_width, 260.0f, 640.0f);
+    if (test_state.panel_width != 640.0f) {
         std::printf("  FAIL: panelWidth clamp failed max\n");
         fails++;
     }
@@ -263,38 +275,38 @@ int FTestSuite::RunCharacterAndSkinning() {
     return fails;
 }
 
-int FTestSuite::RunBVHRoundTrip() {
+int TestSuite::RunBVHRoundTrip() {
     int fails = 0;
     std::printf("[TEST] Running BVH Export, Parser & Round-Trip tests...\n");
 
-    FAnimation src = makeSynthSoma(6);
-    FExportOptions opts;
-    opts.path = (FAppPaths::appDataDir() / "test_roundtrip.bvh").string();
+    Animation src = make_synth_soma(6);
+    ExportOptions opts;
+    opts.path = (AppPaths::AppDataDir() / "test_roundtrip.bvh").string();
     opts.fps = 30.0f;
 
     std::string err;
-    FBVHExporter bvhExp;
+    BVHExporter bvhExp;
     if (!bvhExp.ExportAnimation(src, opts, err)) {
         std::printf("  FAIL: BVHExporter failed: %s\n", err.c_str());
         fails++;
     }
 
-    FAnimation roundTrip;
-    if (!FBVHParser::parseFile(opts.path, roundTrip, err)) {
+    Animation round_trip;
+    if (!BVHParser::ParseFile(opts.path, round_trip, err)) {
         std::printf("  FAIL: BVHParser failed to parse exported BVH: %s\n", err.c_str());
         fails++;
     }
 
-    if (roundTrip.frames != src.frames) {
-        std::printf("  FAIL: Round-trip frame count mismatch (%d != %d)\n", roundTrip.frames, src.frames);
+    if (round_trip.frames != src.frames) {
+        std::printf("  FAIL: Round-trip frame count mismatch (%d != %d)\n", round_trip.frames, src.frames);
         fails++;
     }
 
     // Verify root position round-trip fidelity
     for (int f = 0; f < src.frames; ++f) {
-        float dx = src.rootPositions[f * 3 + 0] - roundTrip.rootPositions[f * 3 + 0];
-        float dy = src.rootPositions[f * 3 + 1] - roundTrip.rootPositions[f * 3 + 1];
-        float dz = src.rootPositions[f * 3 + 2] - roundTrip.rootPositions[f * 3 + 2];
+        float dx = src.root_positions[f * 3 + 0] - round_trip.root_positions[f * 3 + 0];
+        float dy = src.root_positions[f * 3 + 1] - round_trip.root_positions[f * 3 + 1];
+        float dz = src.root_positions[f * 3 + 2] - round_trip.root_positions[f * 3 + 2];
         float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
         if (dist > 1e-2f) {
             std::printf("  FAIL: Frame %d root translation drift = %.4f\n", f, dist);
@@ -307,7 +319,7 @@ int FTestSuite::RunBVHRoundTrip() {
     return fails;
 }
 
-int FTestSuite::RunPathologicalCases() {
+int TestSuite::RunPathologicalCases() {
     int fails = 0;
     std::printf("[TEST] Running Pathological & Edge Cases tests...\n");
 
@@ -316,9 +328,9 @@ int FTestSuite::RunPathologicalCases() {
     {
         float ex = 0, ey = 90.0f, ez = 0;
         float qx, qy, qz, qw;
-        FBVHParser::eulerXYZToQuat(ex, ey, ez, qx, qy, qz, qw);
+        BVHParser::EulerXyzToQuat(ex, ey, ez, qx, qy, qz, qw);
         float rex, rey, rez;
-        FBVHExporter::QuatToEulerXYZ(qx, qy, qz, qw, rex, rey, rez);
+        BVHExporter::QuatToEulerXYZ(qx, qy, qz, qw, rex, rey, rez);
         if (std::abs(rey - 90.0f) > 0.1f) {
             std::printf("  FAIL: Gimbal lock 90 deg pitch recovery failed (%.2f)\n", rey);
             fails++;
@@ -329,9 +341,9 @@ int FTestSuite::RunPathologicalCases() {
     {
         float ex = 180.0f, ey = 0, ez = 0;
         float qx, qy, qz, qw;
-        FBVHParser::eulerXYZToQuat(ex, ey, ez, qx, qy, qz, qw);
+        BVHParser::EulerXyzToQuat(ex, ey, ez, qx, qy, qz, qw);
         float rex, rey, rez;
-        FBVHExporter::QuatToEulerXYZ(qx, qy, qz, qw, rex, rey, rez);
+        BVHExporter::QuatToEulerXYZ(qx, qy, qz, qw, rex, rey, rez);
         if (std::abs(std::abs(rex) - 180.0f) > 0.1f) {
             std::printf("  FAIL: 180 deg rotation recovery failed (%.2f)\n", rex);
             fails++;
@@ -341,7 +353,7 @@ int FTestSuite::RunPathologicalCases() {
     // 3. Identity rotation
     {
         float ex, ey, ez;
-        FBVHExporter::QuatToEulerXYZ(0, 0, 0, 1.0f, ex, ey, ez);
+        BVHExporter::QuatToEulerXYZ(0, 0, 0, 1.0f, ex, ey, ez);
         if (std::abs(ex) > 1e-4f || std::abs(ey) > 1e-4f || std::abs(ez) > 1e-4f) {
             std::printf("  FAIL: Identity rotation did not produce zero Euler angles\n");
             fails++;
@@ -350,9 +362,9 @@ int FTestSuite::RunPathologicalCases() {
 
     // 4. NaN / Inf inputs guard
     {
-        float nanVal = std::numeric_limits<float>::quiet_NaN();
+        float nan_val = std::numeric_limits<float>::quiet_NaN();
         float ex, ey, ez;
-        FBVHExporter::QuatToEulerXYZ(nanVal, 0, 0, 1.0f, ex, ey, ez);
+        BVHExporter::QuatToEulerXYZ(nan_val, 0, 0, 1.0f, ex, ey, ez);
         if (!std::isfinite(ex) || !std::isfinite(ey) || !std::isfinite(ez)) {
             std::printf("  FAIL: NaN input produced non-finite Euler angles\n");
             fails++;
@@ -363,24 +375,24 @@ int FTestSuite::RunPathologicalCases() {
     return fails;
 }
 
-int FTestSuite::RunBlenderRetargeting() {
+int TestSuite::RunBlenderRetargeting() {
     int fails = 0;
     std::printf("[TEST] Running Blender Generic Retargeting tests...\n");
 
-    const FSkeletonProfile* blender = FindProfile("blender-generic");
+    const SkeletonProfile* blender = FindProfile("blender-generic");
     if (!blender) {
         std::printf("  FAIL: blender-generic profile missing\n");
         return 1;
     }
 
-    FAnimation src = makeSynthSoma(3);
-    FBoneMap map = FRetargeter::autoMap(*blender);
-    FRetargeter::Options opts;
-    FAnimation out;
+    Animation src = make_synth_soma(3);
+    BoneMap map = Retargeter::AutoMap(*blender);
+    Retargeter::Options opts;
+    Animation out;
     std::string err;
-    FRetargetReport rep;
+    RetargetReport rep;
 
-    if (!FRetargeter::retarget(src, *blender, map, opts, out, err, &rep)) {
+    if (!Retargeter::retarget(src, *blender, map, opts, out, err, &rep)) {
         std::printf("  FAIL: Retarget to blender-generic failed: %s\n", err.c_str());
         fails++;
     }
@@ -394,27 +406,27 @@ int FTestSuite::RunBlenderRetargeting() {
     return fails;
 }
 
-int FTestSuite::RunAll() {
+int TestSuite::RunAll() {
     std::printf("===================================================\n");
     std::printf("  KIMODO STUDIO — COMPREHENSIVE VERIFICATION SUITE  \n");
     std::printf("===================================================\n");
 
-    int totalFails = 0;
-    totalFails += RunAnimationAndFK();
-    totalFails += RunSomaPresentation();
-    totalFails += RunCharacterAndSkinning();
-    totalFails += RunBVHRoundTrip();
-    totalFails += RunPathologicalCases();
-    totalFails += RunBlenderRetargeting();
+    int total_fails = 0;
+    total_fails += RunAnimationAndFK();
+    total_fails += RunSomaPresentation();
+    total_fails += RunCharacterAndSkinning();
+    total_fails += RunBVHRoundTrip();
+    total_fails += RunPathologicalCases();
+    total_fails += RunBlenderRetargeting();
 
     std::printf("===================================================\n");
-    if (totalFails == 0) {
+    if (total_fails == 0) {
         std::printf("  ALL TESTS PASSED SUCCESSFULLY! (0 failures)       \n");
     } else {
-        std::printf("  TEST SUITE COMPLETED WITH %d FAILURES              \n", totalFails);
+        std::printf("  TEST SUITE COMPLETED WITH %d FAILURES              \n", total_fails);
     }
     std::printf("===================================================\n");
-    return totalFails == 0 ? 0 : 1;
+    return total_fails == 0 ? 0 : 1;
 }
 
 } // namespace studio

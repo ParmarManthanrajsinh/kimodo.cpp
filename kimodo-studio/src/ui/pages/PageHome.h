@@ -3,12 +3,12 @@
 #include "app/AppState.h"
 
 namespace studio {
-class FAnimationLibrary;
-class FCharacterLibrary;
+class AnimationLibrary;
+class CharacterLibrary;
 
-class SPageHome {
+class PageHome {
 public:
-    static void Draw(FAppState& state, FAnimationLibrary& lib, FCharacterLibrary& chars);
+    static void Draw(AppState& state, AnimationLibrary& lib, CharacterLibrary& chars);
 };
 
 } // namespace studio

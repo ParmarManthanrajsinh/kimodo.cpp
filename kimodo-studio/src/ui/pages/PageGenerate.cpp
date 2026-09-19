@@ -9,59 +9,55 @@
 
 namespace studio {
 
-void SPageGenerate::Draw(FAppState& state, FKimodoEngine& engine, FModelManager& models, SToasts& toasts) {
-    ImGui::TextColored(FUIStyle::accent, "%s Motion Generation", icons::kGenerate);
+void PageGenerate::Draw(AppState& state, KimodoEngine& engine, ModelManager& models, Toasts& toasts) {
+    ImGui::TextColored(UIStyle::accent, "%s Motion Generation", icons::kGenerate);
     ImGui::TextDisabled("Generate humanoid motion clips using the SOMA model");
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::Spacing();
 
     // Check active installed model
-    FModelEntry activeModel;
-    bool hasModel = models.findCopy(models.GetActiveId(), activeModel) && activeModel.installed;
+    ModelEntry active_model;
+    bool has_model = models.find_copy(models.GetActiveId(), active_model) && active_model.installed;
 
-    if (!hasModel) {
+    if (!has_model) {
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.22f, 0.16f, 0.08f, 0.9f));
         ImGui::BeginChild("##NoModelWarning", ImVec2(0, 110), true);
         {
-            ImGui::TextColored(FUIStyle::yellow, "%s No Motion Model Installed", icons::kWarn);
+            ImGui::TextColored(UIStyle::yellow, "%s No Motion Model Installed", icons::kWarn);
             ImGui::TextWrapped("Diffusion weights are required to synthesize 3D human motion.");
             ImGui::Spacing();
             if (ImGui::Button(ICON_FA_CUBE " Open Model Manager to Download or Import", ImVec2(-1, 32))) {
-                state.screen = EScreen::Models;
+                state.screen = Screen::Models;
             }
         }
         ImGui::EndChild();
         ImGui::PopStyleColor();
         ImGui::Spacing();
     } else {
-        ImGui::TextColored(FUIStyle::green, "%s Active Model: %s", icons::kCheck, activeModel.name.c_str());
+        ImGui::TextColored(UIStyle::green, "%s Active Model: %s", icons::kCheck, active_model.name.c_str());
         ImGui::Spacing();
     }
 
     // Text Prompt Input
     ImGui::Text("Text Prompt:");
-    char promptBuf[512];
-    strncpy_s(promptBuf, sizeof(promptBuf), state.prompt.c_str(), sizeof(promptBuf) - 1);
+    char prompt_buf[512];
+    strncpy_s(prompt_buf, sizeof(prompt_buf), state.prompt.c_str(), sizeof(prompt_buf) - 1);
     ImGui::SetNextItemWidth(-1);
-    if (ImGui::InputTextMultiline("##PromptInput", promptBuf, sizeof(promptBuf),
-                                  ImVec2(-1, 80))) {
-        state.prompt = promptBuf;
+    if (ImGui::InputTextMultiline("##PromptInput", prompt_buf, sizeof(prompt_buf), ImVec2(-1, 80))) {
+        state.prompt = prompt_buf;
     }
 
     // Prompt Presets
     ImGui::Spacing();
     ImGui::TextDisabled("Presets:");
     ImGui::SameLine();
-    const char* presets[] = {
-        "A person walks forward.",
-        "A person runs in a circle.",
-        "A person jumps over an obstacle.",
-        "A person waves both hands enthusiastically.",
-        "A person dances happily."
-    };
+    const char* presets[] = {"A person walks forward.", "A person runs in a circle.",
+                             "A person jumps over an obstacle.", "A person waves both hands enthusiastically.",
+                             "A person dances happily."};
     for (int i = 0; i < 5; ++i) {
-        if (i > 0) ImGui::SameLine();
+        if (i > 0)
+            ImGui::SameLine();
         std::string label = "P" + std::to_string(i + 1);
         if (ImGui::SmallButton(label.c_str())) {
             state.prompt = presets[i];
@@ -80,9 +76,9 @@ void SPageGenerate::Draw(FAppState& state, FKimodoEngine& engine, FModelManager&
     ImGui::SliderInt("Frames", &state.frames, 30, 300, "%d frames");
     ImGui::SliderInt("Diffusion Steps", &state.steps, 10, 100, "%d steps");
 
-    int seedInt = static_cast<int>(state.seed);
-    if (ImGui::InputInt("Seed", &seedInt)) {
-        state.seed = (seedInt >= 0) ? static_cast<unsigned long long>(seedInt) : 0;
+    int seed_int = static_cast<int>(state.seed);
+    if (ImGui::InputInt("Seed", &seed_int)) {
+        state.seed = (seed_int >= 0) ? static_cast<unsigned long long>(seed_int) : 0;
     }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_REPEAT " Randomize")) {
@@ -94,15 +90,15 @@ void SPageGenerate::Draw(FAppState& state, FKimodoEngine& engine, FModelManager&
     ImGui::Spacing();
 
     // Action Button / Status
-    EEngineStatus est = engine.GetStatus();
-    if (est == EEngineStatus::Generating) {
+    EngineStatus est = engine.GetStatus();
+    if (est == EngineStatus::Generating) {
         ImGui::ProgressBar(engine.GetProgress(), ImVec2(-1, 32));
         ImGui::Spacing();
         if (ImGui::Button(ICON_FA_CLOSE " Cancel Generation", ImVec2(-1, 36))) {
-            engine.cancel();
+            engine.Cancel();
         }
     } else {
-        if (!hasModel) {
+        if (!has_model) {
             ImGui::BeginDisabled();
             ImGui::Button(ICON_FA_GENERATE "  Generate Animation (Model Required)", ImVec2(-1, 44));
             ImGui::EndDisabled();
@@ -110,19 +106,20 @@ void SPageGenerate::Draw(FAppState& state, FKimodoEngine& engine, FModelManager&
                 ImGui::SetTooltip("Please install a motion model from the Models page first.");
             }
         } else {
-            ImGui::PushStyleColor(ImGuiCol_Button, FUIStyle::accent);
+            ImGui::PushStyleColor(ImGuiCol_Button, UIStyle::accent);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05f, 0.05f, 0.08f, 1.0f));
             if (ImGui::Button(ICON_FA_GENERATE "  Generate Animation", ImVec2(-1, 44))) {
                 if (state.prompt.empty()) {
-                    toasts.Push("Please enter a text prompt to generate motion.", EToastKind::Warning);
+                    toasts.Push("Please enter a text prompt to generate motion.", ToastKind::Warning);
                 } else {
-                    state.motionPath = activeModel.localPath;
-                    engine.SetPaths(activeModel.localPath, FAppPaths::resolveTextBundle("llm2vec-text-bundle").string());
-                    FGenerationParams params;
+                    state.motion_path = active_model.local_path;
+                    engine.SetPaths(active_model.local_path,
+                                    AppPaths::ResolveTextBundle("llm2vec-text-bundle").string());
+                    GenerationParams params;
                     params.frames = static_cast<uint32_t>(state.frames);
                     params.steps = static_cast<uint32_t>(state.steps);
                     params.seed = state.seed;
-                    engine.requestGenerate(state.prompt, params);
+                    engine.RequestGenerate(state.prompt, params);
                 }
             }
             ImGui::PopStyleColor(2);

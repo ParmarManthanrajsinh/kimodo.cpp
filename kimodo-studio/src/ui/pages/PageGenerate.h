@@ -3,13 +3,13 @@
 #include "app/AppState.h"
 
 namespace studio {
-class FKimodoEngine;
-class FModelManager;
-class SToasts;
+class KimodoEngine;
+class ModelManager;
+class Toasts;
 
-class SPageGenerate {
+class PageGenerate {
 public:
-    static void Draw(FAppState& state, FKimodoEngine& engine, FModelManager& models, SToasts& toasts);
+    static void Draw(AppState& state, KimodoEngine& engine, ModelManager& models, Toasts& toasts);
 };
 
 } // namespace studio

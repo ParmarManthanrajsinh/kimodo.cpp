@@ -4,7 +4,7 @@
 
 namespace studio {
 
-void FGridRenderer::Draw(bool grid, bool axes) const {
+void GridRenderer::Draw(bool grid, bool axes) const {
     // Dark studio grid: minor lines subtle, major lines brighter.
     const int half = 20;
     if (grid) {
@@ -19,10 +19,8 @@ void FGridRenderer::Draw(bool grid, bool axes) const {
     }
     // Ground axes through origin.
     if (axes) {
-        DrawLine3D(Vector3{-half, 0.01f, 0}, Vector3{half, 0.01f, 0},
-                   Color{140, 60, 60, 255});
-        DrawLine3D(Vector3{0, 0.01f, -half}, Vector3{0, 0.01f, half},
-                   Color{60, 90, 160, 255});
+        DrawLine3D(Vector3{-half, 0.01f, 0}, Vector3{half, 0.01f, 0}, Color{140, 60, 60, 255});
+        DrawLine3D(Vector3{0, 0.01f, -half}, Vector3{0, 0.01f, half}, Color{60, 90, 160, 255});
         DrawLine3D(Vector3{0, 0, 0}, Vector3{0, 3, 0}, Color{70, 140, 70, 255});
     }
 }

@@ -8,13 +8,12 @@ namespace studio {
 // node translations), one animation clip with per-joint rotation channels
 // plus root translation. No mesh: attach your own mesh to the imported
 // joints in Blender/Unreal/Unity. Y-up data passes through unchanged.
-class FGLBExporter : public IAnimationExporter {
+class GLBExporter : public IAnimationExporter {
 public:
-    bool ExportAnimation(const FAnimation& animation, const FExportOptions& options,
-                         std::string& error) override;
+    bool ExportAnimation(const Animation& animation, const ExportOptions& options, std::string& error) override;
     std::string GetLastReport() const override { return report; }
 
-    static std::string defaultExportDir();
+    static std::string DefaultExportDir();
 
 private:
     std::string report;

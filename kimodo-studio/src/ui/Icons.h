@@ -3,142 +3,142 @@
 // Font Awesome Solid (fa-solid-900.ttf) macros and string constants
 
 #ifndef ICON_FA_HOME
-#define ICON_FA_HOME         "\xEF\x80\x95"
+#define ICON_FA_HOME "\xEF\x80\x95"
 #endif
 #ifndef ICON_FA_GENERATE
-#define ICON_FA_GENERATE     "\xEF\x83\x90"
+#define ICON_FA_GENERATE "\xEF\x83\x90"
 #endif
 #ifndef ICON_FA_MODEL
-#define ICON_FA_MODEL        "\xEF\x86\xB2"
+#define ICON_FA_MODEL "\xEF\x86\xB2"
 #endif
 #ifndef ICON_FA_CUBE
-#define ICON_FA_CUBE         "\xEF\x86\xB2"
+#define ICON_FA_CUBE "\xEF\x86\xB2"
 #endif
 #ifndef ICON_FA_LIBRARY
-#define ICON_FA_LIBRARY      "\xEF\x80\x88"
+#define ICON_FA_LIBRARY "\xEF\x80\x88"
 #endif
 #ifndef ICON_FA_RETARGET
-#define ICON_FA_RETARGET     "\xEF\x83\xAC"
+#define ICON_FA_RETARGET "\xEF\x83\xAC"
 #endif
 #ifndef ICON_FA_EXPORT
-#define ICON_FA_EXPORT       "\xEF\x82\x93"
+#define ICON_FA_EXPORT "\xEF\x82\x93"
 #endif
 #ifndef ICON_FA_SETTINGS
-#define ICON_FA_SETTINGS     "\xEF\x80\x93"
+#define ICON_FA_SETTINGS "\xEF\x80\x93"
 #endif
 #ifndef ICON_FA_PLAY
-#define ICON_FA_PLAY         "\xEF\x81\x8B"
+#define ICON_FA_PLAY "\xEF\x81\x8B"
 #endif
 #ifndef ICON_FA_PAUSE
-#define ICON_FA_PAUSE        "\xEF\x81\x8C"
+#define ICON_FA_PAUSE "\xEF\x81\x8C"
 #endif
 #ifndef ICON_FA_STOP
-#define ICON_FA_STOP         "\xEF\x81\x8D"
+#define ICON_FA_STOP "\xEF\x81\x8D"
 #endif
 #ifndef ICON_FA_CLOSE
-#define ICON_FA_CLOSE        "\xEF\x80\x8D"
+#define ICON_FA_CLOSE "\xEF\x80\x8D"
 #endif
 #ifndef ICON_FA_FIRST
-#define ICON_FA_FIRST        "\xEF\x81\x89"
+#define ICON_FA_FIRST "\xEF\x81\x89"
 #endif
 #ifndef ICON_FA_LAST
-#define ICON_FA_LAST         "\xEF\x81\x90"
+#define ICON_FA_LAST "\xEF\x81\x90"
 #endif
 #ifndef ICON_FA_STEP_BACK
-#define ICON_FA_STEP_BACK    "\xEF\x81\x89"
+#define ICON_FA_STEP_BACK "\xEF\x81\x89"
 #endif
 #ifndef ICON_FA_STEP_FORWARD
 #define ICON_FA_STEP_FORWARD "\xEF\x81\x90"
 #endif
 #ifndef ICON_FA_LOOP
-#define ICON_FA_LOOP         "\xEF\x80\x9E"
+#define ICON_FA_LOOP "\xEF\x80\x9E"
 #endif
 #ifndef ICON_FA_REPEAT
-#define ICON_FA_REPEAT       "\xEF\x80\x9E"
+#define ICON_FA_REPEAT "\xEF\x80\x9E"
 #endif
 #ifndef ICON_FA_CAMERA
-#define ICON_FA_CAMERA       "\xEF\x80\xB0"
+#define ICON_FA_CAMERA "\xEF\x80\xB0"
 #endif
 #ifndef ICON_FA_GRID
-#define ICON_FA_GRID         "\xEF\x80\x8A"
+#define ICON_FA_GRID "\xEF\x80\x8A"
 #endif
 #ifndef ICON_FA_AXES
-#define ICON_FA_AXES         "\xEF\x81\x9B"
+#define ICON_FA_AXES "\xEF\x81\x9B"
 #endif
 #ifndef ICON_FA_FOLDER
-#define ICON_FA_FOLDER       "\xEF\x81\xBB"
+#define ICON_FA_FOLDER "\xEF\x81\xBB"
 #endif
 #ifndef ICON_FA_SEARCH
-#define ICON_FA_SEARCH       "\xEF\x80\x82"
+#define ICON_FA_SEARCH "\xEF\x80\x82"
 #endif
 #ifndef ICON_FA_DOWNLOAD
-#define ICON_FA_DOWNLOAD     "\xEF\x80\x99"
+#define ICON_FA_DOWNLOAD "\xEF\x80\x99"
 #endif
 #ifndef ICON_FA_CHECK
-#define ICON_FA_CHECK        "\xEF\x80\x8C"
+#define ICON_FA_CHECK "\xEF\x80\x8C"
 #endif
 #ifndef ICON_FA_WARN
-#define ICON_FA_WARN         "\xEF\x81\xB1"
+#define ICON_FA_WARN "\xEF\x81\xB1"
 #endif
 #ifndef ICON_FA_TRASH
-#define ICON_FA_TRASH        "\xEF\x87\xB8"
+#define ICON_FA_TRASH "\xEF\x87\xB8"
 #endif
 #ifndef ICON_FA_SAVE
-#define ICON_FA_SAVE         "\xEF\x83\x87"
+#define ICON_FA_SAVE "\xEF\x83\x87"
 #endif
 #ifndef ICON_FA_EYE
-#define ICON_FA_EYE          "\xEF\x81\xAE"
+#define ICON_FA_EYE "\xEF\x81\xAE"
 #endif
 #ifndef ICON_FA_GPU
-#define ICON_FA_GPU          "\xEF\x8B\x9B"
+#define ICON_FA_GPU "\xEF\x8B\x9B"
 #endif
 #ifndef ICON_FA_FLOOR
-#define ICON_FA_FLOOR        "\xEF\x97\xBD"
+#define ICON_FA_FLOOR "\xEF\x97\xBD"
 #endif
 #ifndef ICON_FA_SKELETON
-#define ICON_FA_SKELETON     "\xEF\x97\x97"
+#define ICON_FA_SKELETON "\xEF\x97\x97"
 #endif
 #ifndef ICON_FA_KIMODO
-#define ICON_FA_KIMODO       "\xEF\x97\x97"
+#define ICON_FA_KIMODO "\xEF\x97\x97"
 #endif
 #ifndef ICON_FA_SPLIT
-#define ICON_FA_SPLIT        "\xEF\x83\x9B"
+#define ICON_FA_SPLIT "\xEF\x83\x9B"
 #endif
 #ifndef ICON_FA_LINK
-#define ICON_FA_LINK         "\xEF\x83\x81"
+#define ICON_FA_LINK "\xEF\x83\x81"
 #endif
 #ifndef ICON_FA_EXPAND
-#define ICON_FA_EXPAND       "\xEF\x81\xA5"
+#define ICON_FA_EXPAND "\xEF\x81\xA5"
 #endif
 #ifndef ICON_FA_RESET
-#define ICON_FA_RESET        "\xEF\x8B\xB9"
+#define ICON_FA_RESET "\xEF\x8B\xB9"
 #endif
 #ifndef ICON_FA_CHECK_CIRCLE
 #define ICON_FA_CHECK_CIRCLE "\xEF\x81\x98"
 #endif
 #ifndef ICON_FA_USER
-#define ICON_FA_USER         "\xEF\x80\x87"
+#define ICON_FA_USER "\xEF\x80\x87"
 #endif
 #ifndef ICON_FA_RUNNING
-#define ICON_FA_RUNNING      "\xEF\x9C\x8C"
+#define ICON_FA_RUNNING "\xEF\x9C\x8C"
 #endif
 #ifndef ICON_FA_CHEVRON_DOWN
 #define ICON_FA_CHEVRON_DOWN "\xEF\x81\xB8"
 #endif
 #ifndef ICON_FA_ZOOM_IN
-#define ICON_FA_ZOOM_IN      "\xEF\x80\x8E"
+#define ICON_FA_ZOOM_IN "\xEF\x80\x8E"
 #endif
 #ifndef ICON_FA_ZOOM_OUT
-#define ICON_FA_ZOOM_OUT     "\xEF\x80\x90"
+#define ICON_FA_ZOOM_OUT "\xEF\x80\x90"
 #endif
 #ifndef ICON_FA_INFO
-#define ICON_FA_INFO         "\xEF\x81\x9A"
+#define ICON_FA_INFO "\xEF\x81\x9A"
 #endif
 #ifndef ICON_FA_PLUS
-#define ICON_FA_PLUS         "\xEF\x81\xA7"
+#define ICON_FA_PLUS "\xEF\x81\xA7"
 #endif
 #ifndef ICON_FA_SPINNER
-#define ICON_FA_SPINNER      "\xEF\x84\x90"
+#define ICON_FA_SPINNER "\xEF\x84\x90"
 #endif
 
 namespace studio::icons {

@@ -1,0 +1,29 @@
+{
+    "C_Cpp.default.cppStandard": "c++23",
+    "C_Cpp.default.cStandard": "c17",
+    "C_Cpp.default.intelliSenseMode": "windows-msvc-x64",
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "cmake.exportCompileCommandsFile": true,
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}",
+        "--background-index",
+        "--header-insertion=never",
+        "--clang-tidy=false"
+    ],
+    "files.associations": {
+        "*.h": "cpp",
+        "*.hpp": "cpp",
+        "*.inl": "cpp",
+        "*.ipp": "cpp",
+        "atomic": "cpp",
+        "thread": "cpp",
+        "mutex": "cpp",
+        "chrono": "cpp",
+        "format": "cpp",
+        "span": "cpp",
+        "vector": "cpp",
+        "string": "cpp",
+        "memory": "cpp",
+        "filesystem": "cpp"
+    }
+}

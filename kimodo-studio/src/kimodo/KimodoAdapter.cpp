@@ -8,17 +8,15 @@
 
 namespace studio {
 
-struct FKimodoAdapter::Handle {
+struct KimodoAdapter::handle {
 #ifdef KIMODO_HAVE_BACKEND
     kimodo_model* model = nullptr;
 #endif
 };
 
-FKimodoAdapter::~FKimodoAdapter() {
-    unload();
-}
+KimodoAdapter::~KimodoAdapter() { Unload(); }
 
-int FKimodoAdapter::abiVersion() {
+int KimodoAdapter::AbiVersion() {
 #ifdef KIMODO_HAVE_BACKEND
     return kimodo_abi_version();
 #else
@@ -26,31 +24,29 @@ int FKimodoAdapter::abiVersion() {
 #endif
 }
 
-bool FKimodoAdapter::load(const std::string& motionGguf, const std::string& textBundle,
-                          std::string& error) {
+bool KimodoAdapter::Load(const std::string& motion_gguf, const std::string& text_bundle, std::string& error) {
 #ifdef KIMODO_HAVE_BACKEND
-    unload();
+    Unload();
     kimodo_runtime_options opts{};
     opts.size = sizeof(opts);
     opts.threads = 0; // runtime default
     opts.device = KIMODO_DEVICE_AUTO;
     opts.backend_dir = nullptr; // exe/library directory
     char err[1024] = {};
-    Handle* h = new Handle();
-    h->model = kimodo_model_load(motionGguf.c_str(), textBundle.c_str(), nullptr,
-                                 &opts, err, sizeof(err));
+    handle* h = new handle();
+    h->model = kimodo_model_load(motion_gguf.c_str(), text_bundle.c_str(), nullptr, &opts, err, sizeof(err));
     if (!h->model) {
         error = err[0] ? err : "kimodo_model_load failed";
-        lastError = error;
+        last_error = error;
         delete h;
         return false;
     }
     HandlePtr = h;
-    bLoaded = true;
+    loaded = true;
     return true;
 #else
     error = "Kimodo backend not linked (rebuild with VS2022 preset on MSVC)";
-    lastError = error;
+    last_error = error;
     return false;
 #endif
 }
@@ -58,7 +54,7 @@ bool FKimodoAdapter::load(const std::string& motionGguf, const std::string& text
 namespace {
 #ifdef KIMODO_HAVE_BACKEND
 int progressTrampoline(unsigned done, unsigned total, void* user) noexcept {
-    auto* fn = static_cast<FKimodoAdapter::ProgressFn*>(user);
+    auto* fn = static_cast<KimodoAdapter::ProgressFn*>(user);
     try {
         return (*fn)(done, total) ? 1 : 0;
     } catch (...) {
@@ -68,13 +64,12 @@ int progressTrampoline(unsigned done, unsigned total, void* user) noexcept {
 #endif
 } // namespace
 
-bool FKimodoAdapter::generate(const std::string& prompt, const FGenerationParams& params,
-                              FMotionResult& out, std::string& error,
-                              ProgressFn progress) {
+bool KimodoAdapter::Generate(const std::string& prompt, const GenerationParams& params, MotionResult& out,
+                             std::string& error, ProgressFn progress) {
 #ifdef KIMODO_HAVE_BACKEND
-    if (!bLoaded || !HandlePtr || !HandlePtr->model) {
+    if (!loaded || !HandlePtr || !HandlePtr->model) {
         error = "model not loaded";
-        lastError = error;
+        last_error = error;
         return false;
     }
     kimodo_generation_options opts{};
@@ -82,37 +77,35 @@ bool FKimodoAdapter::generate(const std::string& prompt, const FGenerationParams
     opts.seed = params.seed;
     opts.frames = params.frames;
     opts.diffusion_steps = params.steps;
-    opts.text_cfg_weight = params.textCfg;
-    opts.constraint_cfg_weight = params.constraintCfg;
+    opts.text_cfg_weight = params.text_cfg;
+    opts.constraint_cfg_weight = params.constraint_cfg;
     char err[1024] = {};
-    kimodo_motion* motion = kimodo_generate_with_progress(
-        HandlePtr->model, prompt.c_str(), &opts,
-        progress ? &progressTrampoline : nullptr, progress ? &progress : nullptr, err,
-        sizeof(err));
+    kimodo_motion* motion =
+        kimodo_generate_with_progress(HandlePtr->model, prompt.c_str(), &opts, progress ? &progressTrampoline : nullptr,
+                                      progress ? &progress : nullptr, err, sizeof(err));
     if (!motion) {
         error = err[0] ? err : "kimodo_generate failed";
-        lastError = error;
+        last_error = error;
         return false;
     }
     out.frames = kimodo_motion_frames(motion);
     out.joints = kimodo_motion_joints(motion);
     if (const float* r = kimodo_motion_local_rotations_xyzw(motion)) {
-        out.localRotationsXyzw.assign(
-            r, r + static_cast<size_t>(out.frames) * out.joints * 4);
+        out.local_rotations_xyzw.assign(r, r + static_cast<size_t>(out.frames) * out.joints * 4);
     }
     if (const float* p = kimodo_motion_root_positions(motion)) {
-        out.rootPositions.assign(p, p + static_cast<size_t>(out.frames) * 3);
+        out.root_positions.assign(p, p + static_cast<size_t>(out.frames) * 3);
     }
     kimodo_motion_free(motion);
     return true;
 #else
     error = "Kimodo backend not linked (rebuild with VS2022 preset on MSVC)";
-    lastError = error;
+    last_error = error;
     return false;
 #endif
 }
 
-void FKimodoAdapter::unload() {
+void KimodoAdapter::Unload() {
 #ifdef KIMODO_HAVE_BACKEND
     if (HandlePtr) {
         if (HandlePtr->model) {
@@ -122,7 +115,7 @@ void FKimodoAdapter::unload() {
         HandlePtr = nullptr;
     }
 #endif
-    bLoaded = false;
+    loaded = false;
 }
 
 } // namespace studio

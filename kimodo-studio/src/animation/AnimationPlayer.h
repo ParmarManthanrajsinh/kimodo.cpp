@@ -11,30 +11,31 @@ namespace studio {
 
 // Playback state machine. UI thread only. Samples interpolated pose
 // each frame and runs forward kinematics into world positions.
-class FAnimationPlayer {
+class AnimationPlayer {
 public:
-    void load(const FAnimation& inClip);
-    void clear();
+    void Load(const Animation& in_clip);
+    void Clear();
 
-    void play() { bPlaying = true; }
-    void pause() { bPlaying = false; }
-    void toggle() { bPlaying = !bPlaying; }
-    void togglePlay() { toggle(); }
-    void restart() { time = 0.0f; }
-    void SetLoop(bool loop) { bLoop = loop; }
+    void Play() { playing = true; }
+    void Pause() { playing = false; }
+    void Toggle() { playing = !playing; }
+    void TogglePlay() { Toggle(); }
+    void Restart() { time = 0.0f; }
+    void SetLoop(bool enable) { loop = enable; }
 
     void Update(float dt);
-    void scrub(float timeSec);
-    void stepFrame(int delta);
-    void seekFrame(int f) {
-        if (clip.fps > 0.0f) scrub(static_cast<float>(f) / clip.fps);
+    void Scrub(float time_sec);
+    void StepFrame(int delta);
+    void SeekFrame(int f) {
+        if (clip.fps > 0.0f)
+            Scrub(static_cast<float>(f) / clip.fps);
     }
 
     bool HasAnimation() const { return !clip.empty(); }
-    const FAnimation& GetAnimation() const { return clip; }
+    const Animation& GetAnimation() const { return clip; }
     const std::vector<int>& GetPoseParents() const { return clip.parents; }
-    bool IsPlaying() const { return bPlaying; }
-    bool IsLooping() const { return bLoop; }
+    bool IsPlaying() const { return playing; }
+    bool IsLooping() const { return loop; }
     float GetTime() const { return time; }
     float GetDuration() const { return clip.GetDuration(); }
     float GetFps() const { return clip.fps; }
@@ -43,12 +44,12 @@ public:
     const std::vector<Vector3>& GetWorldPositions() const { return world; }
 
 private:
-    void sample();
+    void Sample();
 
-    FAnimation clip;
+    Animation clip;
     float time = 0.0f;
-    bool bPlaying = false;
-    bool bLoop = true;
+    bool playing = false;
+    bool loop = true;
     std::vector<Vector3> world;
 };
 

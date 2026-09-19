@@ -3,14 +3,13 @@
 #include "app/AppState.h"
 
 namespace studio {
-class FAnimationLibrary;
-class FAnimationPlayer;
-class SToasts;
+class AnimationLibrary;
+class AnimationPlayer;
+class Toasts;
 
-class SPageRetarget {
+class PageRetarget {
 public:
-    static void Draw(FAppState& state, FAnimationLibrary& library,
-                     FAnimationPlayer& player, SToasts& toasts);
+    static void Draw(AppState& state, AnimationLibrary& library, AnimationPlayer& player, Toasts& toasts);
 };
 
 } // namespace studio

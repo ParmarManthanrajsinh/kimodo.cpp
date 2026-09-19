@@ -4,95 +4,84 @@
 
 namespace studio {
 
-ImVec4 FTheme::accent() {
+ImVec4 Theme::accent() {
     return ImVec4(0.28f, 0.82f, 0.28f, 1.0f); // Vibrant Studio Green #47d147
 }
 
-ImVec4 FTheme::accentDim() {
-    return ImVec4(0.28f, 0.82f, 0.28f, 0.22f);
-}
+ImVec4 Theme::accent_dim() { return ImVec4(0.28f, 0.82f, 0.28f, 0.22f); }
 
-ImVec4 FTheme::accentBright() {
-    return ImVec4(0.35f, 0.95f, 0.35f, 1.0f);
-}
+ImVec4 Theme::accent_bright() { return ImVec4(0.35f, 0.95f, 0.35f, 1.0f); }
 
-ImVec4 FTheme::bgDark() {
-    return ImVec4(0.06f, 0.06f, 0.07f, 1.0f);
-}
+ImVec4 Theme::bg_dark() { return ImVec4(0.06f, 0.06f, 0.07f, 1.0f); }
 
-ImVec4 FTheme::bgPanel() {
-    return ImVec4(0.08f, 0.08f, 0.10f, 1.0f);
-}
+ImVec4 Theme::bg_panel() { return ImVec4(0.08f, 0.08f, 0.10f, 1.0f); }
 
-ImVec4 FTheme::bgCard() {
-    return ImVec4(0.12f, 0.12f, 0.15f, 1.0f);
-}
+ImVec4 Theme::bg_card() { return ImVec4(0.12f, 0.12f, 0.15f, 1.0f); }
 
-void FTheme::drawKimodoLogo(float x, float y, float size) {
+void Theme::DrawKimodoLogo(float x, float y, float size) {
     ImDrawList* dl = ImGui::GetWindowDrawList();
-    if (!dl) return;
+    if (!dl)
+        return;
 
     // Origami stylized polygon / dragon crest
     // Normalized coords [0, 1] relative to (x, y, size, size)
-    auto P = [&](float px, float py) -> ImVec2 {
-        return ImVec2(x + px * size, y + py * size);
-    };
+    auto P = [&](float px, float py) -> ImVec2 { return ImVec2(x + px * size, y + py * size); };
 
-    const ImU32 colOutline = IM_COL32(75, 230, 75, 255);
-    const ImU32 colFacet1  = IM_COL32(40, 160, 40, 230);
-    const ImU32 colFacet2  = IM_COL32(65, 210, 65, 245);
-    const ImU32 colFacet3  = IM_COL32(30, 130, 30, 220);
-    const ImU32 colFacet4  = IM_COL32(85, 240, 85, 255);
+    const ImU32 col_outline = IM_COL32(75, 230, 75, 255);
+    const ImU32 col_facet1 = IM_COL32(40, 160, 40, 230);
+    const ImU32 col_facet2 = IM_COL32(65, 210, 65, 245);
+    const ImU32 col_facet3 = IM_COL32(30, 130, 30, 220);
+    const ImU32 col_facet4 = IM_COL32(85, 240, 85, 255);
 
     // Facet A: Top left horn/crest
     ImVec2 p0 = P(0.15f, 0.25f);
     ImVec2 p1 = P(0.50f, 0.08f);
     ImVec2 p2 = P(0.42f, 0.45f);
-    dl->AddTriangleFilled(p0, p1, p2, colFacet2);
+    dl->AddTriangleFilled(p0, p1, p2, col_facet2);
 
     // Facet B: Top right horn/crest
     ImVec2 p3 = P(0.85f, 0.25f);
-    dl->AddTriangleFilled(p1, p3, p2, colFacet1);
+    dl->AddTriangleFilled(p1, p3, p2, col_facet1);
 
     // Facet C: Left lower cheek/jaw
     ImVec2 p4 = P(0.20f, 0.72f);
     ImVec2 p5 = P(0.50f, 0.92f);
-    dl->AddTriangleFilled(p0, p2, p4, colFacet3);
+    dl->AddTriangleFilled(p0, p2, p4, col_facet3);
 
     // Facet D: Center snout
-    dl->AddTriangleFilled(p2, p4, p5, colFacet4);
+    dl->AddTriangleFilled(p2, p4, p5, col_facet4);
 
     // Facet E: Right lower cheek/jaw
     ImVec2 p6 = P(0.80f, 0.72f);
-    dl->AddTriangleFilled(p2, p5, p6, colFacet2);
-    dl->AddTriangleFilled(p2, p6, p3, colFacet1);
+    dl->AddTriangleFilled(p2, p5, p6, col_facet2);
+    dl->AddTriangleFilled(p2, p6, p3, col_facet1);
 
     // Clean wireframe / origami crease lines
-    dl->AddLine(p0, p1, colOutline, 1.8f);
-    dl->AddLine(p1, p3, colOutline, 1.8f);
-    dl->AddLine(p3, p6, colOutline, 1.8f);
-    dl->AddLine(p6, p5, colOutline, 1.8f);
-    dl->AddLine(p5, p4, colOutline, 1.8f);
-    dl->AddLine(p4, p0, colOutline, 1.8f);
+    dl->AddLine(p0, p1, col_outline, 1.8f);
+    dl->AddLine(p1, p3, col_outline, 1.8f);
+    dl->AddLine(p3, p6, col_outline, 1.8f);
+    dl->AddLine(p6, p5, col_outline, 1.8f);
+    dl->AddLine(p5, p4, col_outline, 1.8f);
+    dl->AddLine(p4, p0, col_outline, 1.8f);
 
     // Inner crease folds
-    dl->AddLine(p1, p2, colOutline, 1.4f);
-    dl->AddLine(p2, p5, colOutline, 1.4f);
-    dl->AddLine(p0, p2, colOutline, 1.2f);
-    dl->AddLine(p3, p2, colOutline, 1.2f);
-    dl->AddLine(p4, p2, colOutline, 1.2f);
-    dl->AddLine(p6, p2, colOutline, 1.2f);
+    dl->AddLine(p1, p2, col_outline, 1.4f);
+    dl->AddLine(p2, p5, col_outline, 1.4f);
+    dl->AddLine(p0, p2, col_outline, 1.2f);
+    dl->AddLine(p3, p2, col_outline, 1.2f);
+    dl->AddLine(p4, p2, col_outline, 1.2f);
+    dl->AddLine(p6, p2, col_outline, 1.2f);
 }
 
-void FTheme::apply() {
+void Theme::Apply() {
     ImGuiStyle& s = ImGui::GetStyle();
-    s.WindowRounding = FUIStyle::rounding;
-    s.ChildRounding = FUIStyle::rounding;
-    s.FrameRounding = FUIStyle::rounding;
-    s.PopupRounding = FUIStyle::rounding;
-    s.ScrollbarRounding = FUIStyle::rounding;
-    s.GrabRounding = FUIStyle::rounding;
-    s.TabRounding = FUIStyle::rounding;
+    s.WindowRounding = UIStyle::rounding;
+    s.ChildRounding = UIStyle::rounding;
+    s.FrameRounding = UIStyle::rounding;
+    s.PopupRounding = UIStyle::rounding;
+    s.ScrollbarRounding = UIStyle::rounding;
+    s.GrabRounding = UIStyle::rounding;
+    s.TabRounding = UIStyle::rounding;
     s.WindowBorderSize = 1.0f;
     s.ChildBorderSize = 1.0f;
     s.FrameBorderSize = 1.0f;
@@ -153,19 +142,18 @@ void FTheme::apply() {
     c[ImGuiCol_TextSelectedBg] = ImVec4(0.28f, 0.82f, 0.28f, 0.35f);
 }
 
-void FTheme::sectionHeader(const char* label) {
+void Theme::section_header(const char* label) {
     ImGui::Spacing();
     ImGui::TextColored(ImVec4(0.85f, 0.86f, 0.90f, 1.0f), "%s", label);
     ImGui::Spacing();
 }
 
-void FTheme::statusBadge(bool ok, const char* okText, const char* warnText) {
-    ImGui::PushStyleColor(ImGuiCol_Text, ok ? ImVec4(0.28f, 0.82f, 0.28f, 1.0f)
-                                            : ImVec4(0.95f, 0.65f, 0.15f, 1.0f));
+void Theme::StatusBadge(bool ok, const char* ok_text, const char* warn_text) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ok ? ImVec4(0.28f, 0.82f, 0.28f, 1.0f) : ImVec4(0.95f, 0.65f, 0.15f, 1.0f));
     ImGui::Bullet();
     ImGui::PopStyleColor();
     ImGui::SameLine();
-    ImGui::TextUnformatted(ok ? okText : warnText);
+    ImGui::TextUnformatted(ok ? ok_text : warn_text);
 }
 
 } // namespace studio

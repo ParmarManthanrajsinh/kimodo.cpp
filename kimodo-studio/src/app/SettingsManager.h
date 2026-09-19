@@ -5,41 +5,41 @@
 
 namespace studio {
 
-struct FUserSettings {
+struct UserSettings {
     std::string theme = "Dark";
-    int targetFps = 60;
-    int viewportMode = 2; // 0 = Character, 1 = Skeleton, 2 = Both
-    bool showGrid = true;
-    bool showAxes = true;
-    bool showFloor = true;
-    bool showSkeleton = true;
-    bool showCharacter = true;
-    bool showWireframe = false;
-    bool showBoneNames = false;
+    int target_fps = 60;
+    int viewport_mode = 2; // 0 = Character, 1 = Skeleton, 2 = Both
+    bool show_grid = true;
+    bool show_axes = true;
+    bool show_floor = true;
+    bool show_skeleton = true;
+    bool show_character = true;
+    bool show_wireframe = false;
+    bool show_bone_names = false;
 
-    std::string selectedCharacterId = "cesium-man";
-    std::string selectedAnimationId;
-    std::string exportDir;
-    float defaultExportFps = 30.0f;
-    int defaultRootMotion = 0; // 0 = Preserve, 1 = LockX, 2 = LockXZ, 3 = Zero
-    bool playbackLoop = true;
-    float playbackSpeed = 1.0f;
+    std::string selected_character_id = "cesium-man";
+    std::string selected_animation_id;
+    std::string export_dir;
+    float default_export_fps = 30.0f;
+    int default_root_motion = 0; // 0 = Preserve, 1 = LockX, 2 = LockXZ, 3 = Zero
+    bool playback_loop = true;
+    float playback_speed = 1.0f;
 };
 
-class FSettingsManager {
+class SettingsManager {
 public:
-    static FSettingsManager& GetInstance();
+    static SettingsManager& GetInstance();
 
-    bool load();
+    bool Load();
     bool save();
 
-    FUserSettings& GetSettings() { return Settings; }
-    const FUserSettings& GetSettings() const { return Settings; }
+    UserSettings& GetSettings() { return settings; }
+    const UserSettings& GetSettings() const { return settings; }
 
 private:
-    FSettingsManager() = default;
-    FUserSettings Settings;
-    std::filesystem::path filePath;
+    SettingsManager() = default;
+    UserSettings settings;
+    std::filesystem::path file_path;
 };
 
 } // namespace studio

@@ -11,18 +11,18 @@ namespace studio {
 // Return value semantics:
 //   true  -> user picked a path (outPath filled, UTF-8)
 //   false -> user cancelled OR a programmatic error occurred (check lastError())
-class FFileDialog {
+class FileDialog {
 public:
     // "Open file" dialog. filterList uses NFD format: comma-separated extensions,
     // semicolon between filters, e.g. "glb,gltf;bvh". Pass nullptr/"" for all files.
-    static bool openFile(const char* filterList, const char* defaultPath, std::string& outPath);
+    static bool OpenFile(const char* filter_list, const char* default_path, std::string& out_path);
 
     // "Save file" dialog. defaultPath may include a filename (e.g. "C:/exports/clip.bvh");
     // NFD parses the parent folder as the starting location.
-    static bool saveFile(const char* filterList, const char* defaultPath, std::string& outPath);
+    static bool SaveFile(const char* filter_list, const char* default_path, std::string& out_path);
 
     // "Select folder" dialog.
-    static bool pickFolder(const char* defaultPath, std::string& outPath);
+    static bool PickFolder(const char* default_path, std::string& out_path);
 
     // Human-readable error for the last NFD_ERROR result (empty otherwise).
     static const char* GetLastError();

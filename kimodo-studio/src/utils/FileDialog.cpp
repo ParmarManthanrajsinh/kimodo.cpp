@@ -6,41 +6,39 @@
 
 namespace studio {
 
-bool FFileDialog::openFile(const char* filterList, const char* defaultPath, std::string& outPath) {
+bool FileDialog::OpenFile(const char* filter_list, const char* default_path, std::string& out_path) {
     nfdchar_t* out = nullptr;
-    nfdresult_t result = NFD_OpenDialog(filterList, defaultPath, &out);
+    nfdresult_t result = NFD_OpenDialog(filter_list, default_path, &out);
     if (result == NFD_OKAY && out) {
-        outPath = out;
+        out_path = out;
         free(out);
         return true;
     }
     return false;
 }
 
-bool FFileDialog::saveFile(const char* filterList, const char* defaultPath, std::string& outPath) {
+bool FileDialog::SaveFile(const char* filter_list, const char* default_path, std::string& out_path) {
     nfdchar_t* out = nullptr;
-    nfdresult_t result = NFD_SaveDialog(filterList, defaultPath, &out);
+    nfdresult_t result = NFD_SaveDialog(filter_list, default_path, &out);
     if (result == NFD_OKAY && out) {
-        outPath = out;
+        out_path = out;
         free(out);
         return true;
     }
     return false;
 }
 
-bool FFileDialog::pickFolder(const char* defaultPath, std::string& outPath) {
+bool FileDialog::PickFolder(const char* default_path, std::string& out_path) {
     nfdchar_t* out = nullptr;
-    nfdresult_t result = NFD_PickFolder(defaultPath, &out);
+    nfdresult_t result = NFD_PickFolder(default_path, &out);
     if (result == NFD_OKAY && out) {
-        outPath = out;
+        out_path = out;
         free(out);
         return true;
     }
     return false;
 }
 
-const char* FFileDialog::GetLastError() {
-    return NFD_GetError();
-}
+const char* FileDialog::GetLastError() { return NFD_GetError(); }
 
 } // namespace studio

@@ -8,11 +8,11 @@
 
 namespace studio {
 
-struct FLibraryEntry {
+struct LibraryEntry {
     std::string id;
     std::string prompt;
     std::string model;
-    std::string createdAt;
+    std::string created_at;
     float fps = 30.0f;
     int frames = 0;
     int joints = 0;
@@ -25,33 +25,30 @@ struct FLibraryEntry {
 // motion.bin v1 (legacy): u32 frames, u32 joints, f32 fps, rots[], roots[].
 // motion.bin v2: "KAMD", u32 version=2, frames, joints, f32 fps,
 //   topology (names, parents, offsets), rots[], roots[].
-class FAnimationLibrary {
+class AnimationLibrary {
 public:
-    bool Init(const std::filesystem::path& baseDir);
+    bool Init(const std::filesystem::path& base_dir);
     void Rescan();
 
-    const std::vector<FLibraryEntry>& GetEntries() const { return entries; }
+    const std::vector<LibraryEntry>& GetEntries() const { return entries; }
 
-    bool saveAnimation(const std::string& prompt, const std::string& model,
-                       const FAnimation& anim, FLibraryEntry& out);
-    bool loadAnimation(const FLibraryEntry& entry, FAnimation& out) const;
-    bool rename(const std::string& id, const std::string& newPrompt);
+    bool SaveAnimation(const std::string& prompt, const std::string& model, const Animation& anim, LibraryEntry& out);
+    bool LoadAnimation(const LibraryEntry& entry, Animation& out) const;
+    bool Rename(const std::string& id, const std::string& new_prompt);
     bool duplicate(const std::string& id);
-    bool remove(const std::string& id);
+    bool Remove(const std::string& id);
 
-    static std::filesystem::path thumbPath(const FLibraryEntry& e) {
-        return e.dir / "thumb.png";
-    }
-    static bool hasThumb(const FLibraryEntry& e);
+    static std::filesystem::path thumb_path(const LibraryEntry& e) { return e.dir / "thumb.png"; }
+    static bool has_thumb(const LibraryEntry& e);
 
-    static std::filesystem::path defaultBaseDir();
+    static std::filesystem::path default_base_dir();
 
 private:
-    static bool writeMetadata(const std::filesystem::path& dir, const FLibraryEntry& e);
-    static bool readMetadata(const std::filesystem::path& dir, FLibraryEntry& e);
+    static bool WriteMetadata(const std::filesystem::path& dir, const LibraryEntry& e);
+    static bool ReadMetadata(const std::filesystem::path& dir, LibraryEntry& e);
 
-    std::filesystem::path Base;
-    std::vector<FLibraryEntry> entries;
+    std::filesystem::path base_dir;
+    std::vector<LibraryEntry> entries;
 };
 
 } // namespace studio

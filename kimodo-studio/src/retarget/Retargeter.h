@@ -3,33 +3,31 @@
 #include "animation/Animation.h"
 #include "retarget/SkeletonProfile.h"
 
-#include <array>
 #include <map>
 #include <string>
 #include <vector>
 
 namespace studio {
 
-using FBoneMap = std::map<std::string, std::string>; // target joint -> source joint
+using BoneMap = std::map<std::string, std::string>; // target joint -> source joint
 
-struct FRetargetReport {
+struct RetargetReport {
     std::string text;
-    int mappedCount = 0;
-    int unmappedCount = 0;
+    int mapped_count = 0;
+    int unmapped_count = 0;
 };
 
-class FRetargeter {
+class Retargeter {
 public:
     struct Options {
-        float rootScale = 1.0f;
+        float root_scale = 1.0f;
     };
 
-    static FBoneMap autoMap(const FSkeletonProfile& profile);
-    static std::vector<std::string> unmapped(const FSkeletonProfile& profile, const FBoneMap& map);
+    static BoneMap AutoMap(const SkeletonProfile& profile);
+    static std::vector<std::string> unmapped(const SkeletonProfile& profile, const BoneMap& map);
 
-    static bool retarget(const FAnimation& source, const FSkeletonProfile& target,
-                         const FBoneMap& map, const Options& opts, FAnimation& out,
-                         std::string& error, FRetargetReport* report = nullptr);
+    static bool retarget(const Animation& source, const SkeletonProfile& target, const BoneMap& map,
+                         const Options& opts, Animation& out, std::string& error, RetargetReport* report = nullptr);
 };
 
 } // namespace studio

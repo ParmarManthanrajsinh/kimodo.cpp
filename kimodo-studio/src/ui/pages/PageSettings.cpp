@@ -9,28 +9,28 @@
 
 namespace studio {
 
-void SPageSettings::Draw(FAppState& state, FViewport& viewport, SToasts& toasts) {
+void PageSettings::Draw(AppState& state, Viewport& viewport, Toasts& toasts) {
     (void)state;
-    ImGui::TextColored(FUIStyle::accent, "%s Workstation Settings", icons::kSettings);
+    ImGui::TextColored(UIStyle::accent, "%s Workstation Settings", icons::kSettings);
     ImGui::TextDisabled("Customize themes, viewport rendering defaults, and export paths");
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::Spacing();
 
-    auto& settings = FSettingsManager::GetInstance().GetSettings();
+    auto& settings = SettingsManager::GetInstance().GetSettings();
 
     // 1. Theme Selection
     ImGui::Text("Interface Theme:");
     if (ImGui::RadioButton("Dark (Default)", settings.theme == "Dark")) {
         settings.theme = "Dark";
-        FTheme::apply();
-        FSettingsManager::GetInstance().save();
+        Theme::Apply();
+        SettingsManager::GetInstance().save();
     }
     ImGui::SameLine(0, 16);
     if (ImGui::RadioButton("Cyber Neon", settings.theme == "Cyber")) {
         settings.theme = "Cyber";
-        FTheme::apply();
-        FSettingsManager::GetInstance().save();
+        Theme::Apply();
+        SettingsManager::GetInstance().save();
     }
 
     ImGui::Spacing();
@@ -42,27 +42,27 @@ void SPageSettings::Draw(FAppState& state, FViewport& viewport, SToasts& toasts)
     bool grid = viewport.ShowGrid();
     if (ImGui::Checkbox("Show 3D Grid", &grid)) {
         viewport.SetGrid(grid);
-        settings.showGrid = grid;
+        settings.show_grid = grid;
     }
     bool axes = viewport.ShowAxes();
     if (ImGui::Checkbox("Show Coordinate Axes", &axes)) {
         viewport.SetAxes(axes);
-        settings.showAxes = axes;
+        settings.show_axes = axes;
     }
     bool floor = viewport.ShowFloor();
     if (ImGui::Checkbox("Show Floor Plane", &floor)) {
         viewport.SetFloor(floor);
-        settings.showFloor = floor;
+        settings.show_floor = floor;
     }
     bool wire = viewport.ShowWireframe();
     if (ImGui::Checkbox("Wireframe Shading", &wire)) {
         viewport.SetWireframe(wire);
-        settings.showWireframe = wire;
+        settings.show_wireframe = wire;
     }
     bool bones = viewport.ShowBoneNames();
     if (ImGui::Checkbox("3D Bone Names", &bones)) {
         viewport.SetBoneNames(bones);
-        settings.showBoneNames = bones;
+        settings.show_bone_names = bones;
     }
 
     ImGui::Spacing();
@@ -71,18 +71,18 @@ void SPageSettings::Draw(FAppState& state, FViewport& viewport, SToasts& toasts)
 
     // 3. Application Paths
     ImGui::Text("Storage Paths:");
-    ImGui::TextDisabled("App Data: %s", FAppPaths::appDataDir().string().c_str());
-    ImGui::TextDisabled("Models Directory: %s", FAppPaths::defaultModelsDir().string().c_str());
-    ImGui::TextDisabled("Characters Directory: %s", FAppPaths::defaultCharactersDir().string().c_str());
-    ImGui::TextDisabled("Animations Directory: %s", FAppPaths::defaultAnimationsDir().string().c_str());
+    ImGui::TextDisabled("App Data: %s", AppPaths::AppDataDir().string().c_str());
+    ImGui::TextDisabled("Models Directory: %s", AppPaths::DefaultModelsDir().string().c_str());
+    ImGui::TextDisabled("Characters Directory: %s", AppPaths::DefaultCharactersDir().string().c_str());
+    ImGui::TextDisabled("Animations Directory: %s", AppPaths::DefaultAnimationsDir().string().c_str());
 
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::Spacing();
 
     if (ImGui::Button(ICON_FA_CHECK " Save Settings", ImVec2(180, 36))) {
-        FSettingsManager::GetInstance().save();
-        toasts.Push("Settings saved successfully", EToastKind::Success);
+        SettingsManager::GetInstance().save();
+        toasts.Push("Settings saved successfully", ToastKind::Success);
     }
 }
 

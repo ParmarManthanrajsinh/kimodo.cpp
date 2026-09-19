@@ -1,0 +1,68 @@
+{
+    "configurations": [
+        {
+            "name": "Win32-MSVC",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/build/windows-vs2022/_deps/raylib-src/src",
+                "${workspaceFolder}/build/windows-ninja-gcc/_deps/raylib-src/src",
+                "${workspaceFolder}/build/windows-vs2022/_deps/imgui-src",
+                "${workspaceFolder}/build/windows-ninja-gcc/_deps/imgui-src",
+                "${workspaceFolder}/build/windows-vs2022/_deps/rlimgui-src",
+                "${workspaceFolder}/build/windows-ninja-gcc/_deps/rlimgui-src",
+                "${workspaceFolder}/build/windows-vs2022/_deps/nativefiledialog-src/src/include",
+                "${workspaceFolder}/build/windows-ninja-gcc/_deps/nativefiledialog-src/src/include",
+                "E:/kimodo.cpp/include"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "WIN32",
+                "_WIN32",
+                "_CRT_SECURE_NO_WARNINGS",
+                "KIMODO_STUDIO_SOURCE_DIR=\"${workspaceFolder}\"",
+                "KIMODO_ROOT_DIR=\"E:/kimodo.cpp\"",
+                "KIMODO_HAVE_BACKEND=1",
+                "KIMODO_STUDIO_VERSION=\"0.1.0\"",
+                "KIMODO_STUDIO_GIT_HASH=\"dev\""
+            ],
+            "windowsSdkVersion": "10.0.22621.0",
+            "compilerPath": "cl.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++23",
+            "intelliSenseMode": "windows-msvc-x64",
+            "compileCommands": "${workspaceFolder}/build/windows-ninja-gcc/compile_commands.json"
+        },
+        {
+            "name": "Win32-GCC",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/build/windows-ninja-gcc/_deps/raylib-src/src",
+                "${workspaceFolder}/build/windows-vs2022/_deps/raylib-src/src",
+                "${workspaceFolder}/build/windows-ninja-gcc/_deps/imgui-src",
+                "${workspaceFolder}/build/windows-vs2022/_deps/imgui-src",
+                "${workspaceFolder}/build/windows-ninja-gcc/_deps/rlimgui-src",
+                "${workspaceFolder}/build/windows-vs2022/_deps/rlimgui-src",
+                "${workspaceFolder}/build/windows-ninja-gcc/_deps/nativefiledialog-src/src/include",
+                "${workspaceFolder}/build/windows-vs2022/_deps/nativefiledialog-src/src/include",
+                "E:/kimodo.cpp/include"
+            ],
+            "defines": [
+                "WIN32",
+                "_WIN32",
+                "KIMODO_STUDIO_SOURCE_DIR=\"${workspaceFolder}\"",
+                "KIMODO_ROOT_DIR=\"E:/kimodo.cpp\"",
+                "KIMODO_HAVE_BACKEND=1",
+                "KIMODO_STUDIO_VERSION=\"0.1.0\"",
+                "KIMODO_STUDIO_GIT_HASH=\"dev\""
+            ],
+            "compilerPath": "C:/msys64/ucrt64/bin/g++.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++23",
+            "intelliSenseMode": "windows-gcc-x64",
+            "compileCommands": "${workspaceFolder}/build/windows-ninja-gcc/compile_commands.json"
+        }
+    ],
+    "version": 4
+}

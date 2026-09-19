@@ -1,33 +1,32 @@
 #pragma once
 
 #include "character/CharacterAsset.h"
-#include "character/SkinningData.h"
+#include "raylib.h"
 #include "rendering/GridRenderer.h"
 #include "rendering/SkinningRenderer.h"
-#include "raylib.h"
 
 #include <string>
 #include <vector>
 
 namespace studio {
 
-class FViewport {
+class Viewport {
 public:
     void Reset();
     void Frame();
-    void Update(bool mouseOverUi);
+    void Update(bool mouse_over_ui);
     void Draw3D();
     float GetDistance() const { return dist; }
 
-    void SetPose(std::vector<Vector3> inPose, std::vector<int> inParents,
-                 std::vector<std::string> inJointNames = {}) {
-        pose = std::move(inPose);
-        poseParents = std::move(inParents);
-        jointNames = std::move(inJointNames);
+    void SetPose(std::vector<Vector3> in_pose, std::vector<int> in_parents,
+                 std::vector<std::string> in_joint_names = {}) {
+        pose = std::move(in_pose);
+        pose_parents = std::move(in_parents);
+        joint_names = std::move(in_joint_names);
     }
     bool HasPose() const { return !pose.empty(); }
 
-    struct FDebugPose {
+    struct DebugPose {
         std::vector<Vector3> pos;
         std::vector<int> parents;
         Vector3 offset = {0, 0, 0};
@@ -35,81 +34,78 @@ public:
         Color bone = {110, 110, 125, 255};
     };
 
-    void SetDebugPoses(std::vector<FDebugPose> poses) { debug = std::move(poses); }
+    void SetDebugPoses(std::vector<DebugPose> poses) { debug = std::move(poses); }
     void ClearDebug() { debug.clear(); }
     bool HasDebug() const { return !debug.empty(); }
 
     // Display Toggles
-    void SetGrid(bool v) { bGridDraw = v; }
-    void SetAxes(bool v) { bAxesDraw = v; }
-    void SetFloor(bool v) { bFloorDraw = v; }
-    void SetSkeleton(bool v) { bSkeletonDraw = v; }
-    void SetCharacter(bool v) { bCharacterDraw = v; }
-    void SetWireframe(bool v) { bWireframeDraw = v; }
-    void SetBoneNames(bool v) { bBoneNamesDraw = v; }
+    void SetGrid(bool v) { draw_grid = v; }
+    void SetAxes(bool v) { draw_axes = v; }
+    void SetFloor(bool v) { draw_floor = v; }
+    void SetSkeleton(bool v) { draw_skeleton = v; }
+    void SetCharacter(bool v) { draw_character = v; }
+    void SetWireframe(bool v) { draw_wireframe = v; }
+    void SetBoneNames(bool v) { draw_bone_names = v; }
 
-    bool ShowGrid() const { return bGridDraw; }
-    bool ShowAxes() const { return bAxesDraw; }
-    bool ShowFloor() const { return bFloorDraw; }
-    bool ShowSkeleton() const { return bSkeletonDraw; }
-    bool ShowCharacter() const { return bCharacterDraw; }
-    bool ShowWireframe() const { return bWireframeDraw; }
-    bool ShowBoneNames() const { return bBoneNamesDraw; }
+    bool ShowGrid() const { return draw_grid; }
+    bool ShowAxes() const { return draw_axes; }
+    bool ShowFloor() const { return draw_floor; }
+    bool ShowSkeleton() const { return draw_skeleton; }
+    bool ShowCharacter() const { return draw_character; }
+    bool ShowWireframe() const { return draw_wireframe; }
+    bool ShowBoneNames() const { return draw_bone_names; }
 
     // Active Character Asset & Skinning Data
-    void SetCharacterAsset(FCharacterAsset* asset) { character = asset; }
-    void SetCharacterSkinMatrices(std::vector<Matrix> inMatrices) {
-        skinMatrices = std::move(inMatrices);
-    }
+    void SetCharacterAsset(CharacterAsset* asset) { character = asset; }
+    void SetCharacterSkinMatrices(std::vector<Matrix> in_matrices) { skin_matrices = std::move(in_matrices); }
 
     void SetProjection(int proj);
     int GetProjection() const { return projection; }
 
     void SetModelTransform(Vector3 pos, Vector3 rot, Vector3 scale) {
-        modelPos = pos;
-        modelRot = rot;
-        modelScale = scale;
+        model_pos = pos;
+        model_rot = rot;
+        model_scale = scale;
     }
 
     void CameraBasis(Vector3& right, Vector3& up) const;
     const Camera3D& GetCamera() const { return camera; }
-    void DrawOrientationGizmo(float centerX, float centerY) const;
+    void DrawOrientationGizmo(float center_x, float center_y) const;
 
 private:
-    static void DrawPose(const std::vector<Vector3>& pose,
-                         const std::vector<int>& parents, const Vector3& offset,
+    static void DrawPose(const std::vector<Vector3>& pose, const std::vector<int>& parents, const Vector3& offset,
                          Color joint, Color bone);
-    void drawBoneNames(const Camera3D& cam) const;
+    void DrawBoneNames(const Camera3D& cam) const;
     void RecomputeCamera() const;
 
-    Vector3 Target = {0, 1.0f, 0};
-    float Yaw = 0.7f;
-    float Pitch = 0.45f;
+    Vector3 target = {0, 1.0f, 0};
+    float yaw = 0.7f;
+    float pitch = 0.45f;
     float dist = 3.5f;
     mutable Camera3D camera{};
-    FGridRenderer Grid;
+    GridRenderer grid;
 
-    bool bGridDraw = true;
-    bool bAxesDraw = true;
-    bool bFloorDraw = true;
-    bool bSkeletonDraw = true;
-    bool bCharacterDraw = true;
-    bool bWireframeDraw = false;
-    bool bBoneNamesDraw = false;
+    bool draw_grid = true;
+    bool draw_axes = true;
+    bool draw_floor = true;
+    bool draw_skeleton = true;
+    bool draw_character = true;
+    bool draw_wireframe = false;
+    bool draw_bone_names = false;
 
     std::vector<Vector3> pose;
-    std::vector<int> poseParents;
-    std::vector<std::string> jointNames;
-    std::vector<FDebugPose> debug;
+    std::vector<int> pose_parents;
+    std::vector<std::string> joint_names;
+    std::vector<DebugPose> debug;
 
-    FCharacterAsset* character = nullptr;
-    std::vector<Matrix> skinMatrices;
-    FSkinningRenderer skinRenderer;
+    CharacterAsset* character = nullptr;
+    std::vector<Matrix> skin_matrices;
+    SkinningRenderer skin_renderer;
 
     int projection = 0; // 0 = Perspective, 1 = Orthographic
-    Vector3 modelPos = {0.0f, 0.0f, 0.0f};
-    Vector3 modelRot = {0.0f, 0.0f, 0.0f};
-    Vector3 modelScale = {1.0f, 1.0f, 1.0f};
+    Vector3 model_pos = {0.0f, 0.0f, 0.0f};
+    Vector3 model_rot = {0.0f, 0.0f, 0.0f};
+    Vector3 model_scale = {1.0f, 1.0f, 1.0f};
 };
 
 } // namespace studio

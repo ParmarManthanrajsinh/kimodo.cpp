@@ -8,80 +8,79 @@
 
 namespace studio {
 
-struct FModelEntry {
-    std::string id;            // "soma-rp-v1.1"
-    std::string name;          // "SOMA RP v1.1"
-    std::string skeleton;      // "soma30"
+struct ModelEntry {
+    std::string id;       // "soma-rp-v1.1"
+    std::string name;     // "SOMA RP v1.1"
+    std::string skeleton; // "soma30"
     std::string version;
     std::string license;
-    std::string source;        // hugging face repo
-    std::string motionFile;    // expected filename
-    std::string repo;          // hugging face repo id, may be empty
-    std::string remotePath;    // path inside repo, may be empty
-    std::string sha256;        // expected hex, may be empty
-    uint64_t sizeBytes = 0;
+    std::string source;      // hugging face repo
+    std::string motion_file; // expected filename
+    std::string repo;        // hugging face repo id, may be empty
+    std::string remote_path; // path inside repo, may be empty
+    std::string Sha256;      // expected hex, may be empty
+    uint64_t size_bytes = 0;
 
     // Detected state (rescan fills these).
     bool installed = false;
-    std::string localPath;
-    uint64_t localBytes = 0;
+    std::string local_path;
+    uint64_t local_bytes = 0;
 };
 
-enum class EModelTask { None, Verify, Import, Delete, Download };
+enum class ModelTask { None, Verify, Import, Delete, Download };
 
 // Local model registry + detection + maintenance worker.
 // UI polls taskLabel()/taskProgress(); worker never touches UI.
-class FModelManager {
+class ModelManager {
 public:
-    ~FModelManager() { Shutdown(); }
-    FModelManager(const FModelManager&) = delete;
-    FModelManager& operator=(const FModelManager&) = delete;
-    FModelManager() = default;
+    ~ModelManager() { Shutdown(); }
+    ModelManager(const ModelManager&) = delete;
+    ModelManager& operator=(const ModelManager&) = delete;
+    ModelManager() = default;
 
-    bool Init(const std::string& registryPath, const std::string& modelDir,
-              const std::string& textBundle);
+    bool Init(const std::string& registry_path, const std::string& model_dir, const std::string& text_bundle);
     void Rescan();
     void Shutdown();
 
-    std::vector<FModelEntry> GetEntries() const;
-    const std::string& GetModelDir() const { return modelDir; }
-    const std::string& GetTextBundle() const { return textBundle; }
+    std::vector<ModelEntry> GetEntries() const;
+    const std::string& GetModelDir() const { return model_dir; }
+    const std::string& GetTextBundle() const { return text_bundle; }
     std::string GetActiveId() const;
 
-    bool findCopy(const std::string& id, FModelEntry& out) const;
-    bool select(const std::string& id); // persists selection, unloads nothing
+    bool find_copy(const std::string& id, ModelEntry& out) const;
+    bool Select(const std::string& id); // persists selection, unloads nothing
 
     // Async maintenance (no-op while busy).
     bool IsBusy() const;
-    EModelTask GetTask() const { return task.load(); }
+    ModelTask GetTask() const { return task.load(); }
     float GetTaskProgress() const;
     std::string GetTaskLabel() const;
-    void verifyAsync(const std::string& id);
-    void importAsync(const std::string& sourcePath, const std::string& id);
-    void deleteAsync(const std::string& id);
-    void downloadAsync(const std::string& id);
-    void cancelTask();
+    void VerifyAsync(const std::string& id);
+    void ImportAsync(const std::string& source_path, const std::string& id);
+    void DeleteAsync(const std::string& id);
+    void DownloadAsync(const std::string& id);
+    void CancelTask();
 
 private:
-    void runVerify(std::string id);
-    void runImport(std::string sourcePath, std::string id);
-    void runDelete(std::string id);
-    void runDownload(std::string id);
-    void startTask(EModelTask t, const std::string& label);
+    void RunVerify(std::string id);
+    void RunImport(std::string source_path, std::string id);
+    void RunDelete(std::string id);
+    void RunDownload(std::string id);
+    void StartTask(ModelTask t, const std::string& label);
 
-    std::vector<FModelEntry> entries;
-    std::string registryPath;
-    std::string modelDir;
-    std::string textBundle;
-    std::string ActiveId;
+    std::vector<ModelEntry> entries;
+    std::string registry_path;
+    std::string model_dir;
+    std::string text_bundle;
+    std::string active_id;
 
     std::thread worker;
-    std::atomic<EModelTask> task{EModelTask::None};
-    std::atomic<uint64_t> taskDone{0};
-    std::atomic<uint64_t> taskTotal{0};
-    std::atomic<bool> bCancelRequested{false};
+    std::atomic<ModelTask> task{ModelTask::None};
+    std::atomic<uint64_t> task_done{0};
+    std::atomic<uint64_t> task_total{0};
+    std::atomic<bool> cancel_requested{false};
     mutable std::mutex mutex;
-    std::string TaskLabel = "idle";
+    std::string task_label = "idle";
 };
 
 } // namespace studio

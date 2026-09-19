@@ -1,26 +1,24 @@
 #pragma once
 
+#include <vector>
 #include "character/CharacterAsset.h"
 #include "raylib.h"
-#include <vector>
 
 namespace studio {
 
-class FSkinningRenderer {
+class SkinningRenderer {
 public:
-    FSkinningRenderer() = default;
-    ~FSkinningRenderer();
+    SkinningRenderer() = default;
+    ~SkinningRenderer();
 
     bool Init();
     void Shutdown();
 
     // Render character mesh with given skin matrices
-    void drawCharacter(FCharacterAsset& character,
-                       const std::vector<Matrix>& skinMatrices,
-                       bool wireframe);
+    void DrawCharacter(CharacterAsset& character, const std::vector<Matrix>& skin_matrices, bool wireframe);
 
 private:
-    bool bInitialized = false;
+    bool initialized = false;
     Shader skinShader{};
     int BoneMatricesLoc = -1;
 };

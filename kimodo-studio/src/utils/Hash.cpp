@@ -3,14 +3,19 @@
 #include <cstdio>
 
 #if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #include <bcrypt.h>
 #endif
 
 namespace studio {
 
-std::string FFileHash::sha256(const std::string& path, std::string& error,
-                             ProgressFn progress) {
+std::string FileHash::Sha256(const std::string& path, std::string& error, ProgressFn progress) {
 #if defined(_WIN32)
     FILE* f = nullptr;
     if (fopen_s(&f, path.c_str(), "rb") != 0 || !f) {

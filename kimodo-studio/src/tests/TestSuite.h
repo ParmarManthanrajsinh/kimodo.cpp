@@ -2,7 +2,7 @@
 
 namespace studio {
 
-class FTestSuite {
+class TestSuite {
 public:
     static int RunAll();
     static int RunAnimationAndFK();

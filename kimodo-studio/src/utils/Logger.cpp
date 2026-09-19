@@ -5,12 +5,12 @@
 
 namespace studio {
 
-FLogger& FLogger::GetInstance() {
-    static FLogger inst;
+Logger& Logger::GetInstance() {
+    static Logger inst;
     return inst;
 }
 
-std::filesystem::path FLogger::DefaultLogFile() {
+std::filesystem::path Logger::DefaultLogFile() {
     std::filesystem::path base;
 #if defined(_WIN32)
     if (const char* appdata = std::getenv("LOCALAPPDATA")) {
@@ -28,7 +28,7 @@ std::filesystem::path FLogger::DefaultLogFile() {
     return base / "kimodo-studio.log";
 }
 
-void FLogger::Init(const std::filesystem::path& file) {
+void Logger::Init(const std::filesystem::path& file) {
     std::lock_guard<std::mutex> lock(mutex);
     std::error_code ec;
     std::filesystem::create_directories(file.parent_path(), ec);
@@ -36,18 +36,18 @@ void FLogger::Init(const std::filesystem::path& file) {
     // Never fails hard: console fallback always works.
 }
 
-const char* FLogger::LevelName(ELogLevel level) {
+const char* Logger::LevelName(LogLevel level) {
     switch (level) {
-        case ELogLevel::Trace: return "TRACE";
-        case ELogLevel::Debug: return "DEBUG";
-        case ELogLevel::Info: return "INFO";
-        case ELogLevel::Warning: return "WARNING";
-        case ELogLevel::Error: return "ERROR";
+    case LogLevel::Trace: return "TRACE";
+    case LogLevel::Debug: return "DEBUG";
+    case LogLevel::Info: return "INFO";
+    case LogLevel::Warning: return "WARNING";
+    case LogLevel::Error: return "ERROR";
     }
     return "INFO";
 }
 
-void FLogger::Log(ELogLevel level, const std::string& msg) {
+void Logger::Log(LogLevel level, const std::string& msg) {
     std::lock_guard<std::mutex> lock(mutex);
     std::string line = std::string("[") + LevelName(level) + "] " + msg + "\n";
     std::cout << line;

@@ -4,18 +4,41 @@
 
 namespace studio {
 
-std::array<std::string_view, kSomaJoints> FSoma30Spec::names{
-    "Hips", "Spine1", "Spine2", "Chest", "Neck1", "Neck2", "Head", "Jaw",
-    "LeftEye", "RightEye", "LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand",
-    "LeftHandThumbEnd", "LeftHandMiddleEnd", "RightShoulder", "RightArm", "RightForeArm",
-    "RightHand", "RightHandThumbEnd", "RightHandMiddleEnd", "LeftLeg", "LeftShin", "LeftFoot",
-    "LeftToeBase", "RightLeg", "RightShin", "RightFoot", "RightToeBase"};
+std::array<std::string_view, kSomaJoints> Soma30Spec::names{"Hips",
+                                                            "Spine1",
+                                                            "Spine2",
+                                                            "Chest",
+                                                            "Neck1",
+                                                            "Neck2",
+                                                            "Head",
+                                                            "Jaw",
+                                                            "LeftEye",
+                                                            "RightEye",
+                                                            "LeftShoulder",
+                                                            "LeftArm",
+                                                            "LeftForeArm",
+                                                            "LeftHand",
+                                                            "LeftHandThumbEnd",
+                                                            "LeftHandMiddleEnd",
+                                                            "RightShoulder",
+                                                            "RightArm",
+                                                            "RightForeArm",
+                                                            "RightHand",
+                                                            "RightHandThumbEnd",
+                                                            "RightHandMiddleEnd",
+                                                            "LeftLeg",
+                                                            "LeftShin",
+                                                            "LeftFoot",
+                                                            "LeftToeBase",
+                                                            "RightLeg",
+                                                            "RightShin",
+                                                            "RightFoot",
+                                                            "RightToeBase"};
 
-std::array<int, kSomaJoints> FSoma30Spec::parents{
-    -1, 0, 1, 2, 3, 4, 5, 6, 6, 6, 3, 10, 11, 12, 13, 13, 3, 16, 17, 18, 19, 19,
-    0, 22, 23, 24, 0, 26, 27, 28};
+std::array<int, kSomaJoints> Soma30Spec::parents{-1, 0, 1,  2,  3,  4,  5,  6, 6,  6,  3,  10, 11, 12, 13,
+                                                 13, 3, 16, 17, 18, 19, 19, 0, 22, 23, 24, 0,  26, 27, 28};
 
-std::array<std::array<float, 3>, kSomaJoints> FSoma30Spec::offsets{{
+std::array<std::array<float, 3>, kSomaJoints> Soma30Spec::offsets{{
     {0, 0, 0},
     {-0.00013727F, 0.0500376256F, -0.00053726669F},
     {-1.86574103e-9F, 0.0712530139F, -0.000298248546F},
@@ -48,47 +71,41 @@ std::array<std::array<float, 3>, kSomaJoints> FSoma30Spec::offsets{{
     {-3.42907669e-9F, -0.0507960932F, 0.132841956F},
 }};
 
-void FSkeleton::ForwardKinematics(const float* localXyzw, const float* root,
-                                 std::vector<Vector3>& out) {
-    std::vector<int> parents(FSoma30Spec::parents.begin(), FSoma30Spec::parents.end());
-    std::vector<std::array<float, 3>> offsets(FSoma30Spec::offsets.begin(),
-                                              FSoma30Spec::offsets.end());
-    ForwardKinematicsGeneral(localXyzw, root, parents, offsets, out);
+void Skeleton::ForwardKinematics(const float* local_xyzw, const float* root, std::vector<Vector3>& out) {
+    std::vector<int> parents(Soma30Spec::parents.begin(), Soma30Spec::parents.end());
+    std::vector<std::array<float, 3>> offsets(Soma30Spec::offsets.begin(), Soma30Spec::offsets.end());
+    ForwardKinematicsGeneral(local_xyzw, root, parents, offsets, out);
 }
 
-void FSkeleton::ForwardKinematicsGeneral(
-    const float* localXyzw, const float* root, const std::vector<int>& parents,
-    const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& out) {
-    std::vector<Quaternion> worldRot;
-    ForwardKinematicsFull(localXyzw, root, parents, offsets, out, worldRot);
+void Skeleton::ForwardKinematicsGeneral(const float* local_xyzw, const float* root, const std::vector<int>& parents,
+                                        const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& out) {
+    std::vector<Quaternion> world_rot;
+    ForwardKinematicsFull(local_xyzw, root, parents, offsets, out, world_rot);
 }
 
-void FSkeleton::ForwardKinematicsFull(
-    const float* localXyzw, const float* root, const std::vector<int>& parents,
-    const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& outPos,
-    std::vector<Quaternion>& outRot) {
+void Skeleton::ForwardKinematicsFull(const float* local_xyzw, const float* root, const std::vector<int>& parents,
+                                     const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& out_pos,
+                                     std::vector<Quaternion>& out_rot) {
     const int J = static_cast<int>(parents.size());
-    if (localXyzw == nullptr || root == nullptr ||
-        static_cast<int>(offsets.size()) != J) {
-        outPos.clear();
-        outRot.clear();
+    if (local_xyzw == nullptr || root == nullptr || static_cast<int>(offsets.size()) != J) {
+        out_pos.clear();
+        out_rot.clear();
         return;
     }
-    outPos.resize(J);
-    outRot.resize(J);
+    out_pos.resize(J);
+    out_rot.resize(J);
     for (int j = 0; j < J; ++j) {
-        Quaternion local{localXyzw[j * 4], localXyzw[j * 4 + 1],
-                         localXyzw[j * 4 + 2], localXyzw[j * 4 + 3]};
+        Quaternion local{local_xyzw[j * 4], local_xyzw[j * 4 + 1], local_xyzw[j * 4 + 2], local_xyzw[j * 4 + 3]};
         local = QuaternionNormalize(local);
         const int p = parents[j];
         if (p < 0 || p >= J) {
-            outRot[j] = local;
-            outPos[j] = {root[0], root[1], root[2]};
+            out_rot[j] = local;
+            out_pos[j] = {root[0], root[1], root[2]};
         } else {
-            outRot[j] = QuaternionMultiply(outRot[p], local);
+            out_rot[j] = QuaternionMultiply(out_rot[p], local);
             const auto& o = offsets[j];
-            Vector3 off = Vector3RotateByQuaternion({o[0], o[1], o[2]}, outRot[p]);
-            outPos[j] = Vector3Add(outPos[p], off);
+            Vector3 off = Vector3RotateByQuaternion({o[0], o[1], o[2]}, out_rot[p]);
+            out_pos[j] = Vector3Add(out_pos[p], off);
         }
     }
 }
