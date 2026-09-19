@@ -31,32 +31,10 @@ else()
     set(_raylib_target raylib)
 endif()
 
-# --- Dear ImGui (pinned; matches rlImGui API) ---
-FetchContent_Declare(
-    imgui
-    GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG 367b2c24f399988ddafc0bb4628da0106bcc09be # docking, 2026-06
-)
-FetchContent_MakeAvailable(imgui)
-set(_imgui_src "${imgui_SOURCE_DIR}")
-
-# --- rlImGui bridge ---
-FetchContent_Declare(
-    rlimGui
-    GIT_REPOSITORY https://github.com/raylib-extras/rlImGui.git
-    GIT_TAG 1550009359ad975927f7f0e4a3f47e3f27123ea9 # main, 2026
-)
-FetchContent_MakeAvailable(rlimGui)
-set(_rlimgui_src "${rlimgui_SOURCE_DIR}")
-
-# --- Native File Dialog (native open/save/folder pickers) ---
-FetchContent_Declare(
-    nativefiledialog
-    GIT_REPOSITORY https://github.com/mlabbe/nativefiledialog.git
-    GIT_TAG 67345b80ebb429ecc2aeda94c478b3bcc5f7888e # master, 2019
-)
-FetchContent_MakeAvailable(nativefiledialog)
-set(_nfd_src "${nativefiledialog_SOURCE_DIR}")
+# --- Third-party vendored sources (imgui, rlImGui, nativefiledialog) ---
+set(_imgui_src "${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui")
+set(_rlimgui_src "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rlImGui")
+set(_nfd_src "${CMAKE_CURRENT_SOURCE_DIR}/third_party/nativefiledialog")
 
 add_library(studio_nfd STATIC
     "${_nfd_src}/src/nfd_common.c"

@@ -6,14 +6,11 @@ src_dir = os.path.join(workspace, 'src')
 
 includes = [
     f'-I{workspace}/src',
+    f'-I{workspace}/third_party/imgui',
+    f'-I{workspace}/third_party/rlImGui',
+    f'-I{workspace}/third_party/nativefiledialog/src/include',
     f'-I{workspace}/build/windows-vs2022/_deps/raylib-src/src',
     f'-I{workspace}/build/windows-ninja-gcc/_deps/raylib-src/src',
-    f'-I{workspace}/build/windows-vs2022/_deps/imgui-src',
-    f'-I{workspace}/build/windows-ninja-gcc/_deps/imgui-src',
-    f'-I{workspace}/build/windows-vs2022/_deps/rlimgui-src',
-    f'-I{workspace}/build/windows-ninja-gcc/_deps/rlimgui-src',
-    f'-I{workspace}/build/windows-vs2022/_deps/nativefiledialog-src/src/include',
-    f'-I{workspace}/build/windows-ninja-gcc/_deps/nativefiledialog-src/src/include',
     '-IE:/kimodo.cpp/include'
 ]
 
