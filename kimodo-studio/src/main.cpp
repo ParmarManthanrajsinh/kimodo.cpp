@@ -47,6 +47,10 @@ int main(int argc, char** argv)
         {
             return studio::TestSuite::RunBlenderRetargeting();
         }
+        if (arg == "--selftest-resize")
+        {
+            return studio::TestSuite::RunResizeRegression();
+        }
         if (arg == "--screenshot")
         {
             const char* out_path = (argc >= 3) ? argv[2] : "app_screenshot.png";

@@ -13,6 +13,7 @@ public:
     static int RunBVHRoundTrip();
     static int RunPathologicalCases();
     static int RunBlenderRetargeting();
+    static int RunResizeRegression();
 };
 
 } // namespace studio

@@ -5,10 +5,12 @@ CompileFlags:
     - -D_CRT_SECURE_NO_WARNINGS
     - -DKIMODO_HAVE_BACKEND=1
     - -Ie:/kimodo.cpp/kimodo-studio/src
+    - -Ie:/kimodo.cpp/kimodo-studio/third_party/imgui
+    - -Ie:/kimodo.cpp/kimodo-studio/third_party/imgui/backends
+    - -Ie:/kimodo.cpp/kimodo-studio/third_party/rlImGui
+    - -Ie:/kimodo.cpp/kimodo-studio/third_party/nativefiledialog/src/include
     - -Ie:/kimodo.cpp/kimodo-studio/build/windows-vs2022/_deps/raylib-src/src
-    - -Ie:/kimodo.cpp/kimodo-studio/build/windows-vs2022/_deps/imgui-src
-    - -Ie:/kimodo.cpp/kimodo-studio/build/windows-vs2022/_deps/rlimgui-src
-    - -Ie:/kimodo.cpp/kimodo-studio/build/windows-vs2022/_deps/nativefiledialog-src/src/include
+    - -Ie:/kimodo.cpp/kimodo-studio/build/windows-vs2022/_deps/raylib-src/src/external/glfw/include
     - -IE:/kimodo.cpp/include
 Diagnostics:
   Suppress:

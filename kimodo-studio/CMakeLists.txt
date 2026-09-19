@@ -64,9 +64,14 @@ add_library(studio_imgui STATIC
     "${_imgui_src}/imgui_draw.cpp"
     "${_imgui_src}/imgui_tables.cpp"
     "${_imgui_src}/imgui_widgets.cpp"
-    "${_rlimgui_src}/rlImGui.cpp"
+    "${_imgui_src}/backends/imgui_impl_glfw.cpp"
+    "${_imgui_src}/backends/imgui_impl_opengl3.cpp"
 )
-target_include_directories(studio_imgui PUBLIC "${_imgui_src}" "${_rlimgui_src}")
+target_include_directories(studio_imgui PUBLIC
+    "${_imgui_src}"
+    "${_imgui_src}/backends"
+    "${raylib_SOURCE_DIR}/src/external/glfw/include"
+)
 target_link_libraries(studio_imgui PUBLIC ${_raylib_target})
 set_target_properties(studio_imgui PROPERTIES CXX_STANDARD 23)
 
@@ -120,7 +125,12 @@ add_executable(kimodo_studio
     src/ui/pages/PageSettings.cpp
     src/tests/TestSuite.cpp
 )
-target_include_directories(kimodo_studio PRIVATE src "${raylib_SOURCE_DIR}/src")
+target_include_directories(kimodo_studio PRIVATE
+    src
+    "${raylib_SOURCE_DIR}/src"
+    "${raylib_SOURCE_DIR}/src/external/glfw/include"
+    "${_imgui_src}/backends"
+)
 target_link_libraries(kimodo_studio PRIVATE studio_imgui studio_nfd ${_raylib_target})
 target_compile_definitions(kimodo_studio PRIVATE
     KIMODO_STUDIO_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"

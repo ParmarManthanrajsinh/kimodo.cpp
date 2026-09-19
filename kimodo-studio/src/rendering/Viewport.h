@@ -18,6 +18,26 @@ public:
     void Frame();
     void Update(bool mouse_over_ui);
     void Draw3D();
+
+    // Offscreen Framebuffer (Raylib-ImGui-Hybrid architecture)
+    void EnsureSize(int width, int height);
+    void BeginRender();
+    void EndRender();
+    unsigned int GetTextureId() const;
+    int GetWidth() const
+    {
+        return render_width;
+    }
+    int GetHeight() const
+    {
+        return render_height;
+    }
+    bool IsReady() const
+    {
+        return render_target.id > 0 && render_target.texture.id > 0;
+    }
+    void Shutdown();
+
     float GetDistance() const
     {
         return dist;
@@ -180,6 +200,11 @@ private:
     Vector3 model_pos = {0.0f, 0.0f, 0.0f};
     Vector3 model_rot = {0.0f, 0.0f, 0.0f};
     Vector3 model_scale = {1.0f, 1.0f, 1.0f};
+
+    // Offscreen target
+    RenderTexture2D render_target{};
+    int render_width = 0;
+    int render_height = 0;
 };
 
 } // namespace studio

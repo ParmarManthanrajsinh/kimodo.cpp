@@ -1,4 +1,5 @@
 #include "rendering/Viewport.h"
+#include "imgui.h"
 #include "raymath.h"
 #include "rlgl.h"
 
@@ -44,12 +45,13 @@ void Viewport::Frame()
 
 void Viewport::Update(bool mouse_over_ui)
 {
-    const Vector2 delta = GetMouseDelta();
+    ImGuiIO& io = ImGui::GetIO();
+    const Vector2 delta = {io.MouseDelta.x, io.MouseDelta.y};
 
     // Camera owns mouse pointer only when ImGui does not capture it
     if (!mouse_over_ui)
     {
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
         {
             yaw -= delta.x * 0.005f;
             pitch -= delta.y * 0.005f;
@@ -58,8 +60,9 @@ void Viewport::Update(bool mouse_over_ui)
             if (pitch < -1.45f)
                 pitch = -1.45f;
         }
-        if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE) ||
-            (IsMouseButtonDown(MOUSE_BUTTON_RIGHT) && IsKeyDown(KEY_LEFT_SHIFT)))
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Middle) ||
+            (ImGui::IsMouseDown(ImGuiMouseButton_Right) &&
+             (ImGui::IsKeyDown(ImGuiKey_LeftShift) || ImGui::IsKeyDown(ImGuiKey_RightShift))))
         {
             Vector3 fwd = Vector3Normalize(Vector3Subtract(target, camera.position));
             Vector3 right = Vector3Normalize(Vector3CrossProduct(fwd, camera.up));
@@ -68,21 +71,29 @@ void Viewport::Update(bool mouse_over_ui)
             target = Vector3Subtract(target, Vector3Scale(right, delta.x * s));
             target = Vector3Add(target, Vector3Scale(up, delta.y * s));
         }
+        else if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
+        {
+            dist *= (1.0f + delta.y * 0.008f);
+            if (dist < 0.5f)
+                dist = 0.5f;
+            if (dist > 60.0f)
+                dist = 60.0f;
+        }
     }
 
-    const float wheel = mouse_over_ui ? 0.0f : GetMouseWheelMove();
+    const float wheel = mouse_over_ui ? 0.0f : io.MouseWheel;
     if (wheel != 0.0f)
     {
-        dist *= (wheel > 0) ? 0.9f : 1.1f;
+        dist *= (wheel > 0) ? 0.88f : 1.14f;
         if (dist < 0.5f)
             dist = 0.5f;
         if (dist > 60.0f)
             dist = 60.0f;
     }
 
-    if (IsKeyPressed(KEY_R))
+    if (ImGui::IsKeyPressed(ImGuiKey_R, false))
         Reset();
-    if (IsKeyPressed(KEY_F))
+    if (ImGui::IsKeyPressed(ImGuiKey_F, false))
         Frame();
 
     RecomputeCamera();
@@ -287,6 +298,59 @@ void Viewport::DrawOrientationGizmo(float center_x, float center_y) const
         char str[2] = {ax.label, '\0'};
         DrawText(str, static_cast<int>(end_pt.x + (sx >= 0 ? 3 : -8)), static_cast<int>(end_pt.y + (sy >= 0 ? 2 : -10)),
                  12, ax.col);
+    }
+}
+
+void Viewport::EnsureSize(int width, int height)
+{
+    width = std::max(1, width);
+    height = std::max(1, height);
+
+    if (render_target.id == 0 || render_width != width || render_height != height)
+    {
+        if (render_target.id != 0)
+        {
+            UnloadRenderTexture(render_target);
+        }
+        render_width = width;
+        render_height = height;
+        render_target = LoadRenderTexture(render_width, render_height);
+        SetTextureFilter(render_target.texture, TEXTURE_FILTER_BILINEAR);
+    }
+}
+
+void Viewport::BeginRender()
+{
+    if (render_target.id == 0)
+    {
+        return;
+    }
+    BeginTextureMode(render_target);
+    ClearBackground(Color{18, 18, 24, 255});
+}
+
+void Viewport::EndRender()
+{
+    if (render_target.id == 0)
+    {
+        return;
+    }
+    EndTextureMode();
+}
+
+unsigned int Viewport::GetTextureId() const
+{
+    return render_target.texture.id;
+}
+
+void Viewport::Shutdown()
+{
+    if (render_target.id != 0)
+    {
+        UnloadRenderTexture(render_target);
+        render_target = {};
+        render_width = 0;
+        render_height = 0;
     }
 }
 

@@ -9,6 +9,7 @@
 #include "export/BVHExporter.h"
 #include "export/BVHParser.h"
 #include "library/AnimationLibrary.h"
+#include "rendering/Viewport.h"
 #include "retarget/Retargeter.h"
 #include "retarget/SkeletonProfile.h"
 #include "utils/AppPaths.h"
@@ -457,6 +458,103 @@ int TestSuite::RunBlenderRetargeting()
     return fails;
 }
 
+int TestSuite::RunResizeRegression()
+{
+    std::printf("[TEST] Running Resize-Safe Framebuffer & Viewport Regression tests...\n");
+    int fails = 0;
+
+    bool need_close = false;
+    if (!IsWindowReady())
+    {
+        SetTraceLogLevel(LOG_WARNING);
+        SetConfigFlags(FLAG_WINDOW_HIDDEN);
+        InitWindow(64, 64, "KimodoStudio-TestWindow");
+        need_close = true;
+    }
+
+    Viewport vp;
+    vp.Reset();
+
+    // 1. Test standard multi-resolution transitions
+    const std::vector<std::pair<int, int>> standard_resolutions = {
+        {1280, 720},
+        {1600, 900},
+        {1920, 1080},
+        {2560, 1440}
+    };
+
+    for (const auto& [w, h] : standard_resolutions)
+    {
+        vp.EnsureSize(w, h);
+        if (vp.GetWidth() != w || vp.GetHeight() != h)
+        {
+            std::printf("  FAIL: Expected viewport size %dx%d, got %dx%d\n", w, h, vp.GetWidth(), vp.GetHeight());
+            fails++;
+        }
+        if (!vp.IsReady() || vp.GetTextureId() == 0)
+        {
+            std::printf("  FAIL: RenderTexture2D invalid at %dx%d\n", w, h);
+            fails++;
+        }
+
+        // Render pass verification
+        vp.BeginRender();
+        vp.Draw3D();
+        vp.DrawOrientationGizmo(38.0f, static_cast<float>(h) - 40.0f);
+        vp.EndRender();
+    }
+
+    // 2. Test rapid dynamic resizes & extreme aspect ratios (simulating window dragging)
+    const std::vector<std::pair<int, int>> stress_resolutions = {
+        {300, 900},   // ultra-tall
+        {2560, 300},  // ultra-wide
+        {800, 500},   // minimum window size
+        {1, 1},       // extreme minimal edge case
+        {-10, -50},   // negative/zero clamp protection
+        {1920, 1080}  // restore to standard
+    };
+
+    for (int iter = 0; iter < 10; ++iter)
+    {
+        for (const auto& [rw, rh] : stress_resolutions)
+        {
+            vp.EnsureSize(rw, rh);
+            const int expected_w = std::max(1, rw);
+            const int expected_h = std::max(1, rh);
+            if (vp.GetWidth() != expected_w || vp.GetHeight() != expected_h)
+            {
+                std::printf("  FAIL: Stress clamp failed for input %dx%d, expected %dx%d, got %dx%d\n",
+                            rw, rh, expected_w, expected_h, vp.GetWidth(), vp.GetHeight());
+                fails++;
+            }
+            if (!vp.IsReady() || vp.GetTextureId() == 0)
+            {
+                std::printf("  FAIL: Invalid texture in rapid stress test at %dx%d\n", expected_w, expected_h);
+                fails++;
+            }
+            vp.BeginRender();
+            vp.Draw3D();
+            vp.EndRender();
+        }
+    }
+
+    // 3. Test clean shutdown and resource release
+    vp.Shutdown();
+    if (vp.GetWidth() != 0 || vp.GetHeight() != 0 || vp.IsReady())
+    {
+        std::printf("  FAIL: Viewport::Shutdown did not cleanly reset framebuffer state\n");
+        fails++;
+    }
+
+    if (need_close)
+    {
+        CloseWindow();
+    }
+
+    std::printf("  -> Resize & Viewport Regression: %s (%d failures)\n", fails == 0 ? "PASSED" : "FAILED", fails);
+    return fails;
+}
+
 int TestSuite::RunAll()
 {
     std::printf("===================================================\n");
@@ -470,6 +568,7 @@ int TestSuite::RunAll()
     total_fails += RunBVHRoundTrip();
     total_fails += RunPathologicalCases();
     total_fails += RunBlenderRetargeting();
+    total_fails += RunResizeRegression();
 
     std::printf("===================================================\n");
     if (total_fails == 0)

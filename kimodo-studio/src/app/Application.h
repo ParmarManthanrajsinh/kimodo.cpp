@@ -10,6 +10,11 @@
 #include "ui/Toast.h"
 #include "ui/UIManager.h"
 
+#include <atomic>
+#include <thread>
+
+struct GLFWwindow;
+
 namespace studio
 {
 
@@ -18,11 +23,13 @@ class Application
 public:
     bool Init(int width = 1280, int height = 800);
     void Run(int max_frames = 0, const char* screenshot_path = nullptr);
+    void RenderFrame();
     void Shutdown();
 
 private:
+    void RenderLoop();
     void PollEngine();
-    void UpdateAnimationAndSkinning();
+    void UpdateAnimationAndSkinning(float dt);
 
     AppState state;
     Viewport viewport;
@@ -36,7 +43,13 @@ private:
 
     EngineStatus last_engine_status = EngineStatus::Idle;
     std::string pendingThumb;
-    bool running = false;
+
+    // Decoupled Multi-threaded Hybrid Architecture
+    GLFWwindow* glfw_window = nullptr;
+    std::thread render_thread;
+    std::atomic<bool> running{false};
+    std::atomic<bool> render_finished{false};
+    double last_frame_time = 0.0;
 };
 
 } // namespace studio

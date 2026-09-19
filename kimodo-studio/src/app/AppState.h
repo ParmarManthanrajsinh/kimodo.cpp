@@ -76,6 +76,15 @@ struct AppState
     // Resizable UI panel dimensions
     float side_width = 168.0f;
     float panel_width = 320.0f;
+
+    // Viewport render target & input tracking (Raylib-ImGui-Hybrid)
+    int desired_viewport_width = 1280;
+    int desired_viewport_height = 720;
+    int viewport_width = 1280;
+    int viewport_height = 720;
+    bool viewport_hovered = false;
+    bool viewport_dragging = false;
+    Vector2 viewport_mouse_pos = {0.0f, 0.0f};
 };
 
 } // namespace studio

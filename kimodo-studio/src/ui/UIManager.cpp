@@ -173,8 +173,59 @@ void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, 
     ImGui::PopStyleVar();
     ImGui::PopStyleColor();
 
-    // 5. Draw Viewport Floating Overlays (Toolbar & HUDs)
+    // 5. Draw Central Editor Viewport (Raylib-ImGui-Hybrid Image)
     float viewport_x = vp->Pos.x + state.side_width;
+    float viewport_y = vp->Pos.y + UIStyle::top_h;
+    float viewport_w = std::max(1.0f, vp->Size.x - state.side_width - state.panel_width);
+    float viewport_h = std::max(1.0f, vp->Size.y - UIStyle::top_h - UIStyle::status_h);
+
+    ImGui::SetNextWindowPos(ImVec2(viewport_x, viewport_y));
+    ImGui::SetNextWindowSize(ImVec2(viewport_w, viewport_h));
+    ImGui::SetNextWindowViewport(vp->ID);
+
+    ImGuiWindowFlags viewport_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+                                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
+                                      ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollbar;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.07f, 0.07f, 0.09f, 1.0f));
+
+    if (ImGui::Begin("##CentralViewportWindow", nullptr, viewport_flags))
+    {
+        ImVec2 avail = ImGui::GetContentRegionAvail();
+        if (avail.x >= 1.0f && avail.y >= 1.0f)
+        {
+            state.desired_viewport_width = static_cast<int>(avail.x);
+            state.desired_viewport_height = static_cast<int>(avail.y);
+        }
+
+        if (viewport.IsReady())
+        {
+            ImTextureID tex_id = (ImTextureID)(intptr_t)viewport.GetTextureId();
+            ImGui::Image(tex_id, avail, ImVec2(0, 1), ImVec2(1, 0));
+            state.viewport_hovered = ImGui::IsItemHovered() || ImGui::IsWindowHovered();
+            ImVec2 mpos = ImGui::GetMousePos();
+            ImVec2 img_min = ImGui::GetItemRectMin();
+            state.viewport_mouse_pos = Vector2{mpos.x - img_min.x, mpos.y - img_min.y};
+
+            bool is_mouse_down = (ImGui::IsMouseDown(ImGuiMouseButton_Left) ||
+                                  ImGui::IsMouseDown(ImGuiMouseButton_Middle) ||
+                                  ImGui::IsMouseDown(ImGuiMouseButton_Right));
+            bool can_interact = state.viewport_hovered || (state.viewport_dragging && is_mouse_down);
+            state.viewport_dragging = can_interact && is_mouse_down;
+            viewport.Update(!can_interact);
+        }
+        else
+        {
+            state.viewport_hovered = false;
+        }
+    }
+    ImGui::End();
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar(2);
+
+    // 6. Draw Viewport Floating Overlays (Toolbar & HUDs)
 
     // 5a. Top Floating Viewport Toolbar
     {

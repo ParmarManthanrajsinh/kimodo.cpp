@@ -2,12 +2,15 @@
 #include "animation/Skeleton.h"
 #include "app/SettingsManager.h"
 #include "imgui.h"
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_opengl3.h"
 #include "raylib.h"
-#include "rlImGui.h"
+#include "rlgl.h"
 #include "ui/Theme.h"
 #include "utils/AppPaths.h"
 #include "utils/Logger.h"
 
+#include <GLFW/glfw3.h>
 #include <filesystem>
 
 #ifndef KIMODO_STUDIO_VERSION
@@ -88,6 +91,7 @@ bool Application::Init(int width, int height)
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
     InitWindow(width, height, "Kimodo Studio " KIMODO_STUDIO_VERSION);
+    SetWindowMinSize(800, 500);
     if (!IsWindowReady())
     {
         Logger::GetInstance().Error("Raylib window init failed");
@@ -107,11 +111,17 @@ bool Application::Init(int width, int height)
         }
     }
 
-    SetTargetFPS(settings.target_fps > 0 ? settings.target_fps : 60);
+    glfw_window = static_cast<GLFWwindow*>(glfwGetCurrentContext());
 
-    rlImGuiSetLoadFontsCallback(load_studio_fonts);
-    rlImGuiSetup(true);
+    // Detach Raylib's GLFW WindowSizeCallback so it never runs on the main thread
+    // without an OpenGL context when the window is resized
+    glfwSetWindowSizeCallback(glfw_window, nullptr);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    load_studio_fonts();
     Theme::Apply();
+    ImGui_ImplGlfw_InitForOpenGL(glfw_window, true);
 
     // Initialize systems
     state.gpu_name = "GPU Tensor Accelerated";
@@ -222,9 +232,8 @@ void Application::PollEngine()
     last_engine_status = s;
 }
 
-void Application::UpdateAnimationAndSkinning()
+void Application::UpdateAnimationAndSkinning(float dt)
 {
-    float dt = GetFrameTime();
     player.Update(dt * state.playback_speed);
 
     // Synchronize viewport display and transform options from state
@@ -282,58 +291,161 @@ void Application::UpdateAnimationAndSkinning()
     }
 }
 
+void Application::RenderLoop()
+{
+    glfwMakeContextCurrent(glfw_window);
+    glfwSwapInterval(1);
+
+    ImGui_ImplOpenGL3_Init("#version 330");
+
+    while (running)
+    {
+        RenderFrame();
+    }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    glfwMakeContextCurrent(nullptr);
+    render_finished = true;
+}
+
+void Application::RenderFrame()
+{
+    if (!running || !glfw_window)
+    {
+        return;
+    }
+
+    int win_w = 0, win_h = 0;
+    glfwGetFramebufferSize(glfw_window, &win_w, &win_h);
+    if (win_w <= 0 || win_h <= 0)
+    {
+        return;
+    }
+
+    double cur_time = glfwGetTime();
+    float dt = (last_frame_time > 0.0) ? static_cast<float>(cur_time - last_frame_time) : (1.0f / 60.0f);
+    last_frame_time = cur_time;
+    if (dt > 0.1f)
+    {
+        dt = 0.1f;
+    }
+    if (dt < 0.0f)
+    {
+        dt = 0.0f;
+    }
+
+    state.fps = static_cast<int>(ImGui::GetIO().Framerate);
+    PollEngine();
+    UpdateAnimationAndSkinning(dt);
+
+    // 1. Synchronize Viewport dimensions from UI layout (Raylib-ImGui-Hybrid pattern)
+    if (state.desired_viewport_width > 0 && state.desired_viewport_height > 0 &&
+        (state.desired_viewport_width != viewport.GetWidth() ||
+         state.desired_viewport_height != viewport.GetHeight()))
+    {
+        state.viewport_width = state.desired_viewport_width;
+        state.viewport_height = state.desired_viewport_height;
+        viewport.EnsureSize(state.viewport_width, state.viewport_height);
+    }
+    else if (!viewport.IsReady())
+    {
+        viewport.EnsureSize(state.viewport_width, state.viewport_height);
+    }
+
+    // 2. Offscreen Render Pass: render 3D scene directly to RenderTexture2D
+    if (viewport.IsReady())
+    {
+        viewport.BeginRender();
+        viewport.Draw3D();
+        viewport.DrawOrientationGizmo(38.0f, static_cast<float>(viewport.GetHeight()) - 40.0f);
+        viewport.EndRender();
+    }
+
+    // 3. Main Backbuffer & ImGui Display Pass (camera navigation handled inside Viewport window)
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    ui.Draw(state, viewport, engine, player, library, characters, models, toasts);
+
+    ImGui::Render();
+
+    // 5. Backbuffer Clear & Render ImGui DrawData (matching Raylib-ImGui-Hybrid)
+    glViewport(0, 0, win_w, win_h);
+    glClearColor(0.07f, 0.07f, 0.09f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    glfwSwapBuffers(glfw_window);
+}
+
 void Application::Run(int max_frames, const char* screenshot_path)
 {
-    int frame_count = 0;
-    while (!WindowShouldClose() && running)
+    if (screenshot_path && max_frames > 0)
     {
-        state.fps = GetFPS();
-        PollEngine();
-        UpdateAnimationAndSkinning();
-
-        // Check if mouse hovers ImGui window to route orbit camera correctly
-        ImGuiIO& io = ImGui::GetIO();
-        bool mouse_over_ui = io.WantCaptureMouse;
-        viewport.Update(mouse_over_ui);
-
-        BeginDrawing();
-        ClearBackground(Color{18, 18, 24, 255});
-
-        // 1. Draw 3D Viewport
-        viewport.Draw3D();
-
-        // 2. Draw 3D Coordinate Orientation Gizmo at bottom-left
-        float gizmo_x = state.side_width + 38.0f;
-        float gizmo_y = static_cast<float>(GetScreenHeight()) - 130.0f;
-        viewport.DrawOrientationGizmo(gizmo_x, gizmo_y);
-
-        // 3. Draw ImGui UI Overlays
-        rlImGuiBegin();
-        ui.Draw(state, viewport, engine, player, library, characters, models, toasts);
-        rlImGuiEnd();
-
-        // Headless screenshot mode capture
-        if (screenshot_path && (max_frames > 0 && frame_count >= max_frames))
+        ImGui_ImplOpenGL3_Init("#version 330");
+        int frame_count = 0;
+        while (!WindowShouldClose() && running && frame_count < max_frames)
         {
-            TakeScreenshot(screenshot_path);
-            EndDrawing();
-            break;
+            RenderFrame();
+            frame_count++;
         }
+        TakeScreenshot(screenshot_path);
+        ImGui_ImplOpenGL3_Shutdown();
+        return;
+    }
 
-        EndDrawing();
+    // Decoupled Multi-threaded Desktop Pipeline from Raylib-ImGui-Hybrid:
+    // 1. Release OpenGL context from main thread
+    glfwMakeContextCurrent(nullptr);
+    render_finished = false;
 
-        frame_count++;
-        if (max_frames > 0 && frame_count >= max_frames && !screenshot_path)
+    // 2. Spawn dedicated RenderThread
+    render_thread = std::thread(&Application::RenderLoop, this);
+
+    // 3. Main thread drives OS event loop continuously
+    while (running)
+    {
+        glfwWaitEvents();
+        if (glfwWindowShouldClose(glfw_window))
         {
-            break;
+            running = false;
         }
     }
+
+    // 4. Await render thread completion
+    while (!render_finished)
+    {
+        glfwWaitEventsTimeout(0.005);
+    }
+
+    if (render_thread.joinable())
+    {
+        render_thread.join();
+    }
+
+    // 5. Restore context to main thread for shutdown
+    glfwMakeContextCurrent(glfw_window);
 }
 
 void Application::Shutdown()
 {
+    running = false;
+    if (render_thread.joinable())
+    {
+        render_thread.join();
+    }
+
+    if (glfw_window)
+    {
+        glfwMakeContextCurrent(glfw_window);
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+    }
+
+    viewport.Shutdown();
     ui.Shutdown();
-    rlImGuiShutdown();
     CloseWindow();
     Logger::GetInstance().Info("Application shutdown cleanly");
 }
