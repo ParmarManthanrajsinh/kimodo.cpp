@@ -2,12 +2,14 @@
 
 #include "app/AppState.h"
 
-namespace studio {
+namespace studio
+{
 class AnimationLibrary;
 class AnimationPlayer;
 class Toasts;
 
-class PageLibrary {
+class PageLibrary
+{
 public:
     static void Draw(AppState& state, AnimationLibrary& library, AnimationPlayer& player, Toasts& toasts);
 };

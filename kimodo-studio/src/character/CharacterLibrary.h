@@ -6,9 +6,11 @@
 #include "character/CharacterAsset.h"
 #include "character/CharacterMapper.h"
 
-namespace studio {
+namespace studio
+{
 
-struct CharacterEntry {
+struct CharacterEntry
+{
     std::string id;
     std::string name;
     std::string file_path;
@@ -22,18 +24,31 @@ struct CharacterEntry {
     bool installed = true;
 };
 
-class CharacterLibrary {
+class CharacterLibrary
+{
 public:
     CharacterLibrary() = default;
 
     bool Init();
     void Rescan();
 
-    const std::vector<CharacterEntry>& GetEntries() const { return entries; }
-    const std::string& GetActiveId() const { return active_id; }
+    const std::vector<CharacterEntry>& GetEntries() const
+    {
+        return entries;
+    }
+    const std::string& GetActiveId() const
+    {
+        return active_id;
+    }
 
-    CharacterAsset* GetActiveAsset() { return active_asset.get(); }
-    const CharacterAsset* GetActiveAsset() const { return active_asset.get(); }
+    CharacterAsset* GetActiveAsset()
+    {
+        return active_asset.get();
+    }
+    const CharacterAsset* GetActiveAsset() const
+    {
+        return active_asset.get();
+    }
 
     bool SelectCharacter(const std::string& id);
     bool ImportCharacter(const std::string& source_path, std::string& error);

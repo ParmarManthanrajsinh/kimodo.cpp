@@ -4,14 +4,17 @@
 #include <functional>
 #include <string>
 
-namespace studio {
+namespace studio
+{
 
 // Minimal Hugging Face HTTP client (plan section 14).
 // Windows: WinHTTP, no third-party deps. HTTPS only.
 // Token is passed per-call and never stored or logged here.
-class HuggingFaceClient {
+class HuggingFaceClient
+{
 public:
-    struct HttpResult {
+    struct HttpResult
+    {
         long status = 0;
         std::string body;
     };

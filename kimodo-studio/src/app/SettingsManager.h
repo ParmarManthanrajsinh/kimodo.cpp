@@ -3,9 +3,11 @@
 #include <filesystem>
 #include <string>
 
-namespace studio {
+namespace studio
+{
 
-struct UserSettings {
+struct UserSettings
+{
     std::string theme = "Dark";
     int target_fps = 60;
     int viewport_mode = 2; // 0 = Character, 1 = Skeleton, 2 = Both
@@ -26,15 +28,22 @@ struct UserSettings {
     float playback_speed = 1.0f;
 };
 
-class SettingsManager {
+class SettingsManager
+{
 public:
     static SettingsManager& GetInstance();
 
     bool Load();
     bool save();
 
-    UserSettings& GetSettings() { return settings; }
-    const UserSettings& GetSettings() const { return settings; }
+    UserSettings& GetSettings()
+    {
+        return settings;
+    }
+    const UserSettings& GetSettings() const
+    {
+        return settings;
+    }
 
 private:
     SettingsManager() = default;

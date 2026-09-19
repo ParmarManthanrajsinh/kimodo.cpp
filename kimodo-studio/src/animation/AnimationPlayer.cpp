@@ -5,32 +5,41 @@
 
 #include "raymath.h"
 
-namespace studio {
+namespace studio
+{
 
-void AnimationPlayer::Load(const Animation& in_clip) {
+void AnimationPlayer::Load(const Animation& in_clip)
+{
     clip = in_clip;
     time = 0.0f;
     playing = true;
     Sample();
 }
 
-void AnimationPlayer::Clear() {
+void AnimationPlayer::Clear()
+{
     clip = Animation{};
     time = 0.0f;
     playing = false;
     world.clear();
 }
 
-void AnimationPlayer::Update(float dt) {
-    if (!HasAnimation() || !playing) {
+void AnimationPlayer::Update(float dt)
+{
+    if (!HasAnimation() || !playing)
+    {
         return;
     }
     time += dt;
     const float dur = clip.GetDuration();
-    if (time >= dur) {
-        if (loop && dur > 0.0f) {
+    if (time >= dur)
+    {
+        if (loop && dur > 0.0f)
+        {
             time = std::fmod(time, dur);
-        } else {
+        }
+        else
+        {
             time = dur;
             playing = false;
         }
@@ -38,33 +47,41 @@ void AnimationPlayer::Update(float dt) {
     Sample();
 }
 
-void AnimationPlayer::Scrub(float time_sec) {
-    if (!HasAnimation()) {
+void AnimationPlayer::Scrub(float time_sec)
+{
+    if (!HasAnimation())
+    {
         return;
     }
     time = std::clamp(time_sec, 0.0f, clip.GetDuration());
     Sample();
 }
 
-void AnimationPlayer::StepFrame(int delta) {
-    if (!HasAnimation() || clip.fps <= 0.0f) {
+void AnimationPlayer::StepFrame(int delta)
+{
+    if (!HasAnimation() || clip.fps <= 0.0f)
+    {
         return;
     }
     float dt = static_cast<float>(delta) / clip.fps;
     Scrub(time + dt);
 }
 
-int AnimationPlayer::Frame() const {
-    if (!HasAnimation()) {
+int AnimationPlayer::Frame() const
+{
+    if (!HasAnimation())
+    {
         return 0;
     }
     int f = static_cast<int>(time * clip.fps);
     return std::clamp(f, 0, clip.frames - 1);
 }
 
-void AnimationPlayer::Sample() {
+void AnimationPlayer::Sample()
+{
     if (!HasAnimation() || static_cast<int>(clip.parents.size()) != clip.joints ||
-        static_cast<int>(clip.offsets.size()) != clip.joints) {
+        static_cast<int>(clip.offsets.size()) != clip.joints)
+    {
         world.clear();
         return;
     }
@@ -80,7 +97,8 @@ void AnimationPlayer::Sample() {
     const float* p1 = clip.root_positions.data() + static_cast<size_t>(i1) * 3;
 
     std::vector<float> quats(static_cast<size_t>(J) * 4);
-    for (int j = 0; j < J; ++j) {
+    for (int j = 0; j < J; ++j)
+    {
         Quaternion q0{r0[j * 4], r0[j * 4 + 1], r0[j * 4 + 2], r0[j * 4 + 3]};
         Quaternion q1{r1[j * 4], r1[j * 4 + 1], r1[j * 4 + 2], r1[j * 4 + 3]};
         Quaternion q = QuaternionSlerp(q0, q1, a);

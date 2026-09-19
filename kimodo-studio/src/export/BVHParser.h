@@ -4,11 +4,14 @@
 #include <vector>
 #include "animation/Animation.h"
 
-namespace studio {
+namespace studio
+{
 
-class BVHParser {
+class BVHParser
+{
 public:
-    struct ValidationReport {
+    struct ValidationReport
+    {
         bool valid = true;
         int joint_count = 0;
         int frame_count = 0;

@@ -4,9 +4,11 @@
 #include "character/CharacterAsset.h"
 #include "raylib.h"
 
-namespace studio {
+namespace studio
+{
 
-class SkinningRenderer {
+class SkinningRenderer
+{
 public:
     SkinningRenderer() = default;
     ~SkinningRenderer();

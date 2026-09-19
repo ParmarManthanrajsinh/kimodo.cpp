@@ -9,13 +9,17 @@
 #include <sstream>
 #include <vector>
 
-namespace studio {
-namespace {
+namespace studio
+{
+namespace
+{
 
-struct BinBuilder {
+struct BinBuilder
+{
     std::vector<uint8_t> data;
 
-    size_t append(const void* src, size_t bytes) {
+    size_t append(const void* src, size_t bytes)
+    {
         // 4-byte align
         while (data.size() % 4 != 0)
             data.push_back(0);
@@ -26,9 +30,11 @@ struct BinBuilder {
     }
 };
 
-std::string json_escape(const std::string& s) {
+std::string json_escape(const std::string& s)
+{
     std::string out;
-    for (char c : s) {
+    for (char c : s)
+    {
         if (c == '"' || c == '\\')
             out += '\\';
         out += c;
@@ -40,12 +46,15 @@ std::string json_escape(const std::string& s) {
 
 bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, const Animation& animation,
                                               const CharacterBoneMap& mapping, const ExportOptions& options,
-                                              std::string& error, std::string* report) {
-    if (!character.IsLoaded() || character.GetSkinningData().vertices.empty()) {
+                                              std::string& error, std::string* report)
+{
+    if (!character.IsLoaded() || character.GetSkinningData().vertices.empty())
+    {
         error = "Character is empty or not loaded";
         return false;
     }
-    if (animation.empty()) {
+    if (animation.empty())
+    {
         error = "Animation is empty";
         return false;
     }
@@ -61,7 +70,8 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
     // 1. Pack Positions (vec3 float)
     std::vector<float> pos_data(vcount * 3);
     Vector3 min_pos{1e9f, 1e9f, 1e9f}, max_pos{-1e9f, -1e9f, -1e9f};
-    for (size_t i = 0; i < vcount; ++i) {
+    for (size_t i = 0; i < vcount; ++i)
+    {
         const auto& p = character.GetSkinningData().vertices[i].position;
         pos_data[i * 3 + 0] = p.x;
         pos_data[i * 3 + 1] = p.y;
@@ -77,7 +87,8 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
 
     // 2. Pack Normals (vec3 float)
     std::vector<float> norm_data(vcount * 3);
-    for (size_t i = 0; i < vcount; ++i) {
+    for (size_t i = 0; i < vcount; ++i)
+    {
         const auto& n = character.GetSkinningData().vertices[i].normal;
         norm_data[i * 3 + 0] = n.x;
         norm_data[i * 3 + 1] = n.y;
@@ -87,7 +98,8 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
 
     // 3. Pack UVs (vec2 float)
     std::vector<float> uv_data(vcount * 2);
-    for (size_t i = 0; i < vcount; ++i) {
+    for (size_t i = 0; i < vcount; ++i)
+    {
         const auto& u = character.GetSkinningData().vertices[i].texcoord;
         uv_data[i * 2 + 0] = u.x;
         uv_data[i * 2 + 1] = u.y;
@@ -96,8 +108,10 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
 
     // 4. Pack Joints (vec4 unsigned short)
     std::vector<uint16_t> joints_data(vcount * 4);
-    for (size_t i = 0; i < vcount; ++i) {
-        for (int k = 0; k < 4; ++k) {
+    for (size_t i = 0; i < vcount; ++i)
+    {
+        for (int k = 0; k < 4; ++k)
+        {
             joints_data[i * 4 + k] = character.GetSkinningData().vertices[i].bone_indices[k];
         }
     }
@@ -105,8 +119,10 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
 
     // 5. Pack Weights (vec4 float)
     std::vector<float> weights_data(vcount * 4);
-    for (size_t i = 0; i < vcount; ++i) {
-        for (int k = 0; k < 4; ++k) {
+    for (size_t i = 0; i < vcount; ++i)
+    {
+        for (int k = 0; k < 4; ++k)
+        {
             weights_data[i * 4 + k] = character.GetSkinningData().vertices[i].bone_weights[k];
         }
     }
@@ -120,7 +136,8 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
 
     // 7. Pack Inverse Bind Matrices (mat4 float)
     std::vector<float> ibm_data(bcount * 16);
-    for (size_t b = 0; b < bcount; ++b) {
+    for (size_t b = 0; b < bcount; ++b)
+    {
         const Matrix& m = (b < character.GetSkinningData().inverse_bind_matrices.size())
                               ? character.GetSkinningData().inverse_bind_matrices[b]
                               : MatrixIdentity();
@@ -152,31 +169,38 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
 
     // 9. Pack Animation Rotations per bone
     std::map<std::string, int> anim_joint_map;
-    for (int j = 0; j < animation.joints; ++j) {
+    for (int j = 0; j < animation.joints; ++j)
+    {
         anim_joint_map[animation.joint_names[j]] = j;
     }
 
     std::vector<size_t> off_rots(bcount);
-    for (size_t b = 0; b < bcount; ++b) {
+    for (size_t b = 0; b < bcount; ++b)
+    {
         std::vector<float> rot_data(F * 4);
         const auto& bone = character.GetBones()[b];
         auto map_it = mapping.find(bone.name);
         int src_j = -1;
-        if (map_it != mapping.end() && !map_it->second.empty() && map_it->second != "(none)") {
+        if (map_it != mapping.end() && !map_it->second.empty() && map_it->second != "(none)")
+        {
             auto src_it = anim_joint_map.find(map_it->second);
             if (src_it != anim_joint_map.end())
                 src_j = src_it->second;
         }
 
-        for (int f = 0; f < F; ++f) {
-            if (src_j >= 0) {
+        for (int f = 0; f < F; ++f)
+        {
+            if (src_j >= 0)
+            {
                 const float* q =
                     animation.local_rotations_xyzw.data() + (static_cast<size_t>(f) * animation.joints + src_j) * 4;
                 rot_data[f * 4 + 0] = q[0];
                 rot_data[f * 4 + 1] = q[1];
                 rot_data[f * 4 + 2] = q[2];
                 rot_data[f * 4 + 3] = q[3];
-            } else {
+            }
+            else
+            {
                 rot_data[f * 4 + 0] = bone.rest_rotation.x;
                 rot_data[f * 4 + 1] = bone.rest_rotation.y;
                 rot_data[f * 4 + 2] = bone.rest_rotation.z;
@@ -188,7 +212,8 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
 
     // 10. Pack Root Translation for Root/Pelvis joint
     std::vector<float> root_pos_data(F * 3);
-    for (int f = 0; f < F; ++f) {
+    for (int f = 0; f < F; ++f)
+    {
         root_pos_data[f * 3 + 0] = animation.root_positions[f * 3 + 0];
         root_pos_data[f * 3 + 1] = animation.root_positions[f * 3 + 1];
         root_pos_data[f * 3 + 2] = animation.root_positions[f * 3 + 2];
@@ -209,20 +234,25 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
        << "    {\"name\": \"CharacterMesh\", \"mesh\": 0, \"skin\": 0},\n"; // Node 0
 
     // Joint Nodes (Node 1 to 1 + bcount)
-    for (size_t b = 0; b < bcount; ++b) {
+    for (size_t b = 0; b < bcount; ++b)
+    {
         const auto& bone = character.GetBones()[b];
         ss << "    {\"name\": \"" << json_escape(bone.name) << "\"";
 
         // Collect children
         std::vector<int> child_nodes;
-        for (size_t c = 0; c < bcount; ++c) {
-            if (character.GetBones()[c].parent == static_cast<int>(b)) {
+        for (size_t c = 0; c < bcount; ++c)
+        {
+            if (character.GetBones()[c].parent == static_cast<int>(b))
+            {
                 child_nodes.push_back(static_cast<int>(1 + c));
             }
         }
-        if (!child_nodes.empty()) {
+        if (!child_nodes.empty())
+        {
             ss << ", \"children\": [";
-            for (size_t k = 0; k < child_nodes.size(); ++k) {
+            for (size_t k = 0; k < child_nodes.size(); ++k)
+            {
                 ss << child_nodes[k] << (k + 1 < child_nodes.size() ? ", " : "");
             }
             ss << "]";
@@ -256,7 +286,8 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
     ss << "  \"skins\": [{\n"
        << "    \"inverse_bind_matrices\": 6,\n"
        << "    \"joints\": [";
-    for (size_t b = 0; b < bcount; ++b) {
+    for (size_t b = 0; b < bcount; ++b)
+    {
         ss << (1 + b) << (b + 1 < bcount ? ", " : "");
     }
     ss << "]\n  }],\n";
@@ -268,7 +299,8 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
     // Translation channel for root (node 1)
     ss << "      {\"sampler\": 0, \"target\": {\"node\": 1, \"path\": \"translation\"}},\n";
     // Rotation channels for all joints
-    for (size_t b = 0; b < bcount; ++b) {
+    for (size_t b = 0; b < bcount; ++b)
+    {
         ss << "      {\"sampler\": " << (1 + b) << ", \"target\": {\"node\": " << (1 + b)
            << ", \"path\": \"rotation\"}}" << (b + 1 < bcount ? ",\n" : "\n");
     }
@@ -276,7 +308,8 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
        << "    \"samplers\": [\n"
        << "      {\"input\": 7, \"interpolation\": \"LINEAR\", \"output\": 8},\n"; // Root Translation sampler (sampler
                                                                                    // 0)
-    for (size_t b = 0; b < bcount; ++b) {
+    for (size_t b = 0; b < bcount; ++b)
+    {
         ss << "      {\"input\": 7, \"interpolation\": \"LINEAR\", \"output\": " << (9 + b) << "}"
            << (b + 1 < bcount ? ",\n" : "\n");
     }
@@ -304,7 +337,8 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
        << "},\n" // 7: time
        << "    {\"buffer\": 0, \"byteOffset\": " << off_root_trans << ", \"byteLength\": " << (F * 3 * sizeof(float))
        << "},\n"; // 8: root trans
-    for (size_t b = 0; b < bcount; ++b) {
+    for (size_t b = 0; b < bcount; ++b)
+    {
         ss << "    {\"buffer\": 0, \"byteOffset\": " << off_rots[b] << ", \"byteLength\": " << (F * 4 * sizeof(float))
            << "}" << (b + 1 < bcount ? ",\n" : "\n");
     }
@@ -332,7 +366,8 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
        << "]},\n" // 7: time
        << "    {\"bufferView\": 8, \"componentType\": 5126, \"count\": " << F
        << ", \"type\": \"VEC3\"},\n"; // 8: root trans
-    for (size_t b = 0; b < bcount; ++b) {
+    for (size_t b = 0; b < bcount; ++b)
+    {
         ss << "    {\"bufferView\": " << (9 + b) << ", \"componentType\": 5126, \"count\": " << F
            << ", \"type\": \"VEC4\"}" << (b + 1 < bcount ? ",\n" : "\n");
     }
@@ -353,7 +388,8 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
     std::error_code ec;
     std::filesystem::create_directories(std::filesystem::path(options.path).parent_path(), ec);
     std::ofstream out(options.path, std::ios::binary | std::ios::trunc);
-    if (!out) {
+    if (!out)
+    {
         error = "Cannot open output file: " + options.path;
         return false;
     }
@@ -377,7 +413,8 @@ bool CharacterGLBExporter::ExportCharacterGLB(const CharacterAsset& character, c
     out.write(reinterpret_cast<const char*>(&bin_type), 4);
     out.write(reinterpret_cast<const char*>(bin.data.data()), bin_chunk_len);
 
-    if (report) {
+    if (report)
+    {
         *report = "Full Character GLB exported successfully (" + std::to_string(total_len / 1024) + " KB, " +
                   std::to_string(vcount) + " vertices, " + std::to_string(F) + " frames)";
     }

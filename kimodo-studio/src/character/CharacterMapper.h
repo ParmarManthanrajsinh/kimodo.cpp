@@ -8,12 +8,14 @@
 #include <string>
 #include <vector>
 
-namespace studio {
+namespace studio
+{
 
 // Mapping from Character bone name -> Source animation joint name
 using CharacterBoneMap = std::map<std::string, std::string>;
 
-class CharacterMapper {
+class CharacterMapper
+{
 public:
     // Auto-map character bones to SOMA/humanoid animation joints using alias tables
     static CharacterBoneMap AutoMap(const CharacterAsset& asset, const std::vector<std::string>& source_joints);

@@ -2,11 +2,13 @@
 
 #include "app/AppState.h"
 
-namespace studio {
+namespace studio
+{
 class KimodoEngine;
 class ModelManager;
 
-class HeaderBar {
+class HeaderBar
+{
 public:
     static void Draw(AppState& state, KimodoEngine& engine, ModelManager& models);
 };

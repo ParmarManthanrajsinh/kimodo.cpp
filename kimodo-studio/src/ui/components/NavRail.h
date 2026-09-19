@@ -2,9 +2,11 @@
 
 #include "app/AppState.h"
 
-namespace studio {
+namespace studio
+{
 
-class NavRail {
+class NavRail
+{
 public:
     static void Draw(AppState& state);
 };

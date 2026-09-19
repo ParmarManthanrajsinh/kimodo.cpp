@@ -5,11 +5,14 @@
 #include <cmath>
 #include <map>
 
-namespace studio {
+namespace studio
+{
 
-namespace {
+namespace
+{
 
-const std::vector<std::string>& get_presentation_names() {
+const std::vector<std::string>& get_presentation_names()
+{
     static const std::vector<std::string> names = {
         // Core 30 SOMA joints
         "Hips", "Spine1", "Spine2", "Chest", "Neck1", "Neck2", "Head", "Jaw", "LeftEye", "RightEye", "LeftShoulder",
@@ -29,7 +32,8 @@ const std::vector<std::string>& get_presentation_names() {
     return names;
 }
 
-const std::vector<int>& get_presentation_parents() {
+const std::vector<int>& get_presentation_parents()
+{
     static const std::vector<int> parents = [] {
         std::vector<int> p = {// Core 30 parents
                               -1, 0, 1, 2, 3, 4, 5, 6, 6, 6, 3, 10, 11, 12, 13, 13, 3, 16, 17, 18, 19, 19, 0, 22, 23,
@@ -45,11 +49,13 @@ const std::vector<int>& get_presentation_parents() {
     return parents;
 }
 
-const std::vector<std::array<float, 3>>& get_presentation_offsets() {
+const std::vector<std::array<float, 3>>& get_presentation_offsets()
+{
     static const std::vector<std::array<float, 3>> offsets = [] {
         std::vector<std::array<float, 3>> offs(get_presentation_names().size(), {0, 0, 0});
         // Core 30 offsets from Soma30Spec
-        for (int i = 0; i < kSomaJoints; ++i) {
+        for (int i = 0; i < kSomaJoints; ++i)
+        {
             offs[i] = Soma30Spec::offsets[i];
         }
         // Extended finger default rest offsets (relative to parents)
@@ -93,23 +99,36 @@ const std::vector<std::array<float, 3>>& get_presentation_offsets() {
 
 } // namespace
 
-const std::vector<std::string>& SomaPresentationSpec::joint_names() { return get_presentation_names(); }
+const std::vector<std::string>& SomaPresentationSpec::joint_names()
+{
+    return get_presentation_names();
+}
 
-const std::vector<int>& SomaPresentationSpec::parents() { return get_presentation_parents(); }
+const std::vector<int>& SomaPresentationSpec::parents()
+{
+    return get_presentation_parents();
+}
 
-const std::vector<std::array<float, 3>>& SomaPresentationSpec::default_offsets() { return get_presentation_offsets(); }
+const std::vector<std::array<float, 3>>& SomaPresentationSpec::default_offsets()
+{
+    return get_presentation_offsets();
+}
 
-int SomaPresentationSpec::joint_index(const std::string& name) {
+int SomaPresentationSpec::joint_index(const std::string& name)
+{
     const auto& names = get_presentation_names();
-    for (size_t i = 0; i < names.size(); ++i) {
+    for (size_t i = 0; i < names.size(); ++i)
+    {
         if (names[i] == name)
             return static_cast<int>(i);
     }
     return -1;
 }
 
-bool SomaPresentation::ExpandSoma30(const Animation& in, Animation& out, std::string& error) {
-    if (in.empty() || in.joints < kSomaJoints) {
+bool SomaPresentation::ExpandSoma30(const Animation& in, Animation& out, std::string& error)
+{
+    if (in.empty() || in.joints < kSomaJoints)
+    {
         error = "Invalid SOMA30 source animation";
         return false;
     }
@@ -130,12 +149,14 @@ bool SomaPresentation::ExpandSoma30(const Animation& in, Animation& out, std::st
     out.local_rotations_xyzw.assign(static_cast<size_t>(in.frames) * target_joints * 4, 0.0f);
 
     // Map source SOMA joints and set default identity for extended joints
-    for (int f = 0; f < in.frames; ++f) {
+    for (int f = 0; f < in.frames; ++f)
+    {
         const float* src_frame = in.local_rotations_xyzw.data() + static_cast<size_t>(f) * in.joints * 4;
         float* dst_frame = out.local_rotations_xyzw.data() + static_cast<size_t>(f) * target_joints * 4;
 
         // Copy SOMA30 rotations
-        for (int j = 0; j < kSomaJoints; ++j) {
+        for (int j = 0; j < kSomaJoints; ++j)
+        {
             dst_frame[j * 4 + 0] = src_frame[j * 4 + 0];
             dst_frame[j * 4 + 1] = src_frame[j * 4 + 1];
             dst_frame[j * 4 + 2] = src_frame[j * 4 + 2];
@@ -143,7 +164,8 @@ bool SomaPresentation::ExpandSoma30(const Animation& in, Animation& out, std::st
         }
 
         // Initialize extended finger/toe joints to normalized identity {0, 0, 0, 1}
-        for (int j = kSomaJoints; j < target_joints; ++j) {
+        for (int j = kSomaJoints; j < target_joints; ++j)
+        {
             dst_frame[j * 4 + 0] = 0.0f;
             dst_frame[j * 4 + 1] = 0.0f;
             dst_frame[j * 4 + 2] = 0.0f;
@@ -154,9 +176,11 @@ bool SomaPresentation::ExpandSoma30(const Animation& in, Animation& out, std::st
     return true;
 }
 
-SomaPresentation::ValidationResult SomaPresentation::Validate(const Animation& anim) {
+SomaPresentation::ValidationResult SomaPresentation::Validate(const Animation& anim)
+{
     ValidationResult res;
-    if (anim.empty()) {
+    if (anim.empty())
+    {
         res.valid = false;
         res.errors.push_back("Animation is empty");
         return res;
@@ -164,7 +188,8 @@ SomaPresentation::ValidationResult SomaPresentation::Validate(const Animation& a
 
     const int J = anim.joints;
     if (static_cast<int>(anim.joint_names.size()) != J || static_cast<int>(anim.parents.size()) != J ||
-        static_cast<int>(anim.offsets.size()) != J) {
+        static_cast<int>(anim.offsets.size()) != J)
+    {
         res.valid = false;
         res.hierarchy_valid = false;
         res.errors.push_back("Hierarchy dimension mismatch");
@@ -172,31 +197,40 @@ SomaPresentation::ValidationResult SomaPresentation::Validate(const Animation& a
 
     // Check root and parents
     int root_count = 0;
-    for (int j = 0; j < J; ++j) {
+    for (int j = 0; j < J; ++j)
+    {
         const int p = anim.parents[j];
-        if (p < 0) {
+        if (p < 0)
+        {
             root_count++;
-        } else if (p >= j) {
+        }
+        else if (p >= j)
+        {
             res.valid = false;
             res.hierarchy_valid = false;
             res.errors.push_back("Parent index not strictly less than child index at joint " + std::to_string(j));
         }
     }
-    if (root_count != 1) {
+    if (root_count != 1)
+    {
         res.warnings.push_back("Expected exactly 1 root joint, found " + std::to_string(root_count));
     }
 
     // Check finite numbers
-    for (size_t i = 0; i < anim.local_rotations_xyzw.size(); ++i) {
-        if (!std::isfinite(anim.local_rotations_xyzw[i])) {
+    for (size_t i = 0; i < anim.local_rotations_xyzw.size(); ++i)
+    {
+        if (!std::isfinite(anim.local_rotations_xyzw[i]))
+        {
             res.valid = false;
             res.is_finite = false;
             res.errors.push_back("Non-finite rotation value found");
             break;
         }
     }
-    for (size_t i = 0; i < anim.root_positions.size(); ++i) {
-        if (!std::isfinite(anim.root_positions[i])) {
+    for (size_t i = 0; i < anim.root_positions.size(); ++i)
+    {
+        if (!std::isfinite(anim.root_positions[i]))
+        {
             res.valid = false;
             res.is_finite = false;
             res.errors.push_back("Non-finite root position value found");
@@ -206,13 +240,17 @@ SomaPresentation::ValidationResult SomaPresentation::Validate(const Animation& a
 
     // Left/Right symmetry check
     std::map<std::string, int> name_map;
-    for (int j = 0; j < J; ++j) {
+    for (int j = 0; j < J; ++j)
+    {
         name_map[anim.joint_names[j]] = j;
     }
-    for (const auto& name : anim.joint_names) {
-        if (name.rfind("Left", 0) == 0) {
+    for (const auto& name : anim.joint_names)
+    {
+        if (name.rfind("Left", 0) == 0)
+        {
             std::string right_name = "Right" + name.substr(4);
-            if (name_map.find(right_name) == name_map.end()) {
+            if (name_map.find(right_name) == name_map.end())
+            {
                 res.leftRightConsistent = false;
                 res.warnings.push_back("Missing mirrored right joint for: " + name);
             }
@@ -220,7 +258,8 @@ SomaPresentation::ValidationResult SomaPresentation::Validate(const Animation& a
     }
 
     // Rest pose forward kinematics standing check
-    if (res.hierarchy_valid && res.is_finite && J > 0) {
+    if (res.hierarchy_valid && res.is_finite && J > 0)
+    {
         std::vector<float> ident_rots(static_cast<size_t>(J) * 4, 0.0f);
         for (int j = 0; j < J; ++j)
             ident_rots[j * 4 + 3] = 1.0f;
@@ -229,7 +268,8 @@ SomaPresentation::ValidationResult SomaPresentation::Validate(const Animation& a
         Skeleton::ForwardKinematicsGeneral(ident_rots.data(), origin, anim.parents, anim.offsets, world_pos);
 
         int head_idx = -1, hips_idx = -1, foot_idx = -1;
-        for (int j = 0; j < J; ++j) {
+        for (int j = 0; j < J; ++j)
+        {
             const std::string& n = anim.joint_names[j];
             if (n == "Head" || n == "head")
                 head_idx = j;
@@ -239,10 +279,12 @@ SomaPresentation::ValidationResult SomaPresentation::Validate(const Animation& a
                 foot_idx = j;
         }
 
-        if (head_idx >= 0 && hips_idx >= 0 && foot_idx >= 0) {
+        if (head_idx >= 0 && hips_idx >= 0 && foot_idx >= 0)
+        {
             res.torso_span = world_pos[head_idx].y - world_pos[hips_idx].y;
             res.standing_height = world_pos[head_idx].y - world_pos[foot_idx].y;
-            if (res.torso_span < 0.2f || res.standing_height < 0.8f) {
+            if (res.torso_span < 0.2f || res.standing_height < 0.8f)
+            {
                 res.standing_rest_pose = false;
                 res.warnings.push_back(
                     "Rest pose collapsed or non-standing: height=" + std::to_string(res.standing_height) + "m");

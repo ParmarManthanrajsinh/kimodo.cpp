@@ -16,35 +16,45 @@
 #define KIMODO_STUDIO_BUILD_DATE "dev"
 #endif
 
-int main(int argc, char** argv) {
-    if (argc >= 2) {
+int main(int argc, char** argv)
+{
+    if (argc >= 2)
+    {
         std::string arg = argv[1];
-        if (arg == "--version" || arg == "-v") {
+        if (arg == "--version" || arg == "-v")
+        {
             std::printf("Kimodo Studio %s (%s) built %s\n", KIMODO_STUDIO_VERSION, KIMODO_STUDIO_GIT_HASH,
                         KIMODO_STUDIO_BUILD_DATE);
             return 0;
         }
-        if (arg == "--selftest-all" || arg == "--selftest") {
+        if (arg == "--selftest-all" || arg == "--selftest")
+        {
             return studio::TestSuite::RunAll();
         }
-        if (arg == "--selftest-bvh") {
+        if (arg == "--selftest-bvh")
+        {
             return studio::TestSuite::RunBVHRoundTrip();
         }
-        if (arg == "--selftest-character") {
+        if (arg == "--selftest-character")
+        {
             return studio::TestSuite::RunCharacterAndSkinning();
         }
-        if (arg == "--selftest-soma") {
+        if (arg == "--selftest-soma")
+        {
             return studio::TestSuite::RunSomaPresentation();
         }
-        if (arg == "--selftest-blender") {
+        if (arg == "--selftest-blender")
+        {
             return studio::TestSuite::RunBlenderRetargeting();
         }
-        if (arg == "--screenshot") {
+        if (arg == "--screenshot")
+        {
             const char* out_path = (argc >= 3) ? argv[2] : "app_screenshot.png";
             int w = (argc >= 5) ? std::atoi(argv[3]) : 1280;
             int h = (argc >= 5) ? std::atoi(argv[4]) : 800;
             studio::Application app;
-            if (!app.Init(w, h)) {
+            if (!app.Init(w, h))
+            {
                 return 1;
             }
             app.Run(15, out_path);
@@ -55,7 +65,8 @@ int main(int argc, char** argv) {
     }
 
     studio::Application app;
-    if (!app.Init()) {
+    if (!app.Init())
+    {
         return 1;
     }
     app.Run();

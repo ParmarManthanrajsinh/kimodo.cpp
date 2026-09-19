@@ -15,10 +15,12 @@
 
 #include <filesystem>
 
-namespace studio {
+namespace studio
+{
 
 void PageExport::Draw(AppState& state, AnimationPlayer& player, AnimationLibrary& library, CharacterLibrary& chars,
-                      Toasts& toasts) {
+                      Toasts& toasts)
+{
     (void)state;
     (void)library;
     ImGui::TextColored(UIStyle::accent, "%s Motion Export", icons::kExport);
@@ -28,7 +30,8 @@ void PageExport::Draw(AppState& state, AnimationPlayer& player, AnimationLibrary
     ImGui::Spacing();
 
     const Animation& current_anim = player.GetAnimation();
-    if (current_anim.empty()) {
+    if (current_anim.empty())
+    {
         ImGui::TextDisabled("No active animation loaded in viewport. Generate or load an animation first.");
         return;
     }
@@ -47,24 +50,30 @@ void PageExport::Draw(AppState& state, AnimationPlayer& player, AnimationLibrary
     // 2. Export Destination & Filename
     auto& settings = SettingsManager::GetInstance().GetSettings();
     static char export_dir_buf[512] = "";
-    if (export_dir_buf[0] == '\0') {
+    if (export_dir_buf[0] == '\0')
+    {
         std::string d = settings.export_dir.empty() ? AppPaths::DefaultExportDir().string() : settings.export_dir;
         strncpy_s(export_dir_buf, sizeof(export_dir_buf), d.c_str(), sizeof(export_dir_buf) - 1);
     }
     ImGui::Text("Export Directory:");
     ImGui::SetNextItemWidth(-84);
-    if (ImGui::InputText("##ExportDir", export_dir_buf, sizeof(export_dir_buf))) {
+    if (ImGui::InputText("##ExportDir", export_dir_buf, sizeof(export_dir_buf)))
+    {
         settings.export_dir = export_dir_buf;
         SettingsManager::GetInstance().save();
     }
     ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_FOLDER " Browse...", ImVec2(76, 0))) {
+    if (ImGui::Button(ICON_FA_FOLDER " Browse...", ImVec2(76, 0)))
+    {
         std::string picked;
-        if (FileDialog::PickFolder(export_dir_buf[0] != '\0' ? export_dir_buf : nullptr, picked)) {
+        if (FileDialog::PickFolder(export_dir_buf[0] != '\0' ? export_dir_buf : nullptr, picked))
+        {
             strncpy_s(export_dir_buf, sizeof(export_dir_buf), picked.c_str(), _TRUNCATE);
             settings.export_dir = export_dir_buf;
             SettingsManager::GetInstance().save();
-        } else if (FileDialog::GetLastError() && FileDialog::GetLastError()[0] != '\0') {
+        }
+        else if (FileDialog::GetLastError() && FileDialog::GetLastError()[0] != '\0')
+        {
             toasts.Push(std::string("Folder picker failed: ") + FileDialog::GetLastError(), ToastKind::Error);
         }
     }
@@ -95,7 +104,8 @@ void PageExport::Draw(AppState& state, AnimationPlayer& player, AnimationLibrary
         end_frame = current_anim.frames - 1;
 
     ImGui::Checkbox("Limit Frame Range", &use_frame_range);
-    if (use_frame_range) {
+    if (use_frame_range)
+    {
         ImGui::SliderInt("Start Frame", &start_frame, 0, current_anim.frames - 1);
         ImGui::SliderInt("End Frame", &end_frame, start_frame, current_anim.frames - 1);
     }
@@ -105,7 +115,8 @@ void PageExport::Draw(AppState& state, AnimationPlayer& player, AnimationLibrary
     ImGui::Spacing();
 
     // 4. Quick Unreal Workflow Card
-    if (export_format == 0) {
+    if (export_format == 0)
+    {
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.15f, 0.20f, 0.9f));
         ImGui::BeginChild("##UeInfo", ImVec2(0, 75), true);
         {
@@ -127,15 +138,18 @@ void PageExport::Draw(AppState& state, AnimationPlayer& player, AnimationLibrary
                             : (export_format == 1) ? (ICON_FA_EXPORT "  Export Skeleton GLB")
                                                    : (ICON_FA_EXPORT "  Export Full Character GLB");
 
-    if (ImGui::Button(btn_label.c_str(), ImVec2(-1, 44))) {
+    if (ImGui::Button(btn_label.c_str(), ImVec2(-1, 44)))
+    {
         std::string ext = (export_format == 0) ? ".bvh" : ".glb";
 
         // Native Save As dialog starting in the current export directory.
         // User confirms/edits the exact output file (filter enforces the right extension).
         const std::string filter = ext.substr(1); // NFD filter format: extension without dot, e.g. "bvh"
         std::string save_path;
-        if (!FileDialog::SaveFile(filter.c_str(), export_dir_buf[0] != '\0' ? export_dir_buf : nullptr, save_path)) {
-            if (FileDialog::GetLastError() && FileDialog::GetLastError()[0] != '\0') {
+        if (!FileDialog::SaveFile(filter.c_str(), export_dir_buf[0] != '\0' ? export_dir_buf : nullptr, save_path))
+        {
+            if (FileDialog::GetLastError() && FileDialog::GetLastError()[0] != '\0')
+            {
                 toasts.Push(std::string("Save dialog failed: ") + FileDialog::GetLastError(), ToastKind::Error);
             }
             return; // user cancelled or dialog failed - keep previous state
@@ -163,31 +177,42 @@ void PageExport::Draw(AppState& state, AnimationPlayer& player, AnimationLibrary
         std::string rep;
         bool ok = false;
 
-        if (export_format == 0) {
+        if (export_format == 0)
+        {
             // BVH Exporter
             ok = BVHExporter::ExportWithRange(current_anim, opts, use_frame_range ? start_frame : -1,
                                               use_frame_range ? end_frame : -1, err, &rep);
-        } else if (export_format == 1) {
+        }
+        else if (export_format == 1)
+        {
             // Skeleton GLB Exporter
             GLBExporter glb_exp;
             ok = glb_exp.ExportAnimation(current_anim, opts, err);
             rep = glb_exp.GetLastReport();
-        } else {
+        }
+        else
+        {
             // Full Character GLB Exporter
             const CharacterAsset* char_asset = chars.GetActiveAsset();
-            if (char_asset && char_asset->IsLoaded()) {
+            if (char_asset && char_asset->IsLoaded())
+            {
                 CharacterEntry cur_entry;
                 chars.FindEntry(chars.GetActiveId(), cur_entry);
                 ok = CharacterGLBExporter::ExportCharacterGLB(*char_asset, current_anim, cur_entry.mapping, opts, err,
                                                               &rep);
-            } else {
+            }
+            else
+            {
                 err = "No active character loaded for full mesh export. Select a character first.";
             }
         }
 
-        if (ok) {
+        if (ok)
+        {
             toasts.Push("Export successful: " + out_path.filename().string(), ToastKind::Success);
-        } else {
+        }
+        else
+        {
             toasts.Push("Export failed: " + err, ToastKind::Error);
         }
     }

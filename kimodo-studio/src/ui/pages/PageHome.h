@@ -2,11 +2,13 @@
 
 #include "app/AppState.h"
 
-namespace studio {
+namespace studio
+{
 class AnimationLibrary;
 class CharacterLibrary;
 
-class PageHome {
+class PageHome
+{
 public:
     static void Draw(AppState& state, AnimationLibrary& lib, CharacterLibrary& chars);
 };

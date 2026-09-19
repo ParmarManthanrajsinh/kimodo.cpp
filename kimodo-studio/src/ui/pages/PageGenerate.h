@@ -2,12 +2,14 @@
 
 #include "app/AppState.h"
 
-namespace studio {
+namespace studio
+{
 class KimodoEngine;
 class ModelManager;
 class Toasts;
 
-class PageGenerate {
+class PageGenerate
+{
 public:
     static void Draw(AppState& state, KimodoEngine& engine, ModelManager& models, Toasts& toasts);
 };

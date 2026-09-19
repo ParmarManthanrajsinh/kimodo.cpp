@@ -2,9 +2,11 @@
 
 #include "animation/Skeleton.h"
 
-namespace studio {
+namespace studio
+{
 
-void Animation::FromMotionResult(const MotionResult& m, float fps_value) {
+void Animation::FromMotionResult(const MotionResult& m, float fps_value)
+{
     frames = m.frames;
     joints = m.joints;
     fps = fps_value;

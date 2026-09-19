@@ -7,12 +7,16 @@
 #include <fstream>
 #include <sstream>
 
-namespace studio {
-namespace {
+namespace studio
+{
+namespace
+{
 
-std::string json_escape(const std::string& s) {
+std::string json_escape(const std::string& s)
+{
     std::string out;
-    for (char c : s) {
+    for (char c : s)
+    {
         if (c == '"' || c == '\\')
             out += '\\';
         out += c;
@@ -22,17 +26,20 @@ std::string json_escape(const std::string& s) {
 
 } // namespace
 
-bool CharacterLibrary::Init() {
+bool CharacterLibrary::Init()
+{
     AppPaths::EnsureDirectories();
     LoadRegistry();
     RegisterDefaultCharacters();
-    if (!entries.empty()) {
+    if (!entries.empty())
+    {
         SelectCharacter(entries.front().id);
     }
     return true;
 }
 
-void CharacterLibrary::RegisterDefaultCharacters() {
+void CharacterLibrary::RegisterDefaultCharacters()
+{
     // Check if CesiumMan already registered
     auto it =
         std::find_if(entries.begin(), entries.end(), [](const CharacterEntry& e) { return e.id == "cesium-man"; });
@@ -45,11 +52,14 @@ void CharacterLibrary::RegisterDefaultCharacters() {
         "RightForeArm", "RightHand", "LeftLeg",     "LeftShin",    "LeftFoot",      "LeftToeBase",
         "RightLeg",     "RightShin", "RightFoot",   "RightToeBase"};
 
-    if (std::filesystem::is_regular_file(cesium_path, ec) && !ec) {
-        if (it == entries.end()) {
+    if (std::filesystem::is_regular_file(cesium_path, ec) && !ec)
+    {
+        if (it == entries.end())
+        {
             CharacterAsset temp;
             std::string err;
-            if (CharacterLoader::LoadGLB(cesium_path.string(), temp, err)) {
+            if (CharacterLoader::LoadGLB(cesium_path.string(), temp, err))
+            {
                 CharacterEntry entry;
                 entry.id = "cesium-man";
                 entry.name = "Cesium Man (glTF Sample)";
@@ -63,11 +73,14 @@ void CharacterLibrary::RegisterDefaultCharacters() {
                 entries.push_back(std::move(entry));
                 SaveRegistry();
             }
-        } else {
+        }
+        else
+        {
             // Re-evaluate mapping in case alias tables improved
             CharacterAsset temp;
             std::string err;
-            if (CharacterLoader::LoadGLB(cesium_path.string(), temp, err)) {
+            if (CharacterLoader::LoadGLB(cesium_path.string(), temp, err))
+            {
                 it->mapping = CharacterMapper::AutoMap(temp, dummy_source);
                 it->bone_count = static_cast<int>(temp.GetBones().size());
                 it->vertex_count = static_cast<int>(temp.GetSkinningData().vertices.size());
@@ -77,7 +90,8 @@ void CharacterLibrary::RegisterDefaultCharacters() {
     }
 }
 
-void CharacterLibrary::LoadRegistry() {
+void CharacterLibrary::LoadRegistry()
+{
     entries.clear();
     const auto reg_path = AppPaths::CharacterRegistryFile();
     std::ifstream file(reg_path);
@@ -90,10 +104,12 @@ void CharacterLibrary::LoadRegistry() {
     const std::string text = buffer.str();
 
     size_t pos = 0;
-    while ((pos = text.find("{\"id\":\"", pos)) != std::string::npos) {
+    while ((pos = text.find("{\"id\":\"", pos)) != std::string::npos)
+    {
         CharacterEntry e;
         size_t id_end = text.find('"', pos + 7);
-        if (id_end != std::string::npos) {
+        if (id_end != std::string::npos)
+        {
             e.id = text.substr(pos + 7, id_end - (pos + 7));
         }
 
@@ -101,7 +117,8 @@ void CharacterLibrary::LoadRegistry() {
         auto get_prop = [&](const std::string& key) -> std::string {
             std::string pat = "\"" + key + "\":\"";
             size_t p = text.find(pat, pos);
-            if (p != std::string::npos && p < text.find("}", pos)) {
+            if (p != std::string::npos && p < text.find("}", pos))
+            {
                 size_t start = p + pat.size();
                 size_t end = text.find('"', start);
                 if (end != std::string::npos)
@@ -118,7 +135,8 @@ void CharacterLibrary::LoadRegistry() {
         std::error_code ec;
         e.installed = std::filesystem::exists(e.file_path, ec) && !ec;
 
-        if (!e.id.empty()) {
+        if (!e.id.empty())
+        {
             entries.push_back(e);
         }
         pos = text.find('}', pos);
@@ -128,14 +146,16 @@ void CharacterLibrary::LoadRegistry() {
     }
 }
 
-void CharacterLibrary::SaveRegistry() {
+void CharacterLibrary::SaveRegistry()
+{
     const auto reg_path = AppPaths::CharacterRegistryFile();
     std::ofstream file(reg_path, std::ios::trunc);
     if (!file.is_open())
         return;
 
     file << "[\n";
-    for (size_t i = 0; i < entries.size(); ++i) {
+    for (size_t i = 0; i < entries.size(); ++i)
+    {
         const auto& e = entries[i];
         file << "  {\n"
              << "    \"id\": \"" << json_escape(e.id) << "\",\n"
@@ -151,14 +171,16 @@ void CharacterLibrary::SaveRegistry() {
     file << "]\n";
 }
 
-bool CharacterLibrary::SelectCharacter(const std::string& id) {
+bool CharacterLibrary::SelectCharacter(const std::string& id)
+{
     auto it = std::find_if(entries.begin(), entries.end(), [&id](const CharacterEntry& e) { return e.id == id; });
     if (it == entries.end())
         return false;
 
     auto asset = std::make_unique<CharacterAsset>();
     std::string err;
-    if (!CharacterLoader::LoadGLB(it->file_path, *asset, err)) {
+    if (!CharacterLoader::LoadGLB(it->file_path, *asset, err))
+    {
         Logger::GetInstance().Error("Failed loading character " + id + ": " + err);
         return false;
     }
@@ -169,10 +191,12 @@ bool CharacterLibrary::SelectCharacter(const std::string& id) {
     return true;
 }
 
-bool CharacterLibrary::ImportCharacter(const std::string& source_path, std::string& error) {
+bool CharacterLibrary::ImportCharacter(const std::string& source_path, std::string& error)
+{
     std::filesystem::path src(source_path);
     std::error_code ec;
-    if (!std::filesystem::is_regular_file(src, ec) || ec) {
+    if (!std::filesystem::is_regular_file(src, ec) || ec)
+    {
         error = "File does not exist: " + source_path;
         return false;
     }
@@ -182,7 +206,8 @@ bool CharacterLibrary::ImportCharacter(const std::string& source_path, std::stri
     std::filesystem::copy_file(src, dest, std::filesystem::copy_options::overwrite_existing, ec);
 
     CharacterAsset test_asset;
-    if (!CharacterLoader::LoadGLB(dest.string(), test_asset, error)) {
+    if (!CharacterLoader::LoadGLB(dest.string(), test_asset, error))
+    {
         return false;
     }
 
@@ -199,9 +224,12 @@ bool CharacterLibrary::ImportCharacter(const std::string& source_path, std::stri
     // Check if ID exists, update or add
     auto it =
         std::find_if(entries.begin(), entries.end(), [&entry](const CharacterEntry& e) { return e.id == entry.id; });
-    if (it != entries.end()) {
+    if (it != entries.end())
+    {
         *it = entry;
-    } else {
+    }
+    else
+    {
         entries.push_back(entry);
     }
 
@@ -210,24 +238,28 @@ bool CharacterLibrary::ImportCharacter(const std::string& source_path, std::stri
     return true;
 }
 
-bool CharacterLibrary::RemoveCharacter(const std::string& id) {
+bool CharacterLibrary::RemoveCharacter(const std::string& id)
+{
     auto it = std::find_if(entries.begin(), entries.end(), [&id](const CharacterEntry& e) { return e.id == id; });
     if (it == entries.end())
         return false;
 
     entries.erase(it);
     SaveRegistry();
-    if (active_id == id) {
+    if (active_id == id)
+    {
         active_asset.reset();
         active_id.clear();
-        if (!entries.empty()) {
+        if (!entries.empty())
+        {
             SelectCharacter(entries.front().id);
         }
     }
     return true;
 }
 
-bool CharacterLibrary::SaveMapping(const std::string& id, const CharacterBoneMap& mapping) {
+bool CharacterLibrary::SaveMapping(const std::string& id, const CharacterBoneMap& mapping)
+{
     auto it = std::find_if(entries.begin(), entries.end(), [&id](const CharacterEntry& e) { return e.id == id; });
     if (it == entries.end())
         return false;
@@ -235,7 +267,8 @@ bool CharacterLibrary::SaveMapping(const std::string& id, const CharacterBoneMap
     return true;
 }
 
-bool CharacterLibrary::FindEntry(const std::string& id, CharacterEntry& out_entry) const {
+bool CharacterLibrary::FindEntry(const std::string& id, CharacterEntry& out_entry) const
+{
     auto it = std::find_if(entries.begin(), entries.end(), [&id](const CharacterEntry& e) { return e.id == id; });
     if (it == entries.end())
         return false;
@@ -243,7 +276,8 @@ bool CharacterLibrary::FindEntry(const std::string& id, CharacterEntry& out_entr
     return true;
 }
 
-void CharacterLibrary::Rescan() {
+void CharacterLibrary::Rescan()
+{
     LoadRegistry();
     RegisterDefaultCharacters();
 }

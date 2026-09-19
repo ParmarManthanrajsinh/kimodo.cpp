@@ -5,23 +5,27 @@
 #include <vector>
 #include "animation/Animation.h"
 
-namespace studio {
+namespace studio
+{
 
 // SOMA Presentation Skeleton (expanded presentation layer, separate from SOMA30 inference backend)
-struct SomaPresentationSpec {
+struct SomaPresentationSpec
+{
     static const std::vector<std::string>& joint_names();
     static const std::vector<int>& parents();
     static const std::vector<std::array<float, 3>>& default_offsets();
     static int joint_index(const std::string& name);
 };
 
-class SomaPresentation {
+class SomaPresentation
+{
 public:
     // Expand a SOMA-30 animation into the rich presentation skeleton
     static bool ExpandSoma30(const Animation& soma30Anim, Animation& out_presentation, std::string& error);
 
     // Validate any animation skeleton representation
-    struct ValidationResult {
+    struct ValidationResult
+    {
         bool valid = true;
         bool is_finite = true;
         bool hierarchy_valid = true;

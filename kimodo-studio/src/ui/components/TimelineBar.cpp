@@ -8,9 +8,11 @@
 #include <cstdio>
 #include <string>
 
-namespace studio {
+namespace studio
+{
 
-void TimelineBar::Draw(AppState& state, AnimationPlayer& player, float panel_width) {
+void TimelineBar::Draw(AppState& state, AnimationPlayer& player, float panel_width)
+{
     ImGuiViewport* vp = ImGui::GetMainViewport();
     const float side_w = state.side_width;
     const float viewport_w = vp->Size.x - side_w - panel_width;
@@ -36,7 +38,8 @@ void TimelineBar::Draw(AppState& state, AnimationPlayer& player, float panel_wid
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 4));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 6));
 
-    if (ImGui::Begin("##FloatingTimelineBar", nullptr, flags)) {
+    if (ImGui::Begin("##FloatingTimelineBar", nullptr, flags))
+    {
         const int cur_frame = player.Frame();
         const int total_frames = std::max(1, player.GetTotalFrames());
         const float cur_time = player.GetTime();
@@ -51,7 +54,8 @@ void TimelineBar::Draw(AppState& state, AnimationPlayer& player, float panel_wid
         ImGui::SameLine(0, 14);
 
         // First frame |<<
-        if (ImGui::Button(icons::kFirst, ImVec2(26, ctrl_h))) {
+        if (ImGui::Button(icons::kFirst, ImVec2(26, ctrl_h)))
+        {
             player.Restart();
         }
         ImGui::SameLine();
@@ -66,7 +70,8 @@ void TimelineBar::Draw(AppState& state, AnimationPlayer& player, float panel_wid
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 13.0f);
 
-            if (ImGui::Button(is_playing ? icons::kPause : icons::kPlay, ImVec2(26, ctrl_h))) {
+            if (ImGui::Button(is_playing ? icons::kPause : icons::kPlay, ImVec2(26, ctrl_h)))
+            {
                 player.TogglePlay();
             }
 
@@ -76,21 +81,26 @@ void TimelineBar::Draw(AppState& state, AnimationPlayer& player, float panel_wid
         ImGui::SameLine();
 
         // Last frame >>|
-        if (ImGui::Button(icons::kLast, ImVec2(26, ctrl_h))) {
+        if (ImGui::Button(icons::kLast, ImVec2(26, ctrl_h)))
+        {
             player.SeekFrame(total_frames - 1);
         }
         ImGui::SameLine();
 
         // Loop toggle pill switch
         bool is_loop = player.IsLooping();
-        if (is_loop) {
+        if (is_loop)
+        {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.28f, 0.18f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::accent);
-        } else {
+        }
+        else
+        {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.14f, 0.18f, 0.6f));
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.65f, 0.70f, 0.78f, 1.0f));
         }
-        if (ImGui::Button(is_loop ? "● Loop" : "○ Loop", ImVec2(58, ctrl_h))) {
+        if (ImGui::Button(is_loop ? "● Loop" : "○ Loop", ImVec2(58, ctrl_h)))
+        {
             player.SetLoop(!is_loop);
         }
         ImGui::PopStyleColor(2);
@@ -114,7 +124,8 @@ void TimelineBar::Draw(AppState& state, AnimationPlayer& player, float panel_wid
 
         // Right-side controls (FPS dropdown, Playback speed)
         const float right_controls_width = 160.0f;
-        if (ImGui::GetContentRegionAvail().x > right_controls_width) {
+        if (ImGui::GetContentRegionAvail().x > right_controls_width)
+        {
             ImGui::SameLine(ImGui::GetWindowWidth() - right_controls_width - 14.0f);
         }
 
@@ -122,7 +133,8 @@ void TimelineBar::Draw(AppState& state, AnimationPlayer& player, float panel_wid
         ImGui::SetNextItemWidth(74);
         static const char* fps_options[] = {"FPS 24", "FPS 30", "FPS 60"};
         int fps_idx = (state.target_fps == 60) ? 2 : ((state.target_fps == 24) ? 0 : 1);
-        if (ImGui::Combo("##FpsCombo", &fps_idx, fps_options, IM_ARRAYSIZE(fps_options))) {
+        if (ImGui::Combo("##FpsCombo", &fps_idx, fps_options, IM_ARRAYSIZE(fps_options)))
+        {
             state.target_fps = (fps_idx == 2) ? 60 : ((fps_idx == 0) ? 24 : 30);
         }
 
@@ -132,13 +144,16 @@ void TimelineBar::Draw(AppState& state, AnimationPlayer& player, float panel_wid
         static const char* speed_labels[] = {"0.25x", "0.5x", "1.0x", "1.5x", "2.0x"};
         static const float speed_values[] = {0.25f, 0.5f, 1.0f, 1.5f, 2.0f};
         int speed_idx = 2; // Default 1.0x
-        for (int i = 0; i < 5; ++i) {
-            if (std::abs(state.playback_speed - speed_values[i]) < 0.05f) {
+        for (int i = 0; i < 5; ++i)
+        {
+            if (std::abs(state.playback_speed - speed_values[i]) < 0.05f)
+            {
                 speed_idx = i;
                 break;
             }
         }
-        if (ImGui::Combo("##SpeedCombo", &speed_idx, speed_labels, IM_ARRAYSIZE(speed_labels))) {
+        if (ImGui::Combo("##SpeedCombo", &speed_idx, speed_labels, IM_ARRAYSIZE(speed_labels)))
+        {
             state.playback_speed = speed_values[speed_idx];
         }
 
@@ -156,10 +171,12 @@ void TimelineBar::Draw(AppState& state, AnimationPlayer& player, float panel_wid
         bool scrub_hovered = ImGui::IsItemHovered();
         bool scrub_active = ImGui::IsItemActive();
 
-        if (scrub_hovered || scrub_active) {
+        if (scrub_hovered || scrub_active)
+        {
             ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
         }
-        if (scrub_active) {
+        if (scrub_active)
+        {
             float mouse_x = ImGui::GetIO().MousePos.x;
             float frac = std::clamp((mouse_x - track_pos.x) / avail_w, 0.0f, 1.0f);
             int scrubbed_frame = static_cast<int>(frac * (total_frames - 1));
@@ -175,7 +192,8 @@ void TimelineBar::Draw(AppState& state, AnimationPlayer& player, float panel_wid
         float progress_frac = (total_frames > 1) ? (static_cast<float>(cur_frame) / (total_frames - 1)) : 0.0f;
         progress_frac = std::clamp(progress_frac, 0.0f, 1.0f);
         float fill_x = track_pos.x + progress_frac * avail_w;
-        if (fill_x > t_min.x) {
+        if (fill_x > t_min.x)
+        {
             draw->AddRectFilled(t_min, ImVec2(fill_x, t_max.y), IM_COL32(34, 197, 94, 255), 2.0f);
         }
 
@@ -187,7 +205,8 @@ void TimelineBar::Draw(AppState& state, AnimationPlayer& player, float panel_wid
 
         // Frame Ticks & Labels below track (0, 10, 20 ... 120)
         int tick_step = (total_frames > 150) ? 20 : (total_frames > 60 ? 10 : 5);
-        for (int f = 0; f < total_frames; f += tick_step) {
+        for (int f = 0; f < total_frames; f += tick_step)
+        {
             float f_frac = static_cast<float>(f) / static_cast<float>(total_frames - 1);
             float tx = track_pos.x + f_frac * avail_w;
             draw->AddLine(ImVec2(tx, t_max.y + 2.0f), ImVec2(tx, t_max.y + 6.0f), IM_COL32(90, 100, 120, 180), 1.0f);

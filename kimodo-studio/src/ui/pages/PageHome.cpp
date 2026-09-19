@@ -5,9 +5,11 @@
 #include "ui/Icons.h"
 #include "ui/Theme.h"
 
-namespace studio {
+namespace studio
+{
 
-void PageHome::Draw(AppState& state, AnimationLibrary& lib, CharacterLibrary& chars) {
+void PageHome::Draw(AppState& state, AnimationLibrary& lib, CharacterLibrary& chars)
+{
     ImGui::TextColored(UIStyle::accent, "%s Welcome to Kimodo Studio", icons::kKimodo);
     ImGui::TextDisabled("C++23 AI Character Motion Generation & Animation Workstation");
     ImGui::Spacing();
@@ -34,16 +36,19 @@ void PageHome::Draw(AppState& state, AnimationLibrary& lib, CharacterLibrary& ch
     ImGui::TextColored(UIStyle::text, "Quick Actions");
     ImGui::Spacing();
 
-    if (ImGui::Button(ICON_FA_GENERATE "  New Motion Generation", ImVec2(240, 42))) {
+    if (ImGui::Button(ICON_FA_GENERATE "  New Motion Generation", ImVec2(240, 42)))
+    {
         state.screen = Screen::Generate;
         state.last_tool_screen = Screen::Generate;
     }
     ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_USER "  Manage 3D Characters", ImVec2(240, 42))) {
+    if (ImGui::Button(ICON_FA_USER "  Manage 3D Characters", ImVec2(240, 42)))
+    {
         state.screen = Screen::Characters;
     }
     ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_EXPORT "  Export for Unreal / Blender", ImVec2(240, 42))) {
+    if (ImGui::Button(ICON_FA_EXPORT "  Export for Unreal / Blender", ImVec2(240, 42)))
+    {
         state.screen = Screen::Export;
         state.last_tool_screen = Screen::Export;
     }

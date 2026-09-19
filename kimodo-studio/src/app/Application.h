@@ -10,9 +10,11 @@
 #include "ui/Toast.h"
 #include "ui/UIManager.h"
 
-namespace studio {
+namespace studio
+{
 
-class Application {
+class Application
+{
 public:
     bool Init(int width = 1280, int height = 800);
     void Run(int max_frames = 0, const char* screenshot_path = nullptr);

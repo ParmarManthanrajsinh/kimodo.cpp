@@ -3,16 +3,22 @@
 #include "ui/Icons.h"
 #include "ui/Theme.h"
 
-namespace studio {
-namespace {
+namespace studio
+{
+namespace
+{
 
-bool draw_nav_button(const char* icon, const char* label, bool active) {
+bool draw_nav_button(const char* icon, const char* label, bool active)
+{
     ImVec2 size(ImGui::GetContentRegionAvail().x, 36.0f);
-    if (active) {
+    if (active)
+    {
         ImGui::PushStyleColor(ImGuiCol_Button, UIStyle::accent);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.85f, 0.44f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05f, 0.05f, 0.08f, 1.0f));
-    } else {
+    }
+    else
+    {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.12f, 0.14f, 0.18f, 0.5f));
         ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::text);
@@ -30,7 +36,8 @@ bool draw_nav_button(const char* icon, const char* label, bool active) {
 
 } // namespace
 
-void NavRail::Draw(AppState& state) {
+void NavRail::Draw(AppState& state)
+{
     ImGuiViewport* vp = ImGui::GetMainViewport();
     const float side_w = state.side_width;
     ImGui::SetNextWindowPos(ImVec2(vp->Pos.x, vp->Pos.y + UIStyle::top_h));
@@ -44,22 +51,27 @@ void NavRail::Draw(AppState& state) {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 12));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, UIStyle::panel);
 
-    if (ImGui::Begin("##NavRail", nullptr, flags)) {
+    if (ImGui::Begin("##NavRail", nullptr, flags))
+    {
         ImGui::TextDisabled("WORKSPACE");
         ImGui::Spacing();
 
-        if (draw_nav_button(icons::kHome, "Home", state.screen == Screen::Home)) {
+        if (draw_nav_button(icons::kHome, "Home", state.screen == Screen::Home))
+        {
             state.screen = Screen::Home;
         }
-        if (draw_nav_button(icons::kGenerate, "Generate", state.screen == Screen::Generate)) {
+        if (draw_nav_button(icons::kGenerate, "Generate", state.screen == Screen::Generate))
+        {
             state.screen = Screen::Generate;
             state.last_tool_screen = Screen::Generate;
         }
-        if (draw_nav_button(icons::kRetarget, "Retarget", state.screen == Screen::Retarget)) {
+        if (draw_nav_button(icons::kRetarget, "Retarget", state.screen == Screen::Retarget))
+        {
             state.screen = Screen::Retarget;
             state.last_tool_screen = Screen::Retarget;
         }
-        if (draw_nav_button(icons::kExport, "Export", state.screen == Screen::Export)) {
+        if (draw_nav_button(icons::kExport, "Export", state.screen == Screen::Export))
+        {
             state.screen = Screen::Export;
             state.last_tool_screen = Screen::Export;
         }
@@ -71,13 +83,16 @@ void NavRail::Draw(AppState& state) {
         ImGui::TextDisabled("ASSETS");
         ImGui::Spacing();
 
-        if (draw_nav_button(icons::kFolder, "Library", state.screen == Screen::Library)) {
+        if (draw_nav_button(icons::kFolder, "Library", state.screen == Screen::Library))
+        {
             state.screen = Screen::Library;
         }
-        if (draw_nav_button(icons::kUser, "Characters", state.screen == Screen::Characters)) {
+        if (draw_nav_button(icons::kUser, "Characters", state.screen == Screen::Characters))
+        {
             state.screen = Screen::Characters;
         }
-        if (draw_nav_button(icons::kCube, "Models", state.screen == Screen::Models)) {
+        if (draw_nav_button(icons::kCube, "Models", state.screen == Screen::Models))
+        {
             state.screen = Screen::Models;
         }
 
@@ -88,7 +103,8 @@ void NavRail::Draw(AppState& state) {
         ImGui::TextDisabled("SYSTEM");
         ImGui::Spacing();
 
-        if (draw_nav_button(icons::kSettings, "Settings", state.screen == Screen::settings)) {
+        if (draw_nav_button(icons::kSettings, "Settings", state.screen == Screen::settings))
+        {
             state.screen = Screen::settings;
         }
     }

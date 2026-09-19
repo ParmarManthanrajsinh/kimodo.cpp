@@ -4,9 +4,11 @@
 #include "ui/Icons.h"
 #include "ui/Theme.h"
 
-namespace studio {
+namespace studio
+{
 
-void StatusBar::Draw(AppState& state, Viewport& viewport) {
+void StatusBar::Draw(AppState& state, Viewport& viewport)
+{
     (void)viewport;
     ImGuiViewport* vp = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(ImVec2(vp->Pos.x, vp->Pos.y + vp->Size.y - UIStyle::status_h));
@@ -20,7 +22,8 @@ void StatusBar::Draw(AppState& state, Viewport& viewport) {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 4));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, UIStyle::bg);
 
-    if (ImGui::Begin("##StatusBar", nullptr, flags)) {
+    if (ImGui::Begin("##StatusBar", nullptr, flags))
+    {
         // Left side: ● Ready | Loaded animation: ...
         ImGui::TextColored(UIStyle::green, "%s", icons::kCheckCircle);
         ImGui::SameLine(0, 6);

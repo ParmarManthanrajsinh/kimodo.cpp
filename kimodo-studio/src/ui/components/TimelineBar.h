@@ -3,9 +3,11 @@
 #include "animation/AnimationPlayer.h"
 #include "app/AppState.h"
 
-namespace studio {
+namespace studio
+{
 
-class TimelineBar {
+class TimelineBar
+{
 public:
     static void Draw(AppState& state, AnimationPlayer& player, float panel_width);
 };

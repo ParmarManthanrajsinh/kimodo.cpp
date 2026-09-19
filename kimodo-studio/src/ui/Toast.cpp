@@ -8,11 +8,16 @@
 
 #include <algorithm>
 
-namespace studio {
+namespace studio
+{
 
-void Toasts::Push(const std::string& text, ToastKind kind) { items.push_back({text, kind, GetTime() + 4.0}); }
+void Toasts::Push(const std::string& text, ToastKind kind)
+{
+    items.push_back({text, kind, GetTime() + 4.0});
+}
 
-void Toasts::Draw() {
+void Toasts::Draw()
+{
     const double now = GetTime();
     items.erase(std::remove_if(items.begin(), items.end(), [now](const Toast& t) { return t.expiresAt < now; }),
                 items.end());
@@ -25,11 +30,13 @@ void Toasts::Draw() {
     const float base_x = UIStyle::side_w + 16.0f;
     float y = base_y;
     int idx = 0;
-    for (auto it = items.rbegin(); it != items.rend(); ++it) {
+    for (auto it = items.rbegin(); it != items.rend(); ++it)
+    {
         const Toast& t = *it;
         ImVec4 color;
         const char* icon = "";
-        switch (t.kind) {
+        switch (t.kind)
+        {
         case ToastKind::Success:
             color = ImVec4(0.30f, 0.85f, 0.45f, 1.0f);
             icon = studio::icons::kCheckCircle;

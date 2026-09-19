@@ -5,15 +5,24 @@
 #include <vector>
 #include "animation/Animation.h"
 
-namespace studio {
+namespace studio
+{
 
-enum class RootMotion { Preserve, LockX, LockXZ, Zero };
+enum class RootMotion
+{
+    Preserve,
+    LockX,
+    LockXZ,
+    Zero
+};
 
-struct Mat3 {
+struct Mat3
+{
     float m[3][3];
 };
 
-struct Quat {
+struct Quat
+{
     float x, y, z, w;
 };
 
@@ -23,7 +32,8 @@ Quat QuatNormalize(Quat q);
 Mat3 Mat3FromQuat(Quat q);
 Quat QuatFromMat3(const Mat3& m);
 
-struct ExportPreset {
+struct ExportPreset
+{
     std::string id;      // "bvh-humanoid", "blender", "generic"
     std::string name;    // "BVH Humanoid (for Unreal / DCC)", "Blender"
     std::string profile; // "blender-generic" or ""

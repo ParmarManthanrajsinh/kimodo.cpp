@@ -6,17 +6,23 @@
 
 #include <cstring>
 
-namespace studio {
+namespace studio
+{
 
-struct KimodoAdapter::handle {
+struct KimodoAdapter::handle
+{
 #ifdef KIMODO_HAVE_BACKEND
     kimodo_model* model = nullptr;
 #endif
 };
 
-KimodoAdapter::~KimodoAdapter() { Unload(); }
+KimodoAdapter::~KimodoAdapter()
+{
+    Unload();
+}
 
-int KimodoAdapter::AbiVersion() {
+int KimodoAdapter::AbiVersion()
+{
 #ifdef KIMODO_HAVE_BACKEND
     return kimodo_abi_version();
 #else
@@ -24,7 +30,8 @@ int KimodoAdapter::AbiVersion() {
 #endif
 }
 
-bool KimodoAdapter::Load(const std::string& motion_gguf, const std::string& text_bundle, std::string& error) {
+bool KimodoAdapter::Load(const std::string& motion_gguf, const std::string& text_bundle, std::string& error)
+{
 #ifdef KIMODO_HAVE_BACKEND
     Unload();
     kimodo_runtime_options opts{};
@@ -35,7 +42,8 @@ bool KimodoAdapter::Load(const std::string& motion_gguf, const std::string& text
     char err[1024] = {};
     handle* h = new handle();
     h->model = kimodo_model_load(motion_gguf.c_str(), text_bundle.c_str(), nullptr, &opts, err, sizeof(err));
-    if (!h->model) {
+    if (!h->model)
+    {
         error = err[0] ? err : "kimodo_model_load failed";
         last_error = error;
         delete h;
@@ -51,13 +59,18 @@ bool KimodoAdapter::Load(const std::string& motion_gguf, const std::string& text
 #endif
 }
 
-namespace {
+namespace
+{
 #ifdef KIMODO_HAVE_BACKEND
-int progressTrampoline(unsigned done, unsigned total, void* user) noexcept {
+int progressTrampoline(unsigned done, unsigned total, void* user) noexcept
+{
     auto* fn = static_cast<KimodoAdapter::ProgressFn*>(user);
-    try {
+    try
+    {
         return (*fn)(done, total) ? 1 : 0;
-    } catch (...) {
+    }
+    catch (...)
+    {
         return 1; // never let exceptions cross the C boundary; treat as cancel
     }
 }
@@ -65,9 +78,11 @@ int progressTrampoline(unsigned done, unsigned total, void* user) noexcept {
 } // namespace
 
 bool KimodoAdapter::Generate(const std::string& prompt, const GenerationParams& params, MotionResult& out,
-                             std::string& error, ProgressFn progress) {
+                             std::string& error, ProgressFn progress)
+{
 #ifdef KIMODO_HAVE_BACKEND
-    if (!loaded || !HandlePtr || !HandlePtr->model) {
+    if (!loaded || !HandlePtr || !HandlePtr->model)
+    {
         error = "model not loaded";
         last_error = error;
         return false;
@@ -83,17 +98,20 @@ bool KimodoAdapter::Generate(const std::string& prompt, const GenerationParams& 
     kimodo_motion* motion =
         kimodo_generate_with_progress(HandlePtr->model, prompt.c_str(), &opts, progress ? &progressTrampoline : nullptr,
                                       progress ? &progress : nullptr, err, sizeof(err));
-    if (!motion) {
+    if (!motion)
+    {
         error = err[0] ? err : "kimodo_generate failed";
         last_error = error;
         return false;
     }
     out.frames = kimodo_motion_frames(motion);
     out.joints = kimodo_motion_joints(motion);
-    if (const float* r = kimodo_motion_local_rotations_xyzw(motion)) {
+    if (const float* r = kimodo_motion_local_rotations_xyzw(motion))
+    {
         out.local_rotations_xyzw.assign(r, r + static_cast<size_t>(out.frames) * out.joints * 4);
     }
-    if (const float* p = kimodo_motion_root_positions(motion)) {
+    if (const float* p = kimodo_motion_root_positions(motion))
+    {
         out.root_positions.assign(p, p + static_cast<size_t>(out.frames) * 3);
     }
     kimodo_motion_free(motion);
@@ -105,10 +123,13 @@ bool KimodoAdapter::Generate(const std::string& prompt, const GenerationParams& 
 #endif
 }
 
-void KimodoAdapter::Unload() {
+void KimodoAdapter::Unload()
+{
 #ifdef KIMODO_HAVE_BACKEND
-    if (HandlePtr) {
-        if (HandlePtr->model) {
+    if (HandlePtr)
+    {
+        if (HandlePtr->model)
+        {
             kimodo_model_free(HandlePtr->model);
         }
         delete HandlePtr;

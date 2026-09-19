@@ -1,5 +1,4 @@
-# Kimodo Studio — C++23 coding style
-# Apply with: clang-format -i $(git ls-files 'src/**/*.h' 'src/**/*.cpp')
+# Kimodo Studio — Unreal Engine C++ style
 ---
 Language: Cpp
 Standard: Latest
@@ -9,42 +8,63 @@ TabWidth: 4
 UseTab: Never
 ColumnLimit: 120
 
-# Opening braces stay on the end of the line (standard modern C++ style).
-BreakBeforeBraces: Attach
+# Unreal Engine Allman brace style
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterObjCDeclaration: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: false
+  BeforeWhile: true
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
 
-# Pointers/references bind to the type: Texture* tex, const Animation& anim.
+# Pointers/references bind to type (int32* Ptr, const FVector& Vec)
 PointerAlignment: Left
 DerivePointerAlignment: false
 
-AllowShortFunctionsOnASingleLine: All
+# UE short line rules
+AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
-AllowShortCaseLabelsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
 
-# Sort includes deterministically: matching header, C headers, C++ headers,
-# then project headers, each block sorted lexically.
-# Keep author-controlled include order: Windows.h must precede bcrypt.h etc.
-SortIncludes: Never
-IncludeBlocks: Preserve
-IncludeCategories:
-  - Regex: '^"'
-    Priority: 4
-  - Regex: '^<[^/]+\.h>'
-    Priority: 2
-  - Regex: '^<'
-    Priority: 1
+# Templates
+AlwaysBreakTemplateDeclarations: Yes
 
+# Indentation & Alignment
 AccessModifierOffset: -4
+IndentCaseLabels: false
+IndentCaseBlocks: false
+NamespaceIndentation: None
 
 AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
-AlignOperands: true
+AlignOperands: Align
 AlignTrailingComments: true
 
+# Spacing
 SpaceBeforeParens: ControlStatements
 SpaceBeforeRangeBasedForLoopColon: true
 SpaceAfterLogicalNot: false
+SpaceBeforeAssignmentOperators: true
 
+# Includes & Namespaces
+SortIncludes: Never
+IncludeBlocks: Preserve
 Cpp11BracedListStyle: true
 FixNamespaceComments: true
+

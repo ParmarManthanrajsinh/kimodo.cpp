@@ -5,12 +5,14 @@
 #include <vector>
 #include "raylib.h"
 
-namespace studio {
+namespace studio
+{
 
 inline constexpr int kMaxBones = 128;
 inline constexpr int kMaxInfluences = 4;
 
-struct SkinVertex {
+struct SkinVertex
+{
     Vector3 position{0, 0, 0};
     Vector3 normal{0, 1, 0};
     Vector2 texcoord{0, 0};
@@ -18,7 +20,8 @@ struct SkinVertex {
     std::array<float, kMaxInfluences> bone_weights{1.0f, 0.0f, 0.0f, 0.0f};
 };
 
-struct SkinningData {
+struct SkinningData
+{
     std::vector<SkinVertex> vertices;
     std::vector<uint32_t> indices;
     std::vector<Matrix> inverse_bind_matrices; // one per joint

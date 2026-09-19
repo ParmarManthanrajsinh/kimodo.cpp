@@ -1,8 +1,10 @@
 #pragma once
 
-namespace studio {
+namespace studio
+{
 
-class TestSuite {
+class TestSuite
+{
 public:
     static int RunAll();
     static int RunAnimationAndFK();

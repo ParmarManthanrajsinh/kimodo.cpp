@@ -6,7 +6,8 @@
 #include "app/AppState.h"
 #include "raylib.h"
 
-namespace studio {
+namespace studio
+{
 
 class Viewport;
 class KimodoEngine;
@@ -17,7 +18,8 @@ class CharacterLibrary;
 class ModelManager;
 class Toasts;
 
-class UIManager {
+class UIManager
+{
 public:
     using CaptureFn = std::function<void(const LibraryEntry&)>;
 

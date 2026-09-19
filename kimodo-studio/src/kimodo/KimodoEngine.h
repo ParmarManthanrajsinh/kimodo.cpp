@@ -7,9 +7,11 @@
 
 #include "kimodo/KimodoAdapter.h"
 
-namespace studio {
+namespace studio
+{
 
-enum class EngineStatus {
+enum class EngineStatus
+{
     Idle,
     LoadingModel,
     Generating,
@@ -19,10 +21,14 @@ enum class EngineStatus {
 
 // Owns adapter + single worker thread. UI polls status()/message()
 // each frame; worker never touches ImGui or Raylib.
-class KimodoEngine {
+class KimodoEngine
+{
 public:
     KimodoEngine() = default;
-    ~KimodoEngine() { Shutdown(); }
+    ~KimodoEngine()
+    {
+        Shutdown();
+    }
 
     KimodoEngine(const KimodoEngine&) = delete;
     KimodoEngine& operator=(const KimodoEngine&) = delete;
@@ -33,16 +39,28 @@ public:
     void RequestGenerate(std::string prompt, GenerationParams params);
     void Cancel();
 
-    EngineStatus GetStatus() const { return status.load(); }
+    EngineStatus GetStatus() const
+    {
+        return status.load();
+    }
     std::string GetMessage() const;
     std::string GetLastPrompt() const;
     bool IsBusy() const;
 
     // Real sampler progress, written by worker callback, read by UI.
     float GetProgress() const;
-    unsigned GetStepsDone() const { return steps_done.load(); }
-    unsigned GetStepsTotal() const { return steps_total.load(); }
-    bool Sampling() const { return sampling.load(); }
+    unsigned GetStepsDone() const
+    {
+        return steps_done.load();
+    }
+    unsigned GetStepsTotal() const
+    {
+        return steps_total.load();
+    }
+    bool Sampling() const
+    {
+        return sampling.load();
+    }
 
     // Unloads model so new paths take effect. No-op while busy.
     void UnloadModel();

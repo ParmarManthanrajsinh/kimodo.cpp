@@ -10,9 +10,11 @@
 
 #include <filesystem>
 
-namespace studio {
+namespace studio
+{
 
-void PageLibrary::Draw(AppState& state, AnimationLibrary& library, AnimationPlayer& player, Toasts& toasts) {
+void PageLibrary::Draw(AppState& state, AnimationLibrary& library, AnimationPlayer& player, Toasts& toasts)
+{
     (void)state;
     ImGui::TextColored(UIStyle::accent, "%s Animation Library", icons::kFolder);
     ImGui::TextDisabled("Browse, load, and manage saved motion animations");
@@ -21,7 +23,8 @@ void PageLibrary::Draw(AppState& state, AnimationLibrary& library, AnimationPlay
     ImGui::Spacing();
 
     const auto& entries = library.GetEntries();
-    if (entries.empty()) {
+    if (entries.empty())
+    {
         ImGui::TextDisabled("Library is empty. Generate motion in the Generate page to save clips here.");
         return;
     }
@@ -30,20 +33,28 @@ void PageLibrary::Draw(AppState& state, AnimationLibrary& library, AnimationPlay
     ImGui::Spacing();
 
     // Import external BVH clip into the library via native file dialog
-    if (ImGui::Button(ICON_FA_FOLDER " Import BVH...")) {
+    if (ImGui::Button(ICON_FA_FOLDER " Import BVH..."))
+    {
         std::string picked;
-        if (FileDialog::OpenFile("bvh", nullptr, picked)) {
+        if (FileDialog::OpenFile("bvh", nullptr, picked))
+        {
             Animation anim;
             std::string err;
-            if (BVHParser::ParseFile(picked, anim, err)) {
+            if (BVHParser::ParseFile(picked, anim, err))
+            {
                 LibraryEntry entry;
                 std::string name = std::filesystem::path(picked).filename().replace_extension().string();
-                if (library.SaveAnimation(name, "imported-bvh", anim, entry)) {
+                if (library.SaveAnimation(name, "imported-bvh", anim, entry))
+                {
                     toasts.Push("Imported BVH: " + name, ToastKind::Success);
-                } else {
+                }
+                else
+                {
                     toasts.Push("Failed to save imported clip", ToastKind::Error);
                 }
-            } else {
+            }
+            else
+            {
                 toasts.Push("BVH parse failed: " + err, ToastKind::Error);
             }
         }
@@ -52,14 +63,16 @@ void PageLibrary::Draw(AppState& state, AnimationLibrary& library, AnimationPlay
 
     auto trim_prompt = [](const std::string& str) -> std::string {
         std::string s = str;
-        while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ' || s.back() == '\t')) {
+        while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ' || s.back() == '\t'))
+        {
             s.pop_back();
         }
         return s;
     };
 
     // Render list of animation cards
-    for (size_t i = 0; i < entries.size(); ++i) {
+    for (size_t i = 0; i < entries.size(); ++i)
+    {
         const auto& e = entries[i];
         ImGui::PushID(static_cast<int>(i));
 
@@ -69,24 +82,31 @@ void PageLibrary::Draw(AppState& state, AnimationLibrary& library, AnimationPlay
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 8));
 
         std::string card_id = "##ClipCard_" + std::to_string(i);
-        if (ImGui::BeginChild(card_id.c_str(), ImVec2(0, 96), true)) {
+        if (ImGui::BeginChild(card_id.c_str(), ImVec2(0, 96), true))
+        {
             std::string clean_prompt = trim_prompt(e.prompt);
             ImGui::TextColored(UIStyle::text, "%s %s", icons::kPlay, clean_prompt.c_str());
             ImGui::TextDisabled("Frames: %d | FPS: %.0f | Duration: %.2fs | Skeleton: %s", e.frames, e.fps,
                                 (e.fps > 0 ? (static_cast<float>(e.frames) / e.fps) : 0.0f), e.skeleton.c_str());
             ImGui::Spacing();
-            if (ImGui::Button(ICON_FA_PLAY " Play in Viewport", ImVec2(140, 24))) {
+            if (ImGui::Button(ICON_FA_PLAY " Play in Viewport", ImVec2(140, 24)))
+            {
                 Animation anim;
-                if (library.LoadAnimation(e, anim)) {
+                if (library.LoadAnimation(e, anim))
+                {
                     player.Load(anim);
                     toasts.Push("Loaded: " + clean_prompt, ToastKind::Success);
-                } else {
+                }
+                else
+                {
                     toasts.Push("Failed to load animation", ToastKind::Error);
                 }
             }
             ImGui::SameLine(0, 8);
-            if (ImGui::Button(ICON_FA_TRASH " Delete", ImVec2(90, 24))) {
-                if (library.Remove(e.id)) {
+            if (ImGui::Button(ICON_FA_TRASH " Delete", ImVec2(90, 24)))
+            {
+                if (library.Remove(e.id))
+                {
                     toasts.Push("Deleted animation clip", ToastKind::Info);
                 }
             }

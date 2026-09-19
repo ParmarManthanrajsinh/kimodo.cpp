@@ -3,9 +3,11 @@
 #include <filesystem>
 #include <string>
 
-namespace studio {
+namespace studio
+{
 
-class AppPaths {
+class AppPaths
+{
 public:
     // Core directory locations
     static std::filesystem::path AppDataDir();

@@ -2,12 +2,17 @@
 
 #include "export/AnimationExporter.h"
 
-namespace studio {
+namespace studio
+{
 
-class BVHExporter : public IAnimationExporter {
+class BVHExporter : public IAnimationExporter
+{
 public:
     bool ExportAnimation(const Animation& animation, const ExportOptions& options, std::string& error) override;
-    std::string GetLastReport() const override { return report; }
+    std::string GetLastReport() const override
+    {
+        return report;
+    }
 
     // Export with optional frame range (startFrame to endFrame, -1 for full)
     static bool ExportWithRange(const Animation& animation, const ExportOptions& options, int start_frame,

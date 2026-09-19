@@ -3,24 +3,33 @@
 #include "raymath.h"
 #include "rlgl.h"
 
-namespace studio {
+namespace studio
+{
 
-SkinningRenderer::~SkinningRenderer() { Shutdown(); }
+SkinningRenderer::~SkinningRenderer()
+{
+    Shutdown();
+}
 
-bool SkinningRenderer::Init() {
+bool SkinningRenderer::Init()
+{
     initialized = true;
     return true;
 }
 
-void SkinningRenderer::Shutdown() {
-    if (initialized) {
+void SkinningRenderer::Shutdown()
+{
+    if (initialized)
+    {
         initialized = false;
     }
 }
 
 void SkinningRenderer::DrawCharacter(CharacterAsset& character, const std::vector<Matrix>& skin_matrices,
-                                     bool wireframe) {
-    if (!character.IsLoaded() || character.GetSkinningData().vertices.empty()) {
+                                     bool wireframe)
+{
+    if (!character.IsLoaded() || character.GetSkinningData().vertices.empty())
+    {
         return;
     }
 
@@ -37,25 +46,31 @@ void SkinningRenderer::DrawCharacter(CharacterAsset& character, const std::vecto
     const Color default_skin_color = Color{210, 215, 225, 255};
     const Color wire_color = Color{56, 168, 232, 255};
 
-    if (wireframe) {
+    if (wireframe)
+    {
         rlEnableWireMode();
     }
 
     // Render each submesh
-    for (const auto& sub : submeshes) {
+    for (const auto& sub : submeshes)
+    {
         if (sub.index_count == 0)
             continue;
 
-        if (sub.has_texture && sub.diffuse_texture.id > 0) {
+        if (sub.has_texture && sub.diffuse_texture.id > 0)
+        {
             rlSetTexture(sub.diffuse_texture.id);
-        } else {
+        }
+        else
+        {
             rlSetTexture(0);
         }
 
         rlBegin(RL_TRIANGLES);
 
         const uint32_t end_idx = sub.index_offset + sub.index_count;
-        for (uint32_t i = sub.index_offset; i < end_idx; ++i) {
+        for (uint32_t i = sub.index_offset; i < end_idx; ++i)
+        {
             if (i >= indices.size())
                 break;
             const uint32_t v_idx = indices[i];
@@ -88,7 +103,8 @@ void SkinningRenderer::DrawCharacter(CharacterAsset& character, const std::vecto
 
     rlSetTexture(0);
 
-    if (wireframe) {
+    if (wireframe)
+    {
         rlDisableWireMode();
     }
 }

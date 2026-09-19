@@ -1,8 +1,10 @@
 #include "retarget/SkeletonProfile.h"
 
-namespace studio {
+namespace studio
+{
 
-const std::vector<SkeletonProfile>& target_profiles() {
+const std::vector<SkeletonProfile>& target_profiles()
+{
     static const std::vector<SkeletonProfile> profiles = [] {
         std::vector<SkeletonProfile> out;
 
@@ -16,7 +18,8 @@ const std::vector<SkeletonProfile>& target_profiles() {
                           "RightArm",    "RightForeArm", "RightHand", "LeftLeg",     "LeftShin",    "LeftFoot",
                           "LeftToeBase", "RightLeg",     "RightShin", "RightFoot",   "RightToeBase"};
         blender.parents = {-1, 0, 1, 2, 3, 4, 5, 3, 7, 8, 9, 3, 11, 12, 13, 0, 15, 16, 17, 0, 19, 20, 21};
-        for (const std::string& j : blender.joints) {
+        for (const std::string& j : blender.joints)
+        {
             blender.default_map.emplace_back(j, j);
         }
         out.push_back(std::move(blender));
@@ -60,9 +63,12 @@ const std::vector<SkeletonProfile>& target_profiles() {
     return profiles;
 }
 
-const SkeletonProfile* FindProfile(const std::string& id) {
-    for (const SkeletonProfile& p : target_profiles()) {
-        if (p.id == id) {
+const SkeletonProfile* FindProfile(const std::string& id)
+{
+    for (const SkeletonProfile& p : target_profiles())
+    {
+        if (p.id == id)
+        {
             return &p;
         }
     }

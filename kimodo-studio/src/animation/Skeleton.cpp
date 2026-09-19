@@ -2,7 +2,8 @@
 
 #include "raymath.h"
 
-namespace studio {
+namespace studio
+{
 
 std::array<std::string_view, kSomaJoints> Soma30Spec::names{"Hips",
                                                             "Spine1",
@@ -71,37 +72,45 @@ std::array<std::array<float, 3>, kSomaJoints> Soma30Spec::offsets{{
     {-3.42907669e-9F, -0.0507960932F, 0.132841956F},
 }};
 
-void Skeleton::ForwardKinematics(const float* local_xyzw, const float* root, std::vector<Vector3>& out) {
+void Skeleton::ForwardKinematics(const float* local_xyzw, const float* root, std::vector<Vector3>& out)
+{
     std::vector<int> parents(Soma30Spec::parents.begin(), Soma30Spec::parents.end());
     std::vector<std::array<float, 3>> offsets(Soma30Spec::offsets.begin(), Soma30Spec::offsets.end());
     ForwardKinematicsGeneral(local_xyzw, root, parents, offsets, out);
 }
 
 void Skeleton::ForwardKinematicsGeneral(const float* local_xyzw, const float* root, const std::vector<int>& parents,
-                                        const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& out) {
+                                        const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& out)
+{
     std::vector<Quaternion> world_rot;
     ForwardKinematicsFull(local_xyzw, root, parents, offsets, out, world_rot);
 }
 
 void Skeleton::ForwardKinematicsFull(const float* local_xyzw, const float* root, const std::vector<int>& parents,
                                      const std::vector<std::array<float, 3>>& offsets, std::vector<Vector3>& out_pos,
-                                     std::vector<Quaternion>& out_rot) {
+                                     std::vector<Quaternion>& out_rot)
+{
     const int J = static_cast<int>(parents.size());
-    if (local_xyzw == nullptr || root == nullptr || static_cast<int>(offsets.size()) != J) {
+    if (local_xyzw == nullptr || root == nullptr || static_cast<int>(offsets.size()) != J)
+    {
         out_pos.clear();
         out_rot.clear();
         return;
     }
     out_pos.resize(J);
     out_rot.resize(J);
-    for (int j = 0; j < J; ++j) {
+    for (int j = 0; j < J; ++j)
+    {
         Quaternion local{local_xyzw[j * 4], local_xyzw[j * 4 + 1], local_xyzw[j * 4 + 2], local_xyzw[j * 4 + 3]};
         local = QuaternionNormalize(local);
         const int p = parents[j];
-        if (p < 0 || p >= J) {
+        if (p < 0 || p >= J)
+        {
             out_rot[j] = local;
             out_pos[j] = {root[0], root[1], root[2]};
-        } else {
+        }
+        else
+        {
             out_rot[j] = QuaternionMultiply(out_rot[p], local);
             const auto& o = offsets[j];
             Vector3 off = Vector3RotateByQuaternion({o[0], o[1], o[2]}, out_rot[p]);

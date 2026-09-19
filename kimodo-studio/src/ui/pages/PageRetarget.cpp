@@ -8,9 +8,11 @@
 #include "ui/Theme.h"
 #include "ui/Toast.h"
 
-namespace studio {
+namespace studio
+{
 
-void PageRetarget::Draw(AppState& state, AnimationLibrary& library, AnimationPlayer& player, Toasts& toasts) {
+void PageRetarget::Draw(AppState& state, AnimationLibrary& library, AnimationPlayer& player, Toasts& toasts)
+{
     (void)state;
     ImGui::TextColored(UIStyle::accent, "%s Skeleton Retargeting (Generic & Blender)", icons::kRetarget);
     ImGui::TextDisabled("Retarget generic humanoid motion to standard DCC skeletons");
@@ -39,9 +41,11 @@ void PageRetarget::Draw(AppState& state, AnimationLibrary& library, AnimationPla
     static std::string selected_profile_id = "blender-generic";
 
     ImGui::Text("Target Skeleton Profile:");
-    for (const auto& prof : profiles) {
+    for (const auto& prof : profiles)
+    {
         bool sel = (prof.id == selected_profile_id);
-        if (ImGui::RadioButton(prof.name.c_str(), sel)) {
+        if (ImGui::RadioButton(prof.name.c_str(), sel))
+        {
             selected_profile_id = prof.id;
         }
         ImGui::SameLine(0, 16);
@@ -55,18 +59,24 @@ void PageRetarget::Draw(AppState& state, AnimationLibrary& library, AnimationPla
     // 2. Source Animation Selector
     const auto& lib_entries = library.GetEntries();
     ImGui::Text("Source Animation from Library:");
-    if (lib_entries.empty()) {
+    if (lib_entries.empty())
+    {
         ImGui::TextDisabled("No animations in library. Generate an animation first.");
-    } else {
+    }
+    else
+    {
         static int selected_anim_idx = 0;
         if (selected_anim_idx >= static_cast<int>(lib_entries.size()))
             selected_anim_idx = 0;
 
         std::string previewName = lib_entries[selected_anim_idx].prompt;
-        if (ImGui::BeginCombo("##SourceAnimCombo", previewName.c_str())) {
-            for (size_t i = 0; i < lib_entries.size(); ++i) {
+        if (ImGui::BeginCombo("##SourceAnimCombo", previewName.c_str()))
+        {
+            for (size_t i = 0; i < lib_entries.size(); ++i)
+            {
                 bool is_sel = (static_cast<int>(i) == selected_anim_idx);
-                if (ImGui::Selectable(lib_entries[i].prompt.c_str(), is_sel)) {
+                if (ImGui::Selectable(lib_entries[i].prompt.c_str(), is_sel))
+                {
                     selected_anim_idx = static_cast<int>(i);
                 }
             }
@@ -81,12 +91,14 @@ void PageRetarget::Draw(AppState& state, AnimationLibrary& library, AnimationPla
 
         if (ImGui::BeginTable("##RetargetMappingTable", 2,
                               ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY,
-                              ImVec2(0, 200))) {
+                              ImVec2(0, 200)))
+        {
             ImGui::TableSetupColumn("Target Joint", ImGuiTableColumnFlags_WidthStretch, 0.5f);
             ImGui::TableSetupColumn("Source Joint", ImGuiTableColumnFlags_WidthStretch, 0.5f);
             ImGui::TableHeadersRow();
 
-            for (const auto& j : target_profile->joints) {
+            for (const auto& j : target_profile->joints)
+            {
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("%s", j.c_str());
@@ -108,22 +120,29 @@ void PageRetarget::Draw(AppState& state, AnimationLibrary& library, AnimationPla
         ImGui::PushStyleColor(ImGuiCol_Button, UIStyle::accent);
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05f, 0.05f, 0.08f, 1.0f));
 
-        if (ImGui::Button(ICON_FA_RETARGET "  Execute Retarget", ImVec2(-1, 40))) {
+        if (ImGui::Button(ICON_FA_RETARGET "  Execute Retarget", ImVec2(-1, 40)))
+        {
             Animation src_anim;
-            if (library.LoadAnimation(lib_entries[selected_anim_idx], src_anim)) {
+            if (library.LoadAnimation(lib_entries[selected_anim_idx], src_anim))
+            {
                 Animation retargeted;
                 std::string err;
                 RetargetReport report;
                 Retargeter::Options ropts;
                 ropts.root_scale = root_scale;
-                if (Retargeter::retarget(src_anim, *target_profile, active_map, ropts, retargeted, err, &report)) {
+                if (Retargeter::retarget(src_anim, *target_profile, active_map, ropts, retargeted, err, &report))
+                {
                     player.Load(retargeted);
                     toasts.Push("Retargeting complete: " + std::to_string(report.mapped_count) + " joints mapped",
                                 ToastKind::Success);
-                } else {
+                }
+                else
+                {
                     toasts.Push("Retargeting failed: " + err, ToastKind::Error);
                 }
-            } else {
+            }
+            else
+            {
                 toasts.Push("Failed to load source animation", ToastKind::Error);
             }
         }

@@ -13,13 +13,19 @@
 #include <wincred.h>
 #endif
 
-namespace studio {
+namespace studio
+{
 
-const char* HFAuthenticator::CredTarget() { return "KimodoStudio/HuggingFace"; }
+const char* HFAuthenticator::CredTarget()
+{
+    return "KimodoStudio/HuggingFace";
+}
 
-bool HFAuthenticator::SaveToken(const std::string& token, std::string& error) {
+bool HFAuthenticator::SaveToken(const std::string& token, std::string& error)
+{
 #if defined(_WIN32)
-    if (token.empty() || token.size() > 4096) {
+    if (token.empty() || token.size() > 4096)
+    {
         error = "invalid token size";
         return false;
     }
@@ -29,7 +35,8 @@ bool HFAuthenticator::SaveToken(const std::string& token, std::string& error) {
     cred.CredentialBlobSize = static_cast<DWORD>(token.size());
     cred.CredentialBlob = reinterpret_cast<LPBYTE>(const_cast<char*>(token.data()));
     cred.Persist = CRED_PERSIST_LOCAL_MACHINE;
-    if (!CredWriteA(&cred, 0)) {
+    if (!CredWriteA(&cred, 0))
+    {
         error = "credential store write failed";
         return false;
     }
@@ -41,10 +48,12 @@ bool HFAuthenticator::SaveToken(const std::string& token, std::string& error) {
 #endif
 }
 
-bool HFAuthenticator::LoadToken(std::string& token) {
+bool HFAuthenticator::LoadToken(std::string& token)
+{
 #if defined(_WIN32)
     PCREDENTIALA cred = nullptr;
-    if (!CredReadA(CredTarget(), CRED_TYPE_GENERIC, 0, &cred)) {
+    if (!CredReadA(CredTarget(), CRED_TYPE_GENERIC, 0, &cred))
+    {
         return false;
     }
     token.assign(reinterpret_cast<char*>(cred->CredentialBlob), cred->CredentialBlobSize);
@@ -57,7 +66,8 @@ bool HFAuthenticator::LoadToken(std::string& token) {
 #endif
 }
 
-bool HFAuthenticator::ClearToken() {
+bool HFAuthenticator::ClearToken()
+{
 #if defined(_WIN32)
     return CredDeleteA(CredTarget(), CRED_TYPE_GENERIC, 0) != FALSE;
 #else
@@ -65,7 +75,8 @@ bool HFAuthenticator::ClearToken() {
 #endif
 }
 
-std::string HFAuthenticator::Validate(const std::string& token, std::string& error) {
+std::string HFAuthenticator::Validate(const std::string& token, std::string& error)
+{
     return HuggingFaceClient::Whoami(token, error);
 }
 

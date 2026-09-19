@@ -4,15 +4,19 @@
 
 #include <algorithm>
 
-namespace studio {
-namespace {
+namespace studio
+{
+namespace
+{
 
-struct AliasEntry {
+struct AliasEntry
+{
     const char* source_joint;
     std::vector<const char*> aliases;
 };
 
-const std::vector<AliasEntry>& getStandardAliases() {
+const std::vector<AliasEntry>& getStandardAliases()
+{
     static const std::vector<AliasEntry> table = {
         {"Hips",
          {"hips", "mixamorig:hips", "skeleton_hips", "pelvis", "bip01_pelvis", "root", "skeleton_torso_joint_1",
@@ -79,11 +83,13 @@ const std::vector<AliasEntry>& getStandardAliases() {
     return table;
 }
 
-std::string normalize_name(const std::string& name) {
+std::string normalize_name(const std::string& name)
+{
     std::string s = name;
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     // Replace colon / dots with underscore for consistent matching
-    for (char& c : s) {
+    for (char& c : s)
+    {
         if (c == ':' || c == '.' || c == '-')
             c = '_';
     }
@@ -92,35 +98,42 @@ std::string normalize_name(const std::string& name) {
 
 } // namespace
 
-CharacterBoneMap CharacterMapper::AutoMap(const CharacterAsset& asset, const std::vector<std::string>& source_joints) {
+CharacterBoneMap CharacterMapper::AutoMap(const CharacterAsset& asset, const std::vector<std::string>& source_joints)
+{
     CharacterBoneMap mapping;
     const auto& alias_table = getStandardAliases();
 
     // Index available source joints
     std::map<std::string, std::string> norm_source_to_source;
-    for (const auto& sj : source_joints) {
+    for (const auto& sj : source_joints)
+    {
         norm_source_to_source[normalize_name(sj)] = sj;
     }
 
-    for (const auto& bone : asset.GetBones()) {
+    for (const auto& bone : asset.GetBones())
+    {
         const std::string norm_bone = normalize_name(bone.name);
         bool matched = false;
 
         // 1. Direct name match
         auto direct_it = norm_source_to_source.find(norm_bone);
-        if (direct_it != norm_source_to_source.end()) {
+        if (direct_it != norm_source_to_source.end())
+        {
             mapping[bone.name] = direct_it->second;
             continue;
         }
 
         // 2. Exact alias match across all table entries
-        for (const auto& entry : alias_table) {
+        for (const auto& entry : alias_table)
+        {
             auto src_it = norm_source_to_source.find(normalize_name(entry.source_joint));
             if (src_it == norm_source_to_source.end())
                 continue;
 
-            for (const char* alias : entry.aliases) {
-                if (norm_bone == normalize_name(alias)) {
+            for (const char* alias : entry.aliases)
+            {
+                if (norm_bone == normalize_name(alias))
+                {
                     mapping[bone.name] = src_it->second;
                     matched = true;
                     break;
@@ -133,14 +146,17 @@ CharacterBoneMap CharacterMapper::AutoMap(const CharacterAsset& asset, const std
             continue;
 
         // 3. Fallback: Substring alias match (only if no exact match exists)
-        for (const auto& entry : alias_table) {
+        for (const auto& entry : alias_table)
+        {
             auto src_it = norm_source_to_source.find(normalize_name(entry.source_joint));
             if (src_it == norm_source_to_source.end())
                 continue;
 
-            for (const char* alias : entry.aliases) {
+            for (const char* alias : entry.aliases)
+            {
                 std::string norm_alias = normalize_name(alias);
-                if (norm_bone.find(norm_alias) != std::string::npos) {
+                if (norm_bone.find(norm_alias) != std::string::npos)
+                {
                     mapping[bone.name] = src_it->second;
                     matched = true;
                     break;
@@ -150,7 +166,8 @@ CharacterBoneMap CharacterMapper::AutoMap(const CharacterAsset& asset, const std
                 break;
         }
 
-        if (!matched) {
+        if (!matched)
+        {
             mapping[bone.name] = "(none)";
         }
     }
@@ -160,9 +177,11 @@ CharacterBoneMap CharacterMapper::AutoMap(const CharacterAsset& asset, const std
 
 bool CharacterMapper::EvaluateSkinMatrices(const CharacterAsset& asset, const Animation& anim, int frame,
                                            const CharacterBoneMap& mapping, std::vector<Matrix>& out_skin_matrices,
-                                           std::vector<Vector3>* out_bone_positions) {
+                                           std::vector<Vector3>* out_bone_positions)
+{
     const size_t num_bones = asset.GetBones().size();
-    if (num_bones == 0 || anim.empty()) {
+    if (num_bones == 0 || anim.empty())
+    {
         return false;
     }
 
@@ -171,7 +190,8 @@ bool CharacterMapper::EvaluateSkinMatrices(const CharacterAsset& asset, const An
 
     // Index source animation joint names
     std::map<std::string, int> source_joint_indices;
-    for (int j = 0; j < num_source_joints; ++j) {
+    for (int j = 0; j < num_source_joints; ++j)
+    {
         source_joint_indices[anim.joint_names[j]] = j;
     }
 
@@ -188,7 +208,8 @@ bool CharacterMapper::EvaluateSkinMatrices(const CharacterAsset& asset, const An
     for (int j = 0; j < num_source_joints; ++j)
         soma_rest_rot[j * 4 + 3] = 1.0f;
     float soma_rest_root[3] = {0.0f, 0.95f, 0.0f};
-    if (!anim.root_positions.empty()) {
+    if (!anim.root_positions.empty())
+    {
         soma_rest_root[0] = anim.root_positions[0];
         soma_rest_root[1] = anim.root_positions[1];
         soma_rest_root[2] = anim.root_positions[2];
@@ -201,7 +222,8 @@ bool CharacterMapper::EvaluateSkinMatrices(const CharacterAsset& asset, const An
     // 3. Extract character rest world transforms
     std::vector<Vector3> target_rest_world_pos(num_bones);
     std::vector<Quaternion> target_rest_world_rot(num_bones);
-    for (size_t b = 0; b < num_bones; ++b) {
+    for (size_t b = 0; b < num_bones; ++b)
+    {
         const Matrix& rw = asset.GetBones()[b].world_transform;
         target_rest_world_pos[b] = Vector3{rw.m12, rw.m13, rw.m14};
         target_rest_world_rot[b] = QuaternionNormalize(QuaternionFromMatrix(rw));
@@ -224,7 +246,8 @@ bool CharacterMapper::EvaluateSkinMatrices(const CharacterAsset& asset, const An
         (soma_hips_height > 0.01f && char_hips_height > 0.01f) ? (char_hips_height / soma_hips_height) : 1.0f;
     soma_root_delta = Vector3Scale(soma_root_delta, root_scale);
 
-    for (size_t b = 0; b < num_bones; ++b) {
+    for (size_t b = 0; b < num_bones; ++b)
+    {
         const auto& bone = asset.GetBones()[b];
         const int p = bone.parent;
 
@@ -232,37 +255,48 @@ bool CharacterMapper::EvaluateSkinMatrices(const CharacterAsset& asset, const An
         bool mapped = false;
         int sj = -1;
         auto map_it = mapping.find(bone.name);
-        if (map_it != mapping.end() && !map_it->second.empty() && map_it->second != "(none)") {
+        if (map_it != mapping.end() && !map_it->second.empty() && map_it->second != "(none)")
+        {
             auto src_it = source_joint_indices.find(map_it->second);
-            if (src_it != source_joint_indices.end()) {
+            if (src_it != source_joint_indices.end())
+            {
                 sj = src_it->second;
-                if (sj >= 0 && sj < static_cast<int>(soma_world_rot.size())) {
+                if (sj >= 0 && sj < static_cast<int>(soma_world_rot.size()))
+                {
                     mapped = true;
                 }
             }
         }
 
-        if (mapped) {
+        if (mapped)
+        {
             // Delta world rotation of SOMA joint from its rest pose
             Quaternion soma_delta_rot =
                 QuaternionMultiply(soma_world_rot[sj], QuaternionInvert(soma_rest_world_rot[sj]));
             target_anim_world_rot[b] =
                 QuaternionNormalize(QuaternionMultiply(soma_delta_rot, target_rest_world_rot[b]));
-        } else if (p >= 0 && p < static_cast<int>(num_bones)) {
+        }
+        else if (p >= 0 && p < static_cast<int>(num_bones))
+        {
             // Follow parent's delta rotation
             Quaternion parentDeltaRot =
                 QuaternionMultiply(target_anim_world_rot[p], QuaternionInvert(target_rest_world_rot[p]));
             target_anim_world_rot[b] =
                 QuaternionNormalize(QuaternionMultiply(parentDeltaRot, target_rest_world_rot[b]));
-        } else {
+        }
+        else
+        {
             target_anim_world_rot[b] = target_rest_world_rot[b];
         }
 
         // Determine position with bone length preservation
-        if (p < 0) {
+        if (p < 0)
+        {
             // Root position: character rest position + SOMA root translation delta
             target_anim_world_pos[b] = Vector3Add(target_rest_world_pos[b], soma_root_delta);
-        } else {
+        }
+        else
+        {
             // Child position: rotate rest bone offset vector by animated parent orientation
             Vector3 rest_offset_world = Vector3Subtract(target_rest_world_pos[b], target_rest_world_pos[p]);
             Vector3 rest_offset_local =
@@ -283,15 +317,20 @@ bool CharacterMapper::EvaluateSkinMatrices(const CharacterAsset& asset, const An
     out_skin_matrices.resize(num_bones);
     const auto& ibms = asset.GetSkinningData().inverse_bind_matrices;
 
-    for (size_t b = 0; b < num_bones; ++b) {
-        if (b < ibms.size()) {
+    for (size_t b = 0; b < num_bones; ++b)
+    {
+        if (b < ibms.size())
+        {
             out_skin_matrices[b] = MatrixMultiply(ibms[b], world_transforms[b]);
-        } else {
+        }
+        else
+        {
             out_skin_matrices[b] = world_transforms[b];
         }
     }
 
-    if (out_bone_positions) {
+    if (out_bone_positions)
+    {
         *out_bone_positions = std::move(target_anim_world_pos);
     }
 

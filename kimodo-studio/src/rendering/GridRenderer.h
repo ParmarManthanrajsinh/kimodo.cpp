@@ -1,8 +1,10 @@
 #pragma once
 
-namespace studio {
+namespace studio
+{
 
-struct GridRenderer {
+struct GridRenderer
+{
     void Draw(bool grid = true, bool axes = true) const;
 };
 

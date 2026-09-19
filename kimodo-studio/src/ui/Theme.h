@@ -2,10 +2,12 @@
 
 #include "imgui.h"
 
-namespace studio {
+namespace studio
+{
 
 // Centralized NVIDIA-grade dark theme + dense editor dimensions & colors.
-struct UIStyle {
+struct UIStyle
+{
     static constexpr float top_h = 46.0f;
     static constexpr float timeline_h = 84.0f;
     static constexpr float status_h = 26.0f;
@@ -28,7 +30,8 @@ struct UIStyle {
     static inline const ImVec4 red = ImVec4(0.95f, 0.30f, 0.30f, 1.0f);
 };
 
-struct Theme {
+struct Theme
+{
     static void Apply();
     // Section header: small caps label + thin rule.
     static void section_header(const char* label);

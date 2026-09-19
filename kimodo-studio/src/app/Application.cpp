@@ -22,16 +22,20 @@
 #define KIMODO_STUDIO_BUILD_DATE "dev"
 #endif
 
-namespace studio {
-namespace {
+namespace studio
+{
+namespace
+{
 
-void load_studio_fonts() {
+void load_studio_fonts()
+{
     ImGuiIO& io = ImGui::GetIO();
 
     // 1. Text font: Roboto-Regular.ttf
     std::filesystem::path roboto_path = AppPaths::ResolveFont("Roboto-Regular.ttf");
     std::error_code ec;
-    if (std::filesystem::is_regular_file(roboto_path, ec) && !ec) {
+    if (std::filesystem::is_regular_file(roboto_path, ec) && !ec)
+    {
         ImFontConfig text_cfg{};
         text_cfg.PixelSnapH = true;
         text_cfg.OversampleH = 2;
@@ -44,14 +48,17 @@ void load_studio_fonts() {
         };
         io.Fonts->AddFontFromFileTTF(roboto_path.string().c_str(), 14.0f, &text_cfg, text_ranges);
         Logger::GetInstance().Info("Text font (Roboto): " + roboto_path.string());
-    } else {
+    }
+    else
+    {
         io.Fonts->AddFontDefault();
         Logger::GetInstance().Info("Text font: default fallback");
     }
 
     // 2. Symbol font: Font Awesome Solid (fa-solid-900.ttf) merged for icon codepoints
     std::filesystem::path fa_path = AppPaths::ResolveFont("fa-solid-900.ttf");
-    if (std::filesystem::is_regular_file(fa_path, ec) && !ec) {
+    if (std::filesystem::is_regular_file(fa_path, ec) && !ec)
+    {
         ImFontConfig cfg{};
         cfg.MergeMode = true;
         cfg.PixelSnapH = true;
@@ -60,14 +67,17 @@ void load_studio_fonts() {
         static const ImWchar ranges[] = {0xf000, 0xf8ff, 0};
         io.Fonts->AddFontFromFileTTF(fa_path.string().c_str(), 13.0f, &cfg, ranges);
         Logger::GetInstance().Info("FA icons: " + fa_path.string());
-    } else {
+    }
+    else
+    {
         Logger::GetInstance().Info("FA icons: font missing, text fallback");
     }
 }
 
 } // namespace
 
-bool Application::Init(int width, int height) {
+bool Application::Init(int width, int height)
+{
     Logger::GetInstance().Init(Logger::DefaultLogFile());
     Logger::GetInstance().Info(std::string("Kimodo Studio ") + KIMODO_STUDIO_VERSION + " (" + KIMODO_STUDIO_GIT_HASH +
                                ") built " + KIMODO_STUDIO_BUILD_DATE);
@@ -78,7 +88,8 @@ bool Application::Init(int width, int height) {
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
     InitWindow(width, height, "Kimodo Studio " KIMODO_STUDIO_VERSION);
-    if (!IsWindowReady()) {
+    if (!IsWindowReady())
+    {
         Logger::GetInstance().Error("Raylib window init failed");
         return false;
     }
@@ -86,9 +97,11 @@ bool Application::Init(int width, int height) {
     // App window icon
     std::filesystem::path icon_path = AppPaths::ResolveAsset("nvidia-logo.png");
     std::error_code ec;
-    if (std::filesystem::is_regular_file(icon_path, ec) && !ec) {
+    if (std::filesystem::is_regular_file(icon_path, ec) && !ec)
+    {
         Image app_icon = LoadImage(icon_path.string().c_str());
-        if (app_icon.data) {
+        if (app_icon.data)
+        {
             SetWindowIcon(app_icon);
             UnloadImage(app_icon);
         }
@@ -110,7 +123,8 @@ bool Application::Init(int width, int height) {
 
     // Active model
     ModelEntry active_model;
-    if (models.find_copy(models.GetActiveId(), active_model) && active_model.installed) {
+    if (models.find_copy(models.GetActiveId(), active_model) && active_model.installed)
+    {
         state.motion_path = active_model.local_path;
         Logger::GetInstance().Info("Active model: " + active_model.name + " (" + active_model.local_path + ")");
     }
@@ -129,18 +143,23 @@ bool Application::Init(int width, int height) {
     viewport.SetWireframe(settings.show_wireframe);
     viewport.SetBoneNames(settings.show_bone_names);
 
-    if (characters.GetActiveAsset()) {
+    if (characters.GetActiveAsset())
+    {
         viewport.SetCharacterAsset(characters.GetActiveAsset());
     }
 
     // Initialize standby T-pose or load initial library animation
-    if (!library.GetEntries().empty()) {
+    if (!library.GetEntries().empty())
+    {
         Animation anim;
-        if (library.LoadAnimation(library.GetEntries().front(), anim)) {
+        if (library.LoadAnimation(library.GetEntries().front(), anim))
+        {
             player.Load(anim);
             player.Play();
         }
-    } else {
+    }
+    else
+    {
         std::vector<float> ident(kSomaJoints * 4, 0.0f);
         for (int i = 0; i < kSomaJoints; ++i)
             ident[i * 4 + 3] = 1.0f;
@@ -157,42 +176,54 @@ bool Application::Init(int width, int height) {
     return true;
 }
 
-void Application::PollEngine() {
+void Application::PollEngine()
+{
     // Keep engine paths synchronized with active installed model
     ModelEntry active_model;
-    if (models.find_copy(models.GetActiveId(), active_model) && active_model.installed) {
-        if (state.motion_path != active_model.local_path) {
+    if (models.find_copy(models.GetActiveId(), active_model) && active_model.installed)
+    {
+        if (state.motion_path != active_model.local_path)
+        {
             state.motion_path = active_model.local_path;
             engine.SetPaths(state.motion_path, AppPaths::ResolveTextBundle("llm2vec-text-bundle").string());
         }
-    } else if (!state.motion_path.empty()) {
+    }
+    else if (!state.motion_path.empty())
+    {
         state.motion_path.clear();
         engine.SetPaths("", AppPaths::ResolveTextBundle("llm2vec-text-bundle").string());
     }
 
     EngineStatus s = engine.GetStatus();
-    if (s == EngineStatus::Finished && s != last_engine_status) {
+    if (s == EngineStatus::Finished && s != last_engine_status)
+    {
         MotionResult result;
-        if (engine.LastResult(result)) {
+        if (engine.LastResult(result))
+        {
             Animation anim;
             anim.FromMotionResult(result);
             player.Load(anim);
             Logger::GetInstance().Info("Viewport: animation loaded, " + std::to_string(anim.frames) + " frames");
             LibraryEntry saved;
-            if (library.SaveAnimation(engine.GetLastPrompt(), "soma-rp-v1.1", anim, saved)) {
+            if (library.SaveAnimation(engine.GetLastPrompt(), "soma-rp-v1.1", anim, saved))
+            {
                 toasts.Push("Animation saved to library", ToastKind::Success);
-            } else {
+            }
+            else
+            {
                 toasts.Push("Animation generated, library save failed", ToastKind::Warning);
             }
         }
     }
-    if (s == EngineStatus::Error && s != last_engine_status) {
+    if (s == EngineStatus::Error && s != last_engine_status)
+    {
         toasts.Push(engine.GetMessage(), ToastKind::Error);
     }
     last_engine_status = s;
 }
 
-void Application::UpdateAnimationAndSkinning() {
+void Application::UpdateAnimationAndSkinning()
+{
     float dt = GetFrameTime();
     player.Update(dt * state.playback_speed);
 
@@ -208,39 +239,54 @@ void Application::UpdateAnimationAndSkinning() {
     viewport.SetModelTransform(state.model_position, state.model_rotation, state.model_scale);
 
     const Animation& cur_anim = player.GetAnimation();
-    if (!cur_anim.empty()) {
+    if (!cur_anim.empty())
+    {
         // 1. SKELETON VIEW: pristine original SOMA skeleton directly from AnimationPlayer
-        if (state.show_skeleton) {
+        if (state.show_skeleton)
+        {
             viewport.SetPose(player.GetWorldPositions(), cur_anim.parents, cur_anim.joint_names);
-        } else {
+        }
+        else
+        {
             viewport.SetPose({}, {});
         }
 
         // 2. CHARACTER PREVIEW: view/consumer of animation, never mutates original motion
         CharacterAsset* char_asset = characters.GetActiveAsset();
-        if (state.show_character && char_asset && char_asset->IsLoaded()) {
+        if (state.show_character && char_asset && char_asset->IsLoaded())
+        {
             CharacterEntry cur_entry;
-            if (characters.FindEntry(characters.GetActiveId(), cur_entry)) {
+            if (characters.FindEntry(characters.GetActiveId(), cur_entry))
+            {
                 std::vector<Matrix> skin_matrices;
                 if (CharacterMapper::EvaluateSkinMatrices(*char_asset, cur_anim, player.Frame(), cur_entry.mapping,
-                                                          skin_matrices)) {
+                                                          skin_matrices))
+                {
                     viewport.SetCharacterSkinMatrices(std::move(skin_matrices));
-                } else {
+                }
+                else
+                {
                     viewport.SetCharacterSkinMatrices({});
                 }
             }
-        } else {
+        }
+        else
+        {
             viewport.SetCharacterSkinMatrices({});
         }
-    } else {
+    }
+    else
+    {
         viewport.SetPose({}, {});
         viewport.SetCharacterSkinMatrices({});
     }
 }
 
-void Application::Run(int max_frames, const char* screenshot_path) {
+void Application::Run(int max_frames, const char* screenshot_path)
+{
     int frame_count = 0;
-    while (!WindowShouldClose() && running) {
+    while (!WindowShouldClose() && running)
+    {
         state.fps = GetFPS();
         PollEngine();
         UpdateAnimationAndSkinning();
@@ -267,7 +313,8 @@ void Application::Run(int max_frames, const char* screenshot_path) {
         rlImGuiEnd();
 
         // Headless screenshot mode capture
-        if (screenshot_path && (max_frames > 0 && frame_count >= max_frames)) {
+        if (screenshot_path && (max_frames > 0 && frame_count >= max_frames))
+        {
             TakeScreenshot(screenshot_path);
             EndDrawing();
             break;
@@ -276,13 +323,15 @@ void Application::Run(int max_frames, const char* screenshot_path) {
         EndDrawing();
 
         frame_count++;
-        if (max_frames > 0 && frame_count >= max_frames && !screenshot_path) {
+        if (max_frames > 0 && frame_count >= max_frames && !screenshot_path)
+        {
             break;
         }
     }
 }
 
-void Application::Shutdown() {
+void Application::Shutdown()
+{
     ui.Shutdown();
     rlImGuiShutdown();
     CloseWindow();

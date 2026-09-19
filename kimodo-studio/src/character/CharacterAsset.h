@@ -6,9 +6,11 @@
 #include "raylib.h"
 #include "raymath.h"
 
-namespace studio {
+namespace studio
+{
 
-struct CharacterBone {
+struct CharacterBone
+{
     std::string name;
     int parent = -1;
     Matrix local_transform{MatrixIdentity()};
@@ -18,7 +20,8 @@ struct CharacterBone {
     Vector3 rest_scale{1, 1, 1};
 };
 
-struct CharacterSubmesh {
+struct CharacterSubmesh
+{
     int materialIndex = 0;
     uint32_t vertex_offset = 0;
     uint32_t vertex_count = 0;
@@ -29,7 +32,8 @@ struct CharacterSubmesh {
     bool has_texture = false;
 };
 
-struct CharacterValidationReport {
+struct CharacterValidationReport
+{
     bool valid = true;
     bool has_mesh = false;
     bool has_skeleton = false;
@@ -47,7 +51,8 @@ struct CharacterValidationReport {
     std::vector<std::string> errors;
 };
 
-class CharacterAsset {
+class CharacterAsset
+{
 public:
     CharacterAsset() = default;
     ~CharacterAsset();
@@ -59,40 +64,112 @@ public:
     CharacterAsset& operator=(CharacterAsset&& other) noexcept;
 
     void Unload();
-    bool IsLoaded() const { return loaded; }
+    bool IsLoaded() const
+    {
+        return loaded;
+    }
 
-    const std::string& GetId() const { return Id; }
-    const std::string& GetName() const { return Name; }
-    const std::string& GetFilePath() const { return file_path; }
-    const std::string& GetLicense() const { return license; }
-    const std::string& GetAuthor() const { return author; }
-    float GetScale() const { return scale; }
-    BoundingBox GetBounds() const { return bounds; }
+    const std::string& GetId() const
+    {
+        return Id;
+    }
+    const std::string& GetName() const
+    {
+        return Name;
+    }
+    const std::string& GetFilePath() const
+    {
+        return file_path;
+    }
+    const std::string& GetLicense() const
+    {
+        return license;
+    }
+    const std::string& GetAuthor() const
+    {
+        return author;
+    }
+    float GetScale() const
+    {
+        return scale;
+    }
+    BoundingBox GetBounds() const
+    {
+        return bounds;
+    }
 
-    void SetId(std::string id) { Id = std::move(id); }
-    void SetName(std::string name) { Name = std::move(name); }
-    void SetFilePath(std::string path) { file_path = std::move(path); }
-    void SetLicense(std::string lic) { license = std::move(lic); }
-    void SetAuthor(std::string auth) { author = std::move(auth); }
-    void SetScale(float s) { scale = s; }
+    void SetId(std::string id)
+    {
+        Id = std::move(id);
+    }
+    void SetName(std::string name)
+    {
+        Name = std::move(name);
+    }
+    void SetFilePath(std::string path)
+    {
+        file_path = std::move(path);
+    }
+    void SetLicense(std::string lic)
+    {
+        license = std::move(lic);
+    }
+    void SetAuthor(std::string auth)
+    {
+        author = std::move(auth);
+    }
+    void SetScale(float s)
+    {
+        scale = s;
+    }
 
-    const std::vector<CharacterBone>& GetBones() const { return bones; }
-    std::vector<CharacterBone>& GetBones() { return bones; }
+    const std::vector<CharacterBone>& GetBones() const
+    {
+        return bones;
+    }
+    std::vector<CharacterBone>& GetBones()
+    {
+        return bones;
+    }
 
-    const std::vector<CharacterSubmesh>& GetSubmeshes() const { return submeshes; }
-    std::vector<CharacterSubmesh>& GetSubmeshes() { return submeshes; }
+    const std::vector<CharacterSubmesh>& GetSubmeshes() const
+    {
+        return submeshes;
+    }
+    std::vector<CharacterSubmesh>& GetSubmeshes()
+    {
+        return submeshes;
+    }
 
-    const SkinningData& GetSkinningData() const { return skinning_data; }
-    SkinningData& GetSkinningData() { return skinning_data; }
+    const SkinningData& GetSkinningData() const
+    {
+        return skinning_data;
+    }
+    SkinningData& GetSkinningData()
+    {
+        return skinning_data;
+    }
 
-    const CharacterValidationReport& GetValidationReport() const { return report; }
-    void SetValidationReport(CharacterValidationReport in_report) { report = std::move(in_report); }
+    const CharacterValidationReport& GetValidationReport() const
+    {
+        return report;
+    }
+    void SetValidationReport(CharacterValidationReport in_report)
+    {
+        report = std::move(in_report);
+    }
 
     int FindBoneIndex(const std::string& bone_name) const;
 
     // CPU animated vertices buffer (for CPU fallback skinning / wireframe)
-    const std::vector<Vector3>& GetAnimatedVertices() const { return anim_vertices; }
-    const std::vector<Vector3>& GetAnimatedNormals() const { return anim_normals; }
+    const std::vector<Vector3>& GetAnimatedVertices() const
+    {
+        return anim_vertices;
+    }
+    const std::vector<Vector3>& GetAnimatedNormals() const
+    {
+        return anim_normals;
+    }
     void UpdateCpuSkinning(const std::vector<Matrix>& skin_matrices);
 
     void FinalizeGeometry(BoundingBox bounds);

@@ -2,10 +2,12 @@
 
 #include "app/AppState.h"
 
-namespace studio {
+namespace studio
+{
 class Viewport;
 
-class StatusBar {
+class StatusBar
+{
 public:
     static void Draw(AppState& state, Viewport& viewport);
 };

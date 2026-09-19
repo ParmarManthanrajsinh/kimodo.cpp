@@ -7,19 +7,23 @@
 #include <string>
 #include <vector>
 
-namespace studio {
+namespace studio
+{
 
 using BoneMap = std::map<std::string, std::string>; // target joint -> source joint
 
-struct RetargetReport {
+struct RetargetReport
+{
     std::string text;
     int mapped_count = 0;
     int unmapped_count = 0;
 };
 
-class Retargeter {
+class Retargeter
+{
 public:
-    struct Options {
+    struct Options
+    {
         float root_scale = 1.0f;
     };
 

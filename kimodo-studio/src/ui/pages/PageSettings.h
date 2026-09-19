@@ -2,11 +2,13 @@
 
 #include "app/AppState.h"
 
-namespace studio {
+namespace studio
+{
 class Viewport;
 class Toasts;
 
-class PageSettings {
+class PageSettings
+{
 public:
     static void Draw(AppState& state, Viewport& viewport, Toasts& toasts);
 };

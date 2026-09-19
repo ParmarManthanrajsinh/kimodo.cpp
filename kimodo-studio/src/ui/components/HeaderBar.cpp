@@ -6,9 +6,11 @@
 #include "ui/Theme.h"
 #include "ui/UIHelpers.h"
 
-namespace studio {
+namespace studio
+{
 
-void HeaderBar::Draw(AppState& state, KimodoEngine& engine, ModelManager& models) {
+void HeaderBar::Draw(AppState& state, KimodoEngine& engine, ModelManager& models)
+{
     ImGuiViewport* vp = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(vp->Pos);
     ImGui::SetNextWindowSize(ImVec2(vp->Size.x, UIStyle::top_h));
@@ -23,7 +25,8 @@ void HeaderBar::Draw(AppState& state, KimodoEngine& engine, ModelManager& models
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 4));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, UIStyle::bg);
 
-    if (ImGui::Begin("##HeaderBar", nullptr, flags)) {
+    if (ImGui::Begin("##HeaderBar", nullptr, flags))
+    {
         // App Title & Brand
         ImGui::AlignTextToFramePadding();
         ImGui::TextColored(UIStyle::accent, "%s", icons::kKimodo);
@@ -50,7 +53,8 @@ void HeaderBar::Draw(AppState& state, KimodoEngine& engine, ModelManager& models
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
 
         std::string btn_label = std::string(icons::kCube) + "  " + model_title;
-        if (ImGui::Button(btn_label.c_str(), ImVec2(0, 26))) {
+        if (ImGui::Button(btn_label.c_str(), ImVec2(0, 26)))
+        {
             state.screen = Screen::Models;
         }
 
@@ -61,24 +65,36 @@ void HeaderBar::Draw(AppState& state, KimodoEngine& engine, ModelManager& models
         ImGui::SameLine(0, 18);
         ImGui::AlignTextToFramePadding();
         EngineStatus est = engine.GetStatus();
-        if (est == EngineStatus::Generating) {
+        if (est == EngineStatus::Generating)
+        {
             ImGui::TextColored(UIStyle::yellow, "%s Generating motion (%.0f%%)...", icons::kSpinner,
                                engine.GetProgress() * 100.0f);
-        } else if (est == EngineStatus::Finished) {
+        }
+        else if (est == EngineStatus::Finished)
+        {
             ImGui::TextColored(UIStyle::green, "%s Generation Finished", icons::kCheck);
-        } else if (est == EngineStatus::LoadingModel) {
+        }
+        else if (est == EngineStatus::LoadingModel)
+        {
             ImGui::TextColored(UIStyle::yellow, "%s Loading weights...", icons::kSpinner);
-        } else if (est == EngineStatus::Error) {
+        }
+        else if (est == EngineStatus::Error)
+        {
             ImGui::TextColored(UIStyle::red, "%s Engine Error", icons::kWarn);
-        } else {
+        }
+        else
+        {
             ImGui::TextColored(ImVec4(0.55f, 0.60f, 0.70f, 1.0f), "%s Idle", icons::kCheck);
         }
 
         // Right side stats & settings gear
         const float right_width = 180.0f;
-        if (ImGui::GetContentRegionAvail().x > right_width) {
+        if (ImGui::GetContentRegionAvail().x > right_width)
+        {
             ImGui::SameLine(ImGui::GetWindowWidth() - right_width - 16.0f);
-        } else {
+        }
+        else
+        {
             ImGui::SameLine(0, 16);
         }
 
@@ -90,7 +106,8 @@ void HeaderBar::Draw(AppState& state, KimodoEngine& engine, ModelManager& models
         ImGui::SameLine(0, 16);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
         std::string settings_btn = std::string(icons::kSettings) + " Settings";
-        if (ImGui::Button(settings_btn.c_str(), ImVec2(0, 26))) {
+        if (ImGui::Button(settings_btn.c_str(), ImVec2(0, 26)))
+        {
             state.screen = Screen::settings;
         }
         ImGui::PopStyleVar(1);

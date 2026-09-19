@@ -5,11 +5,16 @@
 #include <utility>
 #include <vector>
 
-namespace studio {
+namespace studio
+{
 
-enum class RetargetMode { GenericLocal };
+enum class RetargetMode
+{
+    GenericLocal
+};
 
-struct SkeletonProfile {
+struct SkeletonProfile
+{
     std::string id;
     std::string name;
     RetargetMode mode = RetargetMode::GenericLocal;

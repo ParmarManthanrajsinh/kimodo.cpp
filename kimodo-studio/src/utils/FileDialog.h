@@ -2,7 +2,8 @@
 
 #include <string>
 
-namespace studio {
+namespace studio
+{
 
 // Thin RAII-style wrapper over nativefiledialog (https://github.com/mlabbe/nativefiledialog).
 // All methods are blocking: they run the OS-native modal dialog (IFileDialog on Windows,
@@ -11,7 +12,8 @@ namespace studio {
 // Return value semantics:
 //   true  -> user picked a path (outPath filled, UTF-8)
 //   false -> user cancelled OR a programmatic error occurred (check lastError())
-class FileDialog {
+class FileDialog
+{
 public:
     // "Open file" dialog. filterList uses NFD format: comma-separated extensions,
     // semicolon between filters, e.g. "glb,gltf;bvh". Pass nullptr/"" for all files.

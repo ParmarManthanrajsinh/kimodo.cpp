@@ -7,9 +7,11 @@
 
 #include <string>
 
-namespace studio {
+namespace studio
+{
 
-class CharacterGLBExporter {
+class CharacterGLBExporter
+{
 public:
     // Export full character (Mesh + Skin + Skeleton + Animation) to binary glTF (.glb)
     static bool ExportCharacterGLB(const CharacterAsset& character, const Animation& animation,

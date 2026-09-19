@@ -6,9 +6,11 @@
 #include <thread>
 #include <vector>
 
-namespace studio {
+namespace studio
+{
 
-struct ModelEntry {
+struct ModelEntry
+{
     std::string id;       // "soma-rp-v1.1"
     std::string name;     // "SOMA RP v1.1"
     std::string skeleton; // "soma30"
@@ -27,13 +29,24 @@ struct ModelEntry {
     uint64_t local_bytes = 0;
 };
 
-enum class ModelTask { None, Verify, Import, Delete, Download };
+enum class ModelTask
+{
+    None,
+    Verify,
+    Import,
+    Delete,
+    Download
+};
 
 // Local model registry + detection + maintenance worker.
 // UI polls taskLabel()/taskProgress(); worker never touches UI.
-class ModelManager {
+class ModelManager
+{
 public:
-    ~ModelManager() { Shutdown(); }
+    ~ModelManager()
+    {
+        Shutdown();
+    }
     ModelManager(const ModelManager&) = delete;
     ModelManager& operator=(const ModelManager&) = delete;
     ModelManager() = default;
@@ -43,8 +56,14 @@ public:
     void Shutdown();
 
     std::vector<ModelEntry> GetEntries() const;
-    const std::string& GetModelDir() const { return model_dir; }
-    const std::string& GetTextBundle() const { return text_bundle; }
+    const std::string& GetModelDir() const
+    {
+        return model_dir;
+    }
+    const std::string& GetTextBundle() const
+    {
+        return text_bundle;
+    }
     std::string GetActiveId() const;
 
     bool find_copy(const std::string& id, ModelEntry& out) const;
@@ -52,7 +71,10 @@ public:
 
     // Async maintenance (no-op while busy).
     bool IsBusy() const;
-    ModelTask GetTask() const { return task.load(); }
+    ModelTask GetTask() const
+    {
+        return task.load();
+    }
     float GetTaskProgress() const;
     std::string GetTaskLabel() const;
     void VerifyAsync(const std::string& id);

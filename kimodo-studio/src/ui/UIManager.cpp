@@ -23,11 +23,15 @@
 
 #include <ctime>
 
-namespace studio {
+namespace studio
+{
 
-void UIManager::Shutdown() {
-    for (auto& [k, tex] : thumbs) {
-        if (tex.id > 0) {
+void UIManager::Shutdown()
+{
+    for (auto& [k, tex] : thumbs)
+    {
+        if (tex.id > 0)
+        {
             UnloadTexture(tex);
             tex.id = 0;
         }
@@ -37,7 +41,8 @@ void UIManager::Shutdown() {
 
 void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, AnimationPlayer& player,
                      AnimationLibrary& library, CharacterLibrary& characters, ModelManager& models, Toasts& toasts,
-                     CaptureFn capture) {
+                     CaptureFn capture)
+{
     (void)capture;
     ImGuiViewport* vp = ImGui::GetMainViewport();
 
@@ -65,17 +70,35 @@ void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, UIStyle::panel);
 
-    if (ImGui::Begin("##ActivePagePanel", nullptr, panel_flags)) {
-        switch (state.screen) {
+    if (ImGui::Begin("##ActivePagePanel", nullptr, panel_flags))
+    {
+        switch (state.screen)
+        {
         case Screen::Home:
-        case Screen::Characters: PageCharacters::Draw(state, characters, viewport, &player); break;
-        case Screen::Generate: PageGenerate::Draw(state, engine, models, toasts); break;
-        case Screen::Models: PageModels::Draw(state, models, toasts); break;
-        case Screen::Library: PageLibrary::Draw(state, library, player, toasts); break;
-        case Screen::Retarget: PageRetarget::Draw(state, library, player, toasts); break;
-        case Screen::Export: PageExport::Draw(state, player, library, characters, toasts); break;
-        case Screen::settings: PageSettings::Draw(state, viewport, toasts); break;
-        default: PageCharacters::Draw(state, characters, viewport, &player); break;
+        case Screen::Characters:
+            PageCharacters::Draw(state, characters, viewport, &player);
+            break;
+        case Screen::Generate:
+            PageGenerate::Draw(state, engine, models, toasts);
+            break;
+        case Screen::Models:
+            PageModels::Draw(state, models, toasts);
+            break;
+        case Screen::Library:
+            PageLibrary::Draw(state, library, player, toasts);
+            break;
+        case Screen::Retarget:
+            PageRetarget::Draw(state, library, player, toasts);
+            break;
+        case Screen::Export:
+            PageExport::Draw(state, player, library, characters, toasts);
+            break;
+        case Screen::settings:
+            PageSettings::Draw(state, viewport, toasts);
+            break;
+        default:
+            PageCharacters::Draw(state, characters, viewport, &player);
+            break;
         }
     }
     ImGui::End();
@@ -97,14 +120,17 @@ void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, 
     ImGuiWindowFlags splitter_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                                       ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
                                       ImGuiWindowFlags_NoBackground;
-    if (ImGui::Begin("##LeftSplitterWindow", nullptr, splitter_flags)) {
+    if (ImGui::Begin("##LeftSplitterWindow", nullptr, splitter_flags))
+    {
         ImGui::InvisibleButton("##LeftSplitterBtn", ImVec2(6.0f, panel_h));
         bool hovered = ImGui::IsItemHovered();
         bool active = ImGui::IsItemActive();
-        if (hovered || active) {
+        if (hovered || active)
+        {
             ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
         }
-        if (active) {
+        if (active)
+        {
             state.side_width += io.MouseDelta.x;
             state.side_width = std::clamp(state.side_width, 120.0f, 320.0f);
         }
@@ -124,14 +150,17 @@ void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, 
     ImGui::SetNextWindowViewport(vp->ID);
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-    if (ImGui::Begin("##RightSplitterWindow", nullptr, splitter_flags)) {
+    if (ImGui::Begin("##RightSplitterWindow", nullptr, splitter_flags))
+    {
         ImGui::InvisibleButton("##RightSplitterBtn", ImVec2(6.0f, panel_h));
         bool hovered = ImGui::IsItemHovered();
         bool active = ImGui::IsItemActive();
-        if (hovered || active) {
+        if (hovered || active)
+        {
             ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
         }
-        if (active) {
+        if (active)
+        {
             state.panel_width -= io.MouseDelta.x;
             state.panel_width = std::clamp(state.panel_width, 260.0f, 640.0f);
         }
@@ -171,13 +200,15 @@ void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, 
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 4));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
 
-        if (ImGui::Begin("##ViewportTopToolbar", nullptr, tool_flags)) {
+        if (ImGui::Begin("##ViewportTopToolbar", nullptr, tool_flags))
+        {
             const float item_h = ImGui::GetFrameHeight();
 
             // Camera Projection Dropdown
             ImGui::SetNextItemWidth(102);
             static const char* projLabels[] = {"Perspective", "Orthographic"};
-            if (ImGui::Combo("##CameraProjCombo", &state.camera_projection, projLabels, 2)) {
+            if (ImGui::Combo("##CameraProjCombo", &state.camera_projection, projLabels, 2))
+            {
                 viewport.SetProjection(state.camera_projection);
             }
 
@@ -186,14 +217,18 @@ void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, 
             // Display Toggles (Grid, Axes, Floor, Skeleton, Wireframe)
             auto draw_toggle_btn = [item_h](const char* label, bool& val, bool has_plus = true) {
                 std::string text = (has_plus && val ? "+ " : (has_plus ? "+ " : "")) + std::string(label);
-                if (val) {
+                if (val)
+                {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.28f, 0.18f, 1.0f));
                     ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::accent);
-                } else {
+                }
+                else
+                {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.14f, 0.18f, 0.6f));
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.65f, 0.70f, 0.78f, 1.0f));
                 }
-                if (ImGui::Button(text.c_str(), ImVec2(0, item_h))) {
+                if (ImGui::Button(text.c_str(), ImVec2(0, item_h)))
+                {
                     val = !val;
                 }
                 ImGui::PopStyleColor(2);
@@ -209,13 +244,15 @@ void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, 
             ImGui::SameLine(0, 8);
 
             // Camera Snapshot & Reset
-            if (ImGui::Button(ICON_FA_CAMERA "##Snap1", ImVec2(28, item_h))) {
+            if (ImGui::Button(ICON_FA_CAMERA "##Snap1", ImVec2(28, item_h)))
+            {
                 std::string snap_path = "screenshot_" + std::to_string(std::time(nullptr)) + ".png";
                 TakeScreenshot(snap_path.c_str());
                 toasts.Push("Snapshot saved: " + snap_path, ToastKind::Success);
             }
             ImGui::SameLine(0, 4);
-            if (ImGui::Button(ICON_FA_RESET " Reset", ImVec2(0, item_h))) {
+            if (ImGui::Button(ICON_FA_RESET " Reset", ImVec2(0, item_h)))
+            {
                 viewport.Reset();
             }
         }
@@ -245,11 +282,13 @@ void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 8));
 
-        if (ImGui::Begin("##ViewportStatsHUD", nullptr, hud_flags)) {
+        if (ImGui::Begin("##ViewportStatsHUD", nullptr, hud_flags))
+        {
             CharacterAsset* active_char = characters.GetActiveAsset();
             int vert_count = 12842;
             int joint_count = 30;
-            if (active_char && active_char->IsLoaded()) {
+            if (active_char && active_char->IsLoaded())
+            {
                 vert_count = static_cast<int>(active_char->GetSkinningData().vertices.size());
                 joint_count = static_cast<int>(active_char->GetBones().size());
             }
@@ -294,7 +333,8 @@ void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 8));
 
-        if (ImGui::Begin("##ViewportPlaybackHUD", nullptr, hud_flags)) {
+        if (ImGui::Begin("##ViewportPlaybackHUD", nullptr, hud_flags))
+        {
             const int cur_frame = player.Frame();
             const int total_frames = std::max(1, player.GetTotalFrames());
             const float cur_time = player.GetTime();

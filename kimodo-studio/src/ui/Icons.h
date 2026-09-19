@@ -141,7 +141,8 @@
 #define ICON_FA_SPINNER "\xEF\x84\x90"
 #endif
 
-namespace studio::icons {
+namespace studio::icons
+{
 
 inline constexpr const char* kHome = ICON_FA_HOME;
 inline constexpr const char* kGenerate = ICON_FA_GENERATE;

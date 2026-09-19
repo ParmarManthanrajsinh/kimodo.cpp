@@ -5,13 +5,18 @@
 #include <fstream>
 #include <sstream>
 
-namespace studio {
-namespace {
+namespace studio
+{
+namespace
+{
 
-std::string json_escape(const std::string& s) {
+std::string json_escape(const std::string& s)
+{
     std::string out;
-    for (char c : s) {
-        if (c == '"' || c == '\\') {
+    for (char c : s)
+    {
+        if (c == '"' || c == '\\')
+        {
             out += '\\';
         }
         out += c;
@@ -19,7 +24,8 @@ std::string json_escape(const std::string& s) {
     return out;
 }
 
-bool find_string(const std::string& json, const std::string& key, std::string& out) {
+bool find_string(const std::string& json, const std::string& key, std::string& out)
+{
     const std::string pat = "\"" + key + "\":\"";
     const size_t p = json.find(pat);
     if (p == std::string::npos)
@@ -32,43 +38,54 @@ bool find_string(const std::string& json, const std::string& key, std::string& o
     return true;
 }
 
-bool find_int(const std::string& json, const std::string& key, int& out) {
+bool find_int(const std::string& json, const std::string& key, int& out)
+{
     const std::string pat = "\"" + key + "\":";
     const size_t p = json.find(pat);
     if (p == std::string::npos)
         return false;
-    try {
+    try
+    {
         out = std::stoi(json.substr(p + pat.size()));
         return true;
-    } catch (...) {
+    }
+    catch (...)
+    {
         return false;
     }
 }
 
-bool find_float(const std::string& json, const std::string& key, float& out) {
+bool find_float(const std::string& json, const std::string& key, float& out)
+{
     const std::string pat = "\"" + key + "\":";
     const size_t p = json.find(pat);
     if (p == std::string::npos)
         return false;
-    try {
+    try
+    {
         out = std::stof(json.substr(p + pat.size()));
         return true;
-    } catch (...) {
+    }
+    catch (...)
+    {
         return false;
     }
 }
 
-bool find_bool(const std::string& json, const std::string& key, bool& out) {
+bool find_bool(const std::string& json, const std::string& key, bool& out)
+{
     const std::string pat = "\"" + key + "\":";
     const size_t p = json.find(pat);
     if (p == std::string::npos)
         return false;
     const std::string rest = json.substr(p + pat.size());
-    if (rest.rfind("true", 0) == 0) {
+    if (rest.rfind("true", 0) == 0)
+    {
         out = true;
         return true;
     }
-    if (rest.rfind("false", 0) == 0) {
+    if (rest.rfind("false", 0) == 0)
+    {
         out = false;
         return true;
     }
@@ -77,15 +94,18 @@ bool find_bool(const std::string& json, const std::string& key, bool& out) {
 
 } // namespace
 
-SettingsManager& SettingsManager::GetInstance() {
+SettingsManager& SettingsManager::GetInstance()
+{
     static SettingsManager inst;
     return inst;
 }
 
-bool SettingsManager::Load() {
+bool SettingsManager::Load()
+{
     file_path = AppPaths::GetSettingsFile();
     std::ifstream file(file_path);
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         settings.export_dir = AppPaths::DefaultExportDir().string();
         return false;
     }
@@ -112,7 +132,8 @@ bool SettingsManager::Load() {
     find_bool(json, "playbackLoop", settings.playback_loop);
     find_float(json, "playbackSpeed", settings.playback_speed);
 
-    if (settings.export_dir.empty()) {
+    if (settings.export_dir.empty())
+    {
         settings.export_dir = AppPaths::DefaultExportDir().string();
     }
 
@@ -120,11 +141,13 @@ bool SettingsManager::Load() {
     return true;
 }
 
-bool SettingsManager::save() {
+bool SettingsManager::save()
+{
     AppPaths::EnsureDirectories();
     file_path = AppPaths::GetSettingsFile();
     std::ofstream file(file_path, std::ios::trunc);
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         Logger::GetInstance().Warning("Failed to open settings file for writing: " + file_path.string());
         return false;
     }

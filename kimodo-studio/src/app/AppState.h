@@ -3,13 +3,31 @@
 #include <string>
 #include "raylib.h"
 
-namespace studio {
+namespace studio
+{
 
-enum class Screen { Home, Generate, Models, Library, Characters, Retarget, Export, settings, Inspector };
+enum class Screen
+{
+    Home,
+    Generate,
+    Models,
+    Library,
+    Characters,
+    Retarget,
+    Export,
+    settings,
+    Inspector
+};
 
-enum class ViewportMode { Character = 0, Skeleton = 1, Both = 2 };
+enum class ViewportMode
+{
+    Character = 0,
+    Skeleton = 1,
+    Both = 2
+};
 
-struct AppState {
+struct AppState
+{
     Screen screen = Screen::Home;
     Screen last_tool_screen = Screen::Generate;
     std::string gpu_name = "RTX GPU";
