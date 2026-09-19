@@ -1,1 +1,32 @@
+# Build directories
 build/
+build*/
+bin/
+out/
+
+# IDE and Editor files
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.cache/
+.clangd/
+*.user
+*.suo
+*.sln.docstates
+
+# Runtime generated state
+imgui.ini
+compile_commands.json
+
+# Test outputs & screenshots
+test_*.bvh
+screenshot_*.png
+output_*.png
+*.log
+
+# OS generated files
+Thumbs.db
+[Dd]esktop.ini
+.DS_Store

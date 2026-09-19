@@ -71,16 +71,21 @@ std::filesystem::path AppPaths::CharacterRegistryFile() { return AppDataDir() / 
 std::filesystem::path AppPaths::ResolveAsset(const std::string& relative_path) {
     const std::filesystem::path exe_dir = get_executable_dir();
     std::vector<std::filesystem::path> candidates = {exe_dir / relative_path,
+                                                     exe_dir / "assets" / relative_path,
                                                      std::filesystem::current_path() / relative_path,
+                                                     std::filesystem::current_path() / "assets" / relative_path,
 #if defined(KIMODO_STUDIO_SOURCE_DIR)
                                                      std::filesystem::path(KIMODO_STUDIO_SOURCE_DIR) / relative_path,
+                                                     std::filesystem::path(KIMODO_STUDIO_SOURCE_DIR) / "assets" /
+                                                         relative_path,
                                                      std::filesystem::path(KIMODO_STUDIO_SOURCE_DIR) / ".." /
                                                          relative_path,
 #endif
 #if defined(KIMODO_ROOT_DIR)
                                                      std::filesystem::path(KIMODO_ROOT_DIR) / relative_path,
 #endif
-                                                     AppDataDir() / relative_path};
+                                                     AppDataDir() / relative_path,
+                                                     AppDataDir() / "assets" / relative_path};
 
     // Walk up from exeDir searching
     std::filesystem::path cur = exe_dir;
