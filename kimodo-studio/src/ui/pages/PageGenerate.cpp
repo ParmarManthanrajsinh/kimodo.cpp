@@ -24,16 +24,19 @@ void PageGenerate::Draw(AppState& state, KimodoEngine& engine, ModelManager& mod
 
     if (!has_model)
     {
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.22f, 0.16f, 0.08f, 0.9f));
-        ImGui::BeginChild("##NoModelWarning", ImVec2(0, 110), true);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.22f, 0.16f, 0.08f, 0.95f));
+        ImGui::BeginChild("##SetupIncompleteWarning", ImVec2(0, 120), true);
         {
-            ImGui::TextColored(UIStyle::yellow, "%s No Motion Model Installed", icons::kWarn);
-            ImGui::TextWrapped("Diffusion weights are required to synthesize 3D human motion.");
+            ImGui::TextColored(UIStyle::yellow, "%s Setup Incomplete", icons::kWarn);
+            ImGui::TextWrapped("Required AI model weights and components must be set up before generating motion.");
             ImGui::Spacing();
-            if (ImGui::Button(ICON_FA_CUBE " Open Model Manager to Download or Import", ImVec2(-1, 32)))
+            ImGui::PushStyleColor(ImGuiCol_Button, UIStyle::accent);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05f, 0.05f, 0.08f, 1.0f));
+            if (ImGui::Button(ICON_FA_CHECK " Complete Setup", ImVec2(-1, 36)))
             {
-                state.screen = Screen::Models;
+                state.screen = Screen::Setup;
             }
+            ImGui::PopStyleColor(2);
         }
         ImGui::EndChild();
         ImGui::PopStyleColor();
@@ -117,11 +120,11 @@ void PageGenerate::Draw(AppState& state, KimodoEngine& engine, ModelManager& mod
         if (!has_model)
         {
             ImGui::BeginDisabled();
-            ImGui::Button(ICON_FA_GENERATE "  Generate Animation (Model Required)", ImVec2(-1, 44));
+            ImGui::Button(ICON_FA_GENERATE "  Generate Animation (Setup Required)", ImVec2(-1, 44));
             ImGui::EndDisabled();
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
             {
-                ImGui::SetTooltip("Please install a motion model from the Models page first.");
+                ImGui::SetTooltip("Please click [Complete Setup] above to install required AI assets.");
             }
         }
         else

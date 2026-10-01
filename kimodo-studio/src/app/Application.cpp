@@ -143,6 +143,14 @@ bool Application::Init(int width, int height)
     library.Init(AppPaths::DefaultAnimationsDir());
     characters.Init();
 
+    // Check setup state: if missing required assets, route to setup wizard
+    setup.Init(models, state);
+    if (!setup.IsReady())
+    {
+        state.screen = Screen::Setup;
+        Logger::GetInstance().Info("Setup incomplete: redirecting to First-Run Setup Wizard");
+    }
+
     // Viewport defaults from settings
     viewport.Reset();
     viewport.SetGrid(settings.show_grid);
@@ -335,6 +343,7 @@ void Application::RenderFrame()
     }
 
     state.fps = static_cast<int>(ImGui::GetIO().Framerate);
+    setup.Update(models, state);
     PollEngine();
     UpdateAnimationAndSkinning(dt);
 
@@ -366,7 +375,7 @@ void Application::RenderFrame()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    ui.Draw(state, viewport, engine, player, library, characters, models, toasts);
+    ui.Draw(state, viewport, engine, player, library, characters, models, setup, toasts);
 
     ImGui::Render();
 

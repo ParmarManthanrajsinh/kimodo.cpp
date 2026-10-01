@@ -4,12 +4,13 @@
 #include "models/ModelManager.h"
 #include "ui/Icons.h"
 #include "ui/Theme.h"
-#include "ui/UIHelpers.h"
+
+#include "app/SetupManager.h"
 
 namespace studio
 {
 
-void HeaderBar::Draw(AppState& state, KimodoEngine& engine, ModelManager& models)
+void HeaderBar::Draw(AppState& state, KimodoEngine& engine, ModelManager& models, SetupManager& setup)
 {
     ImGuiViewport* vp = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(vp->Pos);
@@ -39,27 +40,56 @@ void HeaderBar::Draw(AppState& state, KimodoEngine& engine, ModelManager& models
 
         ImGui::SameLine(0, 24);
 
-        // Active model badge in pill
-        ModelEntry active;
-        bool has_model = models.find_copy(models.GetActiveId(), active);
-        std::string model_title =
-            has_model ? (active.name + (active.installed ? " (Ready)" : " (Missing)")) : "SOMA RP v1.1 (Ready)";
-
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.08f, 0.22f, 0.12f, 0.9f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.12f, 0.30f, 0.18f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::accent);
-        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.18f, 0.50f, 0.26f, 0.8f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-
-        std::string btn_label = std::string(icons::kCube) + "  " + model_title;
-        if (ImGui::Button(btn_label.c_str(), ImVec2(0, 26)))
+        // Active model or Setup Required badge in pill
+        if (!setup.IsReady())
         {
-            state.screen = Screen::Models;
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.24f, 0.16f, 0.06f, 0.9f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.32f, 0.22f, 0.08f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::yellow);
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.6f, 0.45f, 0.15f, 0.8f));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+
+            std::string btn_label = std::string(icons::kWarn) + "  Setup Incomplete";
+            if (ImGui::Button(btn_label.c_str(), ImVec2(0, 26)))
+            {
+                state.screen = Screen::Setup;
+            }
+
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(4);
+        }
+        else
+        {
+            ModelEntry active;
+            bool has_model = models.find_copy(models.GetActiveId(), active);
+            std::string model_title =
+                has_model ? (active.name + (active.installed ? " (Ready)" : " (Missing)")) : "SOMA RP v1.1 (Ready)";
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.08f, 0.22f, 0.12f, 0.9f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.12f, 0.30f, 0.18f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, UIStyle::accent);
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.18f, 0.50f, 0.26f, 0.8f));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+
+            std::string btn_label = std::string(icons::kCube) + "  " + model_title;
+            if (ImGui::Button(btn_label.c_str(), ImVec2(0, 26)))
+            {
+                state.screen = Screen::Models;
+            }
+
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(4);
         }
 
-        ImGui::PopStyleVar(2);
-        ImGui::PopStyleColor(4);
+        // Display authenticated HF user
+        if (!state.hfUser.empty())
+        {
+            ImGui::SameLine(0, 14);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextColored(UIStyle::accent, "%s @%s", icons::kUser, state.hfUser.c_str());
+        }
 
         // Engine Status pill
         ImGui::SameLine(0, 18);

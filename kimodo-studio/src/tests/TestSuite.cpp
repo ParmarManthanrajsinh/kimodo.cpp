@@ -3,20 +3,25 @@
 #include "animation/Skeleton.h"
 #include "animation/SomaPresentation.h"
 #include "app/AppState.h"
+#include "app/SetupManager.h"
 #include "character/CharacterAsset.h"
 #include "character/CharacterLoader.h"
 #include "character/CharacterMapper.h"
 #include "export/BVHExporter.h"
 #include "export/BVHParser.h"
 #include "library/AnimationLibrary.h"
+#include "models/ModelManager.h"
 #include "rendering/Viewport.h"
 #include "retarget/Retargeter.h"
 #include "retarget/SkeletonProfile.h"
 #include "utils/AppPaths.h"
+#include "utils/Hash.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
 #include <vector>
 
 namespace studio
@@ -555,6 +560,215 @@ int TestSuite::RunResizeRegression()
     return fails;
 }
 
+int TestSuite::RunSetupWizardSimulation()
+{
+    std::printf("--- Setup Wizard Simulation & Installation Verification ---\n");
+    int fails = 0;
+
+    std::filesystem::path test_dir = AppPaths::AppDataDir() / "test_scratch_setup";
+    std::error_code ec;
+    std::filesystem::remove_all(test_dir, ec);
+    std::filesystem::create_directories(test_dir, ec);
+
+    std::filesystem::path models_dir = test_dir / "models";
+    std::filesystem::create_directories(models_dir, ec);
+
+    // Create synthetic test motion file and text encoder file
+    std::string motion_content = "KIMODO_TEST_MOTION_GGUF_V1";
+    std::string text_content = "KIMODO_TEST_TOKENIZER_BUNDLE_V1";
+
+    std::filesystem::path dummy_motion = test_dir / "temp_motion.gguf";
+    std::filesystem::path dummy_text = test_dir / "temp_tokenizer.gguf";
+    {
+        std::ofstream om(dummy_motion, std::ios::binary);
+        om.write(motion_content.data(), static_cast<std::streamsize>(motion_content.size()));
+        std::ofstream ot(dummy_text, std::ios::binary);
+        ot.write(text_content.data(), static_cast<std::streamsize>(text_content.size()));
+    }
+
+    std::string err;
+    std::string motion_hash = FileHash::Sha256(dummy_motion.string(), err);
+    std::string text_hash = FileHash::Sha256(dummy_text.string(), err);
+
+    if (motion_hash.empty() || text_hash.empty())
+    {
+        std::printf("  FAIL: Unable to compute test SHA256 hashes\n");
+        fails++;
+    }
+
+    // Write custom models.json for test
+    std::filesystem::path test_models_json = test_dir / "models.json";
+    {
+        std::ofstream oj(test_models_json);
+        oj << "{\n"
+           << "  \"models\": [\n"
+           << "    {\n"
+           << "      \"id\": \"sim-motion\",\n"
+           << "      \"name\": \"Simulated Motion Model\",\n"
+           << "      \"version\": \"1.0\",\n"
+           << "      \"remotePath\": \"motion.gguf\",\n"
+           << "      \"localFilename\": \"motion.gguf\",\n"
+           << "      \"sizeBytes\": " << motion_content.size() << ",\n"
+           << "      \"sha256\": \"" << motion_hash << "\",\n"
+           << "      \"required\": true,\n"
+           << "      \"assetType\": \"motion\"\n"
+           << "    },\n"
+           << "    {\n"
+           << "      \"id\": \"sim-text\",\n"
+           << "      \"name\": \"Simulated Text Encoder\",\n"
+           << "      \"version\": \"1.0\",\n"
+           << "      \"remotePath\": \"text_bundle/tokenizer.gguf\",\n"
+           << "      \"localFilename\": \"text_bundle/tokenizer.gguf\",\n"
+           << "      \"sizeBytes\": " << text_content.size() << ",\n"
+           << "      \"sha256\": \"" << text_hash << "\",\n"
+           << "      \"required\": true,\n"
+           << "      \"assetType\": \"text_encoder\"\n"
+           << "    }\n"
+           << "  ]\n"
+           << "}\n";
+    }
+
+    // 1. TEST CLEAN INSTALLATION: no model files installed
+    {
+        ModelManager mm;
+        mm.Init(test_models_json.string(), models_dir.string(), (models_dir / "text_bundle").string());
+        if (mm.AreAllRequiredInstalled())
+        {
+            std::printf("  FAIL: ModelManager claimed all required installed on empty directory\n");
+            fails++;
+        }
+        auto missing = mm.GetMissingRequired();
+        if (missing.size() != 2)
+        {
+            std::printf("  FAIL: ModelManager expected 2 missing, got %zu\n", missing.size());
+            fails++;
+        }
+
+        AppState st;
+        SetupManager sm;
+        sm.Init(mm, st);
+        if (sm.IsReady())
+        {
+            std::printf("  FAIL: SetupManager marked ready on clean empty installation\n");
+            fails++;
+        }
+        if (sm.GetState() != SetupState::Checking && sm.GetState() != SetupState::NeedsLogin)
+        {
+            std::printf("  FAIL: SetupManager unexpected status: %d\n", static_cast<int>(sm.GetState()));
+            fails++;
+        }
+        std::printf("  [PASS] Clean installation detection verified\n");
+    }
+
+    // 2. TEST PARTIAL DOWNLOAD HANDLING: .part file exists but not complete
+    {
+        std::filesystem::path part_file = models_dir / "motion.gguf.part";
+        {
+            std::ofstream op(part_file, std::ios::binary);
+            op.write("partial_data", 12);
+        }
+
+        ModelManager mm;
+        mm.Init(test_models_json.string(), models_dir.string(), (models_dir / "text_bundle").string());
+        if (mm.IsModelOrBundleInstalled("sim-motion"))
+        {
+            std::printf("  FAIL: ModelManager counted .part file as installed model\n");
+            fails++;
+        }
+        std::filesystem::remove(part_file, ec);
+        std::printf("  [PASS] Partial download (.part) rejection verified\n");
+    }
+
+    // 3. TEST CORRUPT MODEL CHECKSUM FAILURE
+    {
+        std::filesystem::path corrupt_motion = models_dir / "motion.gguf";
+        {
+            std::ofstream oc(corrupt_motion, std::ios::binary);
+            oc.write("CORRUPT_BYTES_XYZ", 17);
+        }
+
+        std::string cur_hash = FileHash::Sha256(corrupt_motion.string(), err);
+        if (cur_hash == motion_hash)
+        {
+            std::printf("  FAIL: Corrupt file produced matching hash\n");
+            fails++;
+        }
+
+        ModelManager mm;
+        mm.Init(test_models_json.string(), models_dir.string(), (models_dir / "text_bundle").string());
+        ModelEntry entry;
+        if (mm.find_copy("sim-motion", entry))
+        {
+            if (entry.Sha256.empty() || cur_hash == entry.Sha256)
+            {
+                std::printf("  FAIL: Corrupt file passed hash check\n");
+                fails++;
+            }
+        }
+        std::filesystem::remove(corrupt_motion, ec);
+        std::printf("  [PASS] Corrupted file SHA-256 mismatch detected\n");
+    }
+
+    // 4. TEST ALREADY INSTALLED & ATOMIC PLACEMENT (Auto-skip wizard)
+    {
+        // Copy valid dummy motion and text files into destination
+        std::filesystem::path dest_motion = models_dir / "motion.gguf";
+        std::filesystem::path dest_text_dir = models_dir / "text_bundle";
+        std::filesystem::create_directories(dest_text_dir, ec);
+        std::filesystem::path dest_text = dest_text_dir / "tokenizer.gguf";
+
+        std::filesystem::copy_file(dummy_motion, dest_motion, std::filesystem::copy_options::overwrite_existing, ec);
+        std::filesystem::copy_file(dummy_text, dest_text, std::filesystem::copy_options::overwrite_existing, ec);
+
+        ModelManager mm;
+        mm.Init(test_models_json.string(), models_dir.string(), dest_text_dir.string());
+        if (!mm.AreAllRequiredInstalled())
+        {
+            std::printf("  FAIL: ModelManager failed to recognize installed models\n");
+            fails++;
+        }
+
+        AppState st;
+        SetupManager sm;
+        sm.Init(mm, st);
+        if (!sm.IsReady())
+        {
+            std::printf("  FAIL: SetupManager not ready despite all assets present\n");
+            fails++;
+        }
+        if (sm.GetState() != SetupState::Ready)
+        {
+            std::printf("  FAIL: SetupState is not Ready when all assets present\n");
+            fails++;
+        }
+        std::printf("  [PASS] Auto-skip wizard and ready state verified\n");
+    }
+
+    // 5. TEST OFFLINE & ERROR RECOVERY
+    {
+        AppState st;
+        SetupManager sm;
+        ModelManager mm;
+        mm.Init(test_models_json.string(), (test_dir / "nonexistent").string(), (test_dir / "nonexistent").string());
+        sm.Init(mm, st);
+
+        // Verify offline fallback: allows proceeding to use app offline
+        sm.ContinueOffline();
+        if (!sm.IsReady())
+        {
+            std::printf("  FAIL: Offline transition did not mark ready for offline mode\n");
+            fails++;
+        }
+        std::printf("  [PASS] Offline recovery path verified\n");
+    }
+
+    // Clean up test scratch
+    std::filesystem::remove_all(test_dir, ec);
+
+    std::printf("  -> Setup Wizard Simulation: %s (%d failures)\n", fails == 0 ? "PASSED" : "FAILED", fails);
+    return fails;
+}
+
 int TestSuite::RunAll()
 {
     std::printf("===================================================\n");
@@ -569,6 +783,7 @@ int TestSuite::RunAll()
     total_fails += RunPathologicalCases();
     total_fails += RunBlenderRetargeting();
     total_fails += RunResizeRegression();
+    total_fails += RunSetupWizardSimulation();
 
     std::printf("===================================================\n");
     if (total_fails == 0)

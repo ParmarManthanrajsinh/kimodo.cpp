@@ -16,7 +16,8 @@ enum class Screen
     Retarget,
     Export,
     settings,
-    Inspector
+    Inspector,
+    Setup
 };
 
 enum class ViewportMode

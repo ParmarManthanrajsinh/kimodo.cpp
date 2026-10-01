@@ -20,6 +20,8 @@
 #include "ui/pages/PageModels.h"
 #include "ui/pages/PageRetarget.h"
 #include "ui/pages/PageSettings.h"
+#include "ui/pages/PageSetup.h"
+#include "app/SetupManager.h"
 
 #include <ctime>
 
@@ -40,20 +42,22 @@ void UIManager::Shutdown()
 }
 
 void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, AnimationPlayer& player,
-                     AnimationLibrary& library, CharacterLibrary& characters, ModelManager& models, Toasts& toasts,
-                     CaptureFn capture)
+                     AnimationLibrary& library, CharacterLibrary& characters, ModelManager& models, SetupManager& setup,
+                     Toasts& toasts, CaptureFn capture)
 {
     (void)capture;
     ImGuiViewport* vp = ImGui::GetMainViewport();
 
     // 1. Draw Top Header Bar
-    HeaderBar::Draw(state, engine, models);
+    HeaderBar::Draw(state, engine, models, setup);
 
     // 2. Draw Left Navigation Rail
     NavRail::Draw(state);
 
     // 3. Draw Right Active Tool / Workspace Panel
-    float panel_w = std::clamp(state.panel_width, 260.0f, 640.0f);
+    float min_w = (state.screen == Screen::Setup) ? 460.0f : 260.0f;
+    float max_w = (state.screen == Screen::Setup) ? 720.0f : 640.0f;
+    float panel_w = std::clamp(state.panel_width, min_w, max_w);
     state.panel_width = panel_w;
 
     float panel_x = vp->Pos.x + vp->Size.x - panel_w;
@@ -95,6 +99,9 @@ void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, 
             break;
         case Screen::settings:
             PageSettings::Draw(state, viewport, toasts);
+            break;
+        case Screen::Setup:
+            PageSetup::Draw(state, setup, models, toasts);
             break;
         default:
             PageCharacters::Draw(state, characters, viewport, &player);

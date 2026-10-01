@@ -16,6 +16,7 @@ class AnimationLibrary;
 struct LibraryEntry;
 class CharacterLibrary;
 class ModelManager;
+class SetupManager;
 class Toasts;
 
 class UIManager
@@ -24,8 +25,8 @@ public:
     using CaptureFn = std::function<void(const LibraryEntry&)>;
 
     void Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, AnimationPlayer& player,
-              AnimationLibrary& library, CharacterLibrary& characters, ModelManager& models, Toasts& toasts,
-              CaptureFn capture = {});
+              AnimationLibrary& library, CharacterLibrary& characters, ModelManager& models, SetupManager& setup,
+              Toasts& toasts, CaptureFn capture = {});
 
     void Shutdown();
 

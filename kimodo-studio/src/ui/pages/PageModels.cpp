@@ -28,6 +28,11 @@ void PageModels::Draw(AppState& state, ModelManager& models, Toasts& toasts)
         toasts.Push("Rescanned model directories", ToastKind::Info);
     }
     ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_CHECK " First-Run Setup Wizard"))
+    {
+        state.screen = Screen::Setup;
+    }
+    ImGui::SameLine();
     ImGui::TextDisabled("Models directory: %s", models.GetModelDir().c_str());
 
     ImGui::Spacing();

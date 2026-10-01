@@ -2,6 +2,7 @@
 
 #include "animation/AnimationPlayer.h"
 #include "app/AppState.h"
+#include "app/SetupManager.h"
 #include "character/CharacterLibrary.h"
 #include "kimodo/KimodoEngine.h"
 #include "library/AnimationLibrary.h"
@@ -25,6 +26,7 @@ public:
     void Run(int max_frames = 0, const char* screenshot_path = nullptr);
     void RenderFrame();
     void Shutdown();
+    void SetScreen(Screen s) { state.screen = s; }
 
 private:
     void RenderLoop();
@@ -39,6 +41,7 @@ private:
     AnimationLibrary library;
     CharacterLibrary characters;
     ModelManager models;
+    SetupManager setup;
     Toasts toasts;
 
     EngineStatus last_engine_status = EngineStatus::Idle;

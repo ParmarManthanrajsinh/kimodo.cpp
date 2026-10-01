@@ -22,8 +22,7 @@ else()
     message(STATUS "Kimodo Studio: fetching pinned raylib 5.5")
     FetchContent_Declare(
         raylib
-        GIT_REPOSITORY https://github.com/raysan5/raylib.git
-        GIT_TAG 5.5
+        URL https://github.com/raysan5/raylib/archive/refs/tags/5.5.zip
     )
     set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
@@ -79,6 +78,7 @@ add_executable(kimodo_studio
     src/main.cpp
     src/app/Application.cpp
     src/app/AppState.cpp
+    src/app/SetupManager.cpp
     src/app/SettingsManager.cpp
     src/utils/AppPaths.cpp
     src/utils/Logger.cpp
@@ -118,6 +118,7 @@ add_executable(kimodo_studio
     src/ui/pages/PageHome.cpp
     src/ui/pages/PageGenerate.cpp
     src/ui/pages/PageModels.cpp
+    src/ui/pages/PageSetup.cpp
     src/ui/pages/PageLibrary.cpp
     src/ui/pages/PageCharacters.cpp
     src/ui/pages/PageRetarget.cpp

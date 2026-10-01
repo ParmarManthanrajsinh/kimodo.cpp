@@ -2,16 +2,35 @@
     "models": [
         {
             "id": "soma-rp-v1.1",
-            "name": "SOMA RP v1.1",
+            "name": "SOMA RP v1.1 Motion Model",
             "skeleton": "soma30",
             "version": "1.1",
-            "license": "See upstream model terms before redistribution",
+            "license": "NVIDIA Open Model License",
             "source": "https://huggingface.co/LocalAI-io/Kimodo-SOMA-RP-v1.1-GGML",
-            "motionFile": "kimodo-soma-rp-v1.1-f32.gguf",
             "repo": "LocalAI-io/Kimodo-SOMA-RP-v1.1-GGML",
             "remotePath": "models/kimodo-soma-rp-v1.1-f32.gguf",
+            "localFilename": "kimodo-soma-rp-v1.1-f32.gguf",
+            "motionFile": "kimodo-soma-rp-v1.1-f32.gguf",
             "sha256": "3bf1229f4c1eff1d28f5196a854113da2df9a11a5e21c60694630903bf948ee4",
-            "sizeBytes": 1133166784
+            "sizeBytes": 1133166784,
+            "required": true,
+            "assetType": "motion"
+        },
+        {
+            "id": "llm2vec-text-bundle",
+            "name": "LLM2Vec Text Encoder Bundle",
+            "skeleton": "soma30",
+            "version": "1.0",
+            "license": "Meta Llama 3 Community License",
+            "source": "https://huggingface.co/chibifire/Llama-3-Kimodo-GGML",
+            "repo": "chibifire/Llama-3-Kimodo-GGML",
+            "remotePath": "generated/llm2vec-text-bundle/tokenizer.gguf",
+            "localFilename": "llm2vec-text-bundle/tokenizer.gguf",
+            "motionFile": "llm2vec-text-bundle/tokenizer.gguf",
+            "sha256": "81614aca62a98846c02b72cc2e5378e5bdce8b4d507b88f96eb1faa90dae607e",
+            "sizeBytes": 7295054,
+            "required": true,
+            "assetType": "text_encoder"
         }
     ]
 }

@@ -75,6 +75,26 @@ bool find_number(const std::string& json, const std::string& key, double& out, s
     }
 }
 
+bool find_bool(const std::string& json, const std::string& key, bool& out, size_t start = 0)
+{
+    size_t v = 0;
+    if (!find_key(json, key, v, start))
+    {
+        return false;
+    }
+    if (json.compare(v, 4, "true") == 0)
+    {
+        out = true;
+        return true;
+    }
+    if (json.compare(v, 5, "false") == 0)
+    {
+        out = false;
+        return true;
+    }
+    return false;
+}
+
 std::filesystem::path AppDataDir()
 {
 #if defined(_WIN32)
@@ -112,12 +132,27 @@ bool ModelManager::Init(const std::string& in_registry_path, const std::string& 
             find_string(json, "version", e.version, pos);
             find_string(json, "license", e.license, pos);
             find_string(json, "source", e.source, pos);
-            find_string(json, "motionFile", e.motion_file, pos);
+            if (!find_string(json, "motionFile", e.motion_file, pos))
+            {
+                if (!find_string(json, "motion_file", e.motion_file, pos))
+                {
+                    find_string(json, "localFilename", e.motion_file, pos);
+                }
+            }
             find_string(json, "repo", e.repo, pos);
-            find_string(json, "remote_path", e.remote_path, pos);
+            if (!find_string(json, "remotePath", e.remote_path, pos))
+            {
+                find_string(json, "remote_path", e.remote_path, pos);
+            }
             find_string(json, "sha256", e.Sha256, pos);
+            find_string(json, "assetType", e.asset_type, pos);
+            bool req = true;
+            if (find_bool(json, "required", req, pos))
+            {
+                e.required = req;
+            }
             double num = 0;
-            if (find_number(json, "size_bytes", num, pos))
+            if (find_number(json, "sizeBytes", num, pos) || find_number(json, "size_bytes", num, pos))
             {
                 e.size_bytes = static_cast<uint64_t>(num);
             }
@@ -204,6 +239,30 @@ void ModelManager::Rescan()
                 e.local_bytes = static_cast<uint64_t>(bytes);
                 break;
             }
+
+            // Check bundle / directory support (e.g. llm2vec-text-bundle)
+            if (e.asset_type == "text_encoder")
+            {
+                const auto bundle_dir = std::filesystem::path(dir) / "llm2vec-text-bundle";
+                if (std::filesystem::is_directory(bundle_dir, ec) && !ec)
+                {
+                    e.installed = true;
+                    e.local_path = bundle_dir.string();
+                    e.local_bytes = (e.size_bytes > 0) ? e.size_bytes : 7295054;
+                    break;
+                }
+            }
+        }
+
+        if (e.asset_type == "text_encoder" && !e.installed && !text_bundle.empty())
+        {
+            std::error_code ec;
+            if (std::filesystem::is_directory(text_bundle, ec) && !ec)
+            {
+                e.installed = true;
+                e.local_path = text_bundle;
+                e.local_bytes = (e.size_bytes > 0) ? e.size_bytes : 7295054;
+            }
         }
     }
     const ModelEntry* active = find_in(entries, active_id);
@@ -271,6 +330,46 @@ bool ModelManager::Select(const std::string& id)
         sel << id;
     }
     return true;
+}
+
+bool ModelManager::AreAllRequiredInstalled() const
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    for (const auto& e : entries)
+    {
+        if (e.required && !e.installed)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::vector<ModelEntry> ModelManager::GetMissingRequired() const
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    std::vector<ModelEntry> missing;
+    for (const auto& e : entries)
+    {
+        if (e.required && !e.installed)
+        {
+            missing.push_back(e);
+        }
+    }
+    return missing;
+}
+
+bool ModelManager::IsModelOrBundleInstalled(const std::string& id) const
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    for (const auto& e : entries)
+    {
+        if (e.id == id && e.installed)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool ModelManager::IsBusy() const
@@ -372,9 +471,9 @@ void ModelManager::RunDownload(std::string id)
     {
         // Downloads land in the user model dir, never in the repo checkout.
         const auto user_dir = AppDataDir() / "models";
-        std::error_code ec;
-        std::filesystem::create_directories(user_dir, ec);
         const auto dest = user_dir / e.motion_file;
+        std::error_code ec;
+        std::filesystem::create_directories(dest.parent_path(), ec);
         const std::string tmp = dest.string() + ".download";
         std::string token;
         HFAuthenticator::LoadToken(token); // may be empty for public repos
@@ -489,9 +588,9 @@ void ModelManager::RunImport(std::string source_path, std::string id)
     {
         // Imports land in the user model dir, never in the repo checkout.
         const auto user_dir = AppDataDir() / "models";
-        std::error_code ec;
-        std::filesystem::create_directories(user_dir, ec);
         const auto dest = user_dir / e.motion_file;
+        std::error_code ec;
+        std::filesystem::create_directories(dest.parent_path(), ec);
         const auto tmp = dest.string() + ".download";
         std::ifstream src(source_path, std::ios::binary);
         std::ofstream dst(tmp, std::ios::binary | std::ios::trunc);

@@ -16,6 +16,23 @@
 - **Blender Generic Retargeting**: First-class direct local rotation transfer to standard Blender humanoid rigs.
 - **Full Character GLB Exporter**: Export complete character meshes with embedded skinning, textures, and animated skeletal tracks.
 - **Dynamic Path Discovery**: Zero hardcoded machine paths; portable exe-relative assets discovery with persistent JSON user settings.
+- **First-Run Setup Wizard**: Fully automated onboarding flow. Detects missing neural assets, authenticates with Hugging Face via Windows Credential Manager, downloads motion models and text encoder bundles automatically with resume and SHA-256 verification, and transitions straight to generation.
+
+---
+
+## Getting Started (User Quickstart)
+
+Kimodo Studio runs completely standalone without requiring Python, pip, huggingface-cli, or manual weight copying:
+
+1. **Extract/Install**: Unzip the Kimodo Studio package to any folder.
+2. **Launch**: Double-click `kimodo_studio.exe`.
+3. **First-Run Setup Wizard**:
+   - If required neural weights are missing, the Setup Wizard launches automatically.
+   - Enter a Hugging Face Read token if downloading gated models (stored securely in Windows Credential Manager; never exposed or logged).
+   - Click **Download Required Components**. The motion model (`soma-rp-v1.1`) and text encoder bundle are downloaded, verified with SHA-256, and atomically installed.
+4. **Create Motion**: Once setup shows **READY**, click **Start Creating Motion** to generate immediately.
+
+*If all components are already installed or you import existing models, the wizard is automatically skipped.*
 
 ---
 

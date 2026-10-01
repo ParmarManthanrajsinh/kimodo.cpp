@@ -22,6 +22,8 @@ struct ModelEntry
     std::string remote_path; // path inside repo, may be empty
     std::string Sha256;      // expected hex, may be empty
     uint64_t size_bytes = 0;
+    bool required = true;
+    std::string asset_type = "motion"; // "motion", "text_encoder", etc.
 
     // Detected state (rescan fills these).
     bool installed = false;
@@ -68,6 +70,10 @@ public:
 
     bool find_copy(const std::string& id, ModelEntry& out) const;
     bool Select(const std::string& id); // persists selection, unloads nothing
+
+    bool AreAllRequiredInstalled() const;
+    std::vector<ModelEntry> GetMissingRequired() const;
+    bool IsModelOrBundleInstalled(const std::string& id) const;
 
     // Async maintenance (no-op while busy).
     bool IsBusy() const;

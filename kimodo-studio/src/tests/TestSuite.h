@@ -14,6 +14,7 @@ public:
     static int RunPathologicalCases();
     static int RunBlenderRetargeting();
     static int RunResizeRegression();
+    static int RunSetupWizardSimulation();
 };
 
 } // namespace studio

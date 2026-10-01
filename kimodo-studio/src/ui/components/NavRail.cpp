@@ -103,6 +103,10 @@ void NavRail::Draw(AppState& state)
         ImGui::TextDisabled("SYSTEM");
         ImGui::Spacing();
 
+        if (draw_nav_button(icons::kCheck, "Setup", state.screen == Screen::Setup))
+        {
+            state.screen = Screen::Setup;
+        }
         if (draw_nav_button(icons::kSettings, "Settings", state.screen == Screen::settings))
         {
             state.screen = Screen::settings;

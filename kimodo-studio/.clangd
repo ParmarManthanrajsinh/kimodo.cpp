@@ -1,7 +1,6 @@
 CompileFlags:
   CompilationDatabase: "."
   Add:
-    - -std=c++23
     - -D_CRT_SECURE_NO_WARNINGS
     - -DKIMODO_HAVE_BACKEND=1
     - -Ie:/kimodo.cpp/kimodo-studio/src
@@ -19,3 +18,18 @@ Diagnostics:
     Remove:
       - "*"
   UnusedIncludes: None
+
+---
+If:
+  PathMatch: .*\.h
+CompileFlags:
+  Add:
+    - -xc++-header
+    - -std=c++23
+
+---
+If:
+  PathMatch: .*\.cpp
+CompileFlags:
+  Add:
+    - -std=c++23
