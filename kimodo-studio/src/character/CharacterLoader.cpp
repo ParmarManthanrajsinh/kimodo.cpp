@@ -65,24 +65,25 @@ int find_joint_in_skin(const cgltf_skin* skin, const cgltf_node* node)
 
 } // namespace
 
-bool CharacterLoader::LoadGLB(const std::string& file_path, CharacterAsset& out_asset, std::string& error)
+bool CharacterLoader::LoadGLB(std::string_view file_path, CharacterAsset& out_asset, std::string& error)
 {
     out_asset.Unload();
 
+    const std::string path_str(file_path);
     cgltf_options options{};
     cgltf_data* data = nullptr;
-    cgltf_result res = cgltf_parse_file(&options, file_path.c_str(), &data);
+    cgltf_result res = cgltf_parse_file(&options, path_str.c_str(), &data);
     if (res != cgltf_result_success || !data)
     {
-        error = "Failed to parse glTF/GLB file: " + file_path;
+        error = "Failed to parse glTF/GLB file: " + path_str;
         return false;
     }
 
-    res = cgltf_load_buffers(&options, data, file_path.c_str());
+    res = cgltf_load_buffers(&options, data, path_str.c_str());
     if (res != cgltf_result_success)
     {
         cgltf_free(data);
-        error = "Failed to load glTF buffers: " + file_path;
+        error = "Failed to load glTF buffers: " + path_str;
         return false;
     }
 
@@ -90,7 +91,7 @@ bool CharacterLoader::LoadGLB(const std::string& file_path, CharacterAsset& out_
     std::string filename = f_path.stem().string();
     out_asset.SetId(filename);
     out_asset.SetName(filename);
-    out_asset.SetFilePath(file_path);
+    out_asset.SetFilePath(path_str);
 
     // Default metadata
     if (filename == "CesiumMan")

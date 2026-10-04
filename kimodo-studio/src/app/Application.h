@@ -27,6 +27,8 @@ public:
     void RenderFrame();
     void Shutdown();
     void SetScreen(Screen s) { state.screen = s; }
+    SetupManager& GetSetupManager() { return setup; }
+    AppState& GetAppState() { return state; }
 
 private:
     void RenderLoop();

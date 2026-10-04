@@ -2,13 +2,14 @@
 #include "raymath.h"
 
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 
 namespace studio
 {
 
-void BVHParser::EulerXyzToQuat(float ex, float ey, float ez, float& x, float& y, float& z, float& w)
+void BVHParser::EulerXyzToQuat(float ex, float ey, float ez, float& x, float& y, float& z, float& w) noexcept
 {
     constexpr float kRad = 0.017453292519943295f; // pi / 180
     const float hx = ex * kRad * 0.5f;
@@ -40,26 +41,26 @@ struct TokenStream
     std::vector<std::string> tokens;
     size_t cursor = 0;
 
-    bool HasNext() const
+    bool HasNext() const noexcept
     {
         return cursor < tokens.size();
     }
-    const std::string& next()
+    const std::string& next() noexcept
     {
         return tokens[cursor++];
     }
-    const std::string& peek() const
+    const std::string& peek() const noexcept
     {
         return tokens[cursor];
     }
-    void backtrack()
+    void backtrack() noexcept
     {
         if (cursor > 0)
             cursor--;
     }
 };
 
-TokenStream tokenize(const std::string& text)
+TokenStream tokenize(std::string_view text)
 {
     TokenStream ts;
     std::string cur;
@@ -105,7 +106,7 @@ struct ParsedJoint
 
 } // namespace
 
-bool BVHParser::ParseString(const std::string& bvh_text, Animation& out_animation, std::string& error)
+bool BVHParser::ParseString(std::string_view bvh_text, Animation& out_animation, std::string& error)
 {
     TokenStream ts = tokenize(bvh_text);
     if (!ts.HasNext())
@@ -351,12 +352,13 @@ bool BVHParser::ParseString(const std::string& bvh_text, Animation& out_animatio
     return true;
 }
 
-bool BVHParser::ParseFile(const std::string& file_path, Animation& out_animation, std::string& error)
+bool BVHParser::ParseFile(std::string_view file_path, Animation& out_animation, std::string& error)
 {
-    std::ifstream file(file_path);
+    const std::filesystem::path p(file_path);
+    std::ifstream file(p);
     if (!file.is_open())
     {
-        error = "Failed to open BVH file: " + file_path;
+        error = "Failed to open BVH file: " + std::string(file_path);
         return false;
     }
     std::stringstream buffer;
@@ -364,7 +366,7 @@ bool BVHParser::ParseFile(const std::string& file_path, Animation& out_animation
     return ParseString(buffer.str(), out_animation, error);
 }
 
-BVHParser::ValidationReport BVHParser::Validate(const std::string& bvh_text)
+BVHParser::ValidationReport BVHParser::Validate(std::string_view bvh_text)
 {
     ValidationReport rep;
     Animation anim;

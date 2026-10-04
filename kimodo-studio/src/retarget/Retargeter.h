@@ -27,11 +27,11 @@ public:
         float root_scale = 1.0f;
     };
 
-    static BoneMap AutoMap(const SkeletonProfile& profile);
-    static std::vector<std::string> unmapped(const SkeletonProfile& profile, const BoneMap& map);
+    [[nodiscard]] static BoneMap AutoMap(const SkeletonProfile& profile);
+    [[nodiscard]] static std::vector<std::string> unmapped(const SkeletonProfile& profile, const BoneMap& map);
 
-    static bool retarget(const Animation& source, const SkeletonProfile& target, const BoneMap& map,
-                         const Options& opts, Animation& out, std::string& error, RetargetReport* report = nullptr);
+    [[nodiscard]] static bool retarget(const Animation& source, const SkeletonProfile& target, const BoneMap& map,
+                                       const Options& opts, Animation& out, std::string& error, RetargetReport* report = nullptr);
 };
 
 } // namespace studio

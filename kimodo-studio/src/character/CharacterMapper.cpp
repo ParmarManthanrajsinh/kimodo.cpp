@@ -83,9 +83,9 @@ const std::vector<AliasEntry>& getStandardAliases()
     return table;
 }
 
-std::string normalize_name(const std::string& name)
+std::string normalize_name(std::string_view name)
 {
-    std::string s = name;
+    std::string s(name);
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     // Replace colon / dots with underscore for consistent matching
     for (char& c : s)

@@ -1,13 +1,15 @@
 #include "retarget/Retargeter.h"
 
 #include <sstream>
+#include <span>
+#include <string_view>
 
 namespace studio
 {
 namespace
 {
 
-int find_index(const std::vector<std::string>& names, const std::string& name)
+[[nodiscard]] int find_index(std::span<const std::string> names, std::string_view name) noexcept
 {
     for (size_t i = 0; i < names.size(); ++i)
     {
@@ -72,7 +74,7 @@ bool Retargeter::retarget(const Animation& source, const SkeletonProfile& target
         return false;
     }
 
-    auto src_index = [&source](const std::string& name) -> int { return find_index(source.joint_names, name); };
+    auto src_index = [&source](std::string_view name) noexcept -> int { return find_index(source.joint_names, name); };
 
     Animation result;
     result.frames = source.frames;

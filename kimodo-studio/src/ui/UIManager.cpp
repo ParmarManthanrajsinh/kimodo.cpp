@@ -83,7 +83,7 @@ void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, 
             PageCharacters::Draw(state, characters, viewport, &player);
             break;
         case Screen::Generate:
-            PageGenerate::Draw(state, engine, models, toasts);
+            PageGenerate::Draw(state, engine, models, setup, toasts);
             break;
         case Screen::Models:
             PageModels::Draw(state, models, toasts);
@@ -98,7 +98,7 @@ void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, 
             PageExport::Draw(state, player, library, characters, toasts);
             break;
         case Screen::settings:
-            PageSettings::Draw(state, viewport, toasts);
+            PageSettings::Draw(state, viewport, setup, models, toasts);
             break;
         case Screen::Setup:
             PageSetup::Draw(state, setup, models, toasts);
@@ -297,6 +297,7 @@ void UIManager::Draw(AppState& state, Viewport& viewport, KimodoEngine& engine, 
             draw_toggle_btn("Axes", state.show_axes, true);
             draw_toggle_btn("Floor", state.show_floor, true);
             draw_toggle_btn("Skeleton", state.show_skeleton, true);
+            draw_toggle_btn("3D Model", state.show_character, false);
             draw_toggle_btn("Wireframe", state.show_wireframe, false);
 
             ImGui::SameLine(0, 8);

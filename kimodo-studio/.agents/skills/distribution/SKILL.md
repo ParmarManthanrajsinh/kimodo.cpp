@@ -86,4 +86,4 @@ Always disclose these requirements in distribution channels:
 1. **OS**: Windows 10 (Build 19041+) or Windows 11 64-bit.
 2. **Visual C++ Runtime**: Microsoft Visual C++ 2015–2022 Redistributable (x64) installed.
 3. **GPU Drivers**: Modern NVIDIA, AMD, or Intel GPU driver supporting Vulkan 1.2+.
-4. **Model Installation**: On first launch, user navigates to **Models** page and clicks **Download from Hugging Face** or imports their local `.gguf` motion weights.
+4. **Automated Setup**: On first launch, the Setup Wizard appears automatically to verify runtime dependencies, authenticate with Hugging Face (stored securely in Windows Credential Manager), and automatically download the SOMA motion model and complete 35-file text encoder bundle with SHA-256 verification before unlocking motion generation. The Models page is preserved as an advanced management interface.

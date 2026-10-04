@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "animation/Animation.h"
@@ -33,24 +34,24 @@ public:
     bool Init(const std::filesystem::path& base_dir);
     void Rescan();
 
-    const std::vector<LibraryEntry>& GetEntries() const
+    [[nodiscard]] const std::vector<LibraryEntry>& GetEntries() const noexcept
     {
         return entries;
     }
 
-    bool SaveAnimation(const std::string& prompt, const std::string& model, const Animation& anim, LibraryEntry& out);
-    bool LoadAnimation(const LibraryEntry& entry, Animation& out) const;
-    bool Rename(const std::string& id, const std::string& new_prompt);
-    bool duplicate(const std::string& id);
-    bool Remove(const std::string& id);
+    bool SaveAnimation(std::string_view prompt, std::string_view model, const Animation& anim, LibraryEntry& out);
+    [[nodiscard]] bool LoadAnimation(const LibraryEntry& entry, Animation& out) const;
+    bool Rename(std::string_view id, std::string_view new_prompt);
+    bool duplicate(std::string_view id);
+    bool Remove(std::string_view id);
 
-    static std::filesystem::path thumb_path(const LibraryEntry& e)
+    [[nodiscard]] static std::filesystem::path thumb_path(const LibraryEntry& e)
     {
         return e.dir / "thumb.png";
     }
-    static bool has_thumb(const LibraryEntry& e);
+    [[nodiscard]] static bool has_thumb(const LibraryEntry& e);
 
-    static std::filesystem::path default_base_dir();
+    [[nodiscard]] static std::filesystem::path default_base_dir();
 
 private:
     static bool WriteMetadata(const std::filesystem::path& dir, const LibraryEntry& e);

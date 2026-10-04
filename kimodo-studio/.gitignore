@@ -19,12 +19,26 @@ out/
 # Runtime generated state
 imgui.ini
 compile_commands.json
+*.part
+*.tmp
 
-# Test outputs & screenshots
+# Staged distribution binaries & packages
+dist/*.zip
+dist/*.sha256
+dist/*.tar.gz
+dist/*.exe
+
+# Test outputs, scratch dirs & screenshots
 test_*.bvh
+test_scratch_*/
 screenshot_*.png
 output_*.png
+setup_*.png
+app_*.png
 *.log
+*.png
+!assets/**/*.png
+!packaging/**/*.png
 
 # OS generated files
 Thumbs.db

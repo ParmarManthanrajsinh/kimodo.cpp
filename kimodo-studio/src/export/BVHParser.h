@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 #include "animation/Animation.h"
 
@@ -23,16 +24,16 @@ public:
     };
 
     // Parse BVH text string into Animation struct
-    static bool ParseString(const std::string& bvh_text, Animation& out_animation, std::string& error);
+    [[nodiscard]] static bool ParseString(std::string_view bvh_text, Animation& out_animation, std::string& error);
 
     // Parse BVH file into Animation struct
-    static bool ParseFile(const std::string& file_path, Animation& out_animation, std::string& error);
+    [[nodiscard]] static bool ParseFile(std::string_view file_path, Animation& out_animation, std::string& error);
 
     // Validate a BVH text content
-    static ValidationReport Validate(const std::string& bvh_text);
+    [[nodiscard]] static ValidationReport Validate(std::string_view bvh_text);
 
     // Convert XYZ Euler degrees to normalized Quaternion (xyzw)
-    static void EulerXyzToQuat(float ex, float ey, float ez, float& x, float& y, float& z, float& w);
+    static void EulerXyzToQuat(float ex, float ey, float ez, float& x, float& y, float& z, float& w) noexcept;
 };
 
 } // namespace studio

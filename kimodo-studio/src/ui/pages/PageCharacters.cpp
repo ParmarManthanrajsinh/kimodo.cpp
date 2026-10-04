@@ -546,7 +546,7 @@ void PageCharacters::Draw(AppState& state, CharacterLibrary& chars, Viewport& vi
         {
             draw_card_header("Mesh & Rig Validation");
 
-            auto draw_check = [](const char* label, bool ok, const std::string& desc = "") {
+            auto draw_check = [](const char* label, bool ok, std::string_view desc = "") {
                 if (ok)
                 {
                     ImGui::TextColored(UIStyle::green, "%s %s", icons::kCheck, label);
@@ -558,7 +558,7 @@ void PageCharacters::Draw(AppState& state, CharacterLibrary& chars, Viewport& vi
                 if (!desc.empty())
                 {
                     ImGui::SameLine();
-                    ImGui::TextDisabled("(%s)", desc.c_str());
+                    ImGui::TextDisabled("(%.*s)", static_cast<int>(desc.size()), desc.data());
                 }
             };
 

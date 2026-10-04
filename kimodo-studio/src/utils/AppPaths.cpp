@@ -96,7 +96,7 @@ std::filesystem::path AppPaths::CharacterRegistryFile()
     return AppDataDir() / "characters.json";
 }
 
-std::filesystem::path AppPaths::ResolveAsset(const std::string& relative_path)
+std::filesystem::path AppPaths::ResolveAsset(std::string_view relative_path)
 {
     const std::filesystem::path exe_dir = get_executable_dir();
     std::vector<std::filesystem::path> candidates = {
@@ -137,12 +137,12 @@ std::filesystem::path AppPaths::ResolveAsset(const std::string& relative_path)
     return candidates.front();
 }
 
-std::filesystem::path AppPaths::ResolveFont(const std::string& font_filename)
+std::filesystem::path AppPaths::ResolveFont(std::string_view font_filename)
 {
-    return ResolveAsset("fonts/" + font_filename);
+    return ResolveAsset((std::filesystem::path("fonts") / font_filename).generic_string());
 }
 
-std::filesystem::path AppPaths::ResolveConfig(const std::string& config_filename)
+std::filesystem::path AppPaths::ResolveConfig(std::string_view config_filename)
 {
     // Check user data config first, then bundled config
     std::error_code ec;
@@ -151,10 +151,10 @@ std::filesystem::path AppPaths::ResolveConfig(const std::string& config_filename
     {
         return user_config;
     }
-    return ResolveAsset("config/" + config_filename);
+    return ResolveAsset((std::filesystem::path("config") / config_filename).generic_string());
 }
 
-std::filesystem::path AppPaths::ResolveModel(const std::string& model_filename)
+std::filesystem::path AppPaths::ResolveModel(std::string_view model_filename)
 {
     std::error_code ec;
     const auto user_model = DefaultModelsDir() / model_filename;
@@ -162,10 +162,10 @@ std::filesystem::path AppPaths::ResolveModel(const std::string& model_filename)
     {
         return user_model;
     }
-    return ResolveAsset("models/" + model_filename);
+    return ResolveAsset((std::filesystem::path("models") / model_filename).generic_string());
 }
 
-std::filesystem::path AppPaths::ResolveTextBundle(const std::string& bundle_name)
+std::filesystem::path AppPaths::ResolveTextBundle(std::string_view bundle_name)
 {
     const std::filesystem::path exe_dir = get_executable_dir();
     std::vector<std::filesystem::path> candidates = {

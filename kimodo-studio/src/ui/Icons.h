@@ -140,6 +140,9 @@
 #ifndef ICON_FA_SPINNER
 #define ICON_FA_SPINNER "\xEF\x84\x90"
 #endif
+#ifndef ICON_FA_COPY
+#define ICON_FA_COPY "\xEF\x83\x85"
+#endif
 
 namespace studio::icons
 {
@@ -190,6 +193,7 @@ inline constexpr const char* kZoomOut = ICON_FA_ZOOM_OUT;
 inline constexpr const char* kInfo = ICON_FA_INFO;
 inline constexpr const char* kPlus = ICON_FA_PLUS;
 inline constexpr const char* kSpinner = ICON_FA_SPINNER;
+inline constexpr const char* kCopy = ICON_FA_COPY;
 
 constexpr unsigned short kRangeFa[] = {0xf000, 0xf8ff, 0};
 

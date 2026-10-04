@@ -1,8 +1,6 @@
 #include "export/CharacterGLBExporter.h"
-#include "export/ExportPreset.h"
 #include "raymath.h"
 
-#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -30,7 +28,7 @@ struct BinBuilder
     }
 };
 
-std::string json_escape(const std::string& s)
+std::string json_escape(std::string_view s)
 {
     std::string out;
     for (char c : s)

@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "character/CharacterAsset.h"
 #include "character/CharacterMapper.h"
@@ -32,30 +33,30 @@ public:
     bool Init();
     void Rescan();
 
-    const std::vector<CharacterEntry>& GetEntries() const
+    [[nodiscard]] const std::vector<CharacterEntry>& GetEntries() const noexcept
     {
         return entries;
     }
-    const std::string& GetActiveId() const
+    [[nodiscard]] const std::string& GetActiveId() const noexcept
     {
         return active_id;
     }
 
-    CharacterAsset* GetActiveAsset()
+    [[nodiscard]] CharacterAsset* GetActiveAsset() noexcept
     {
         return active_asset.get();
     }
-    const CharacterAsset* GetActiveAsset() const
+    [[nodiscard]] const CharacterAsset* GetActiveAsset() const noexcept
     {
         return active_asset.get();
     }
 
-    bool SelectCharacter(const std::string& id);
-    bool ImportCharacter(const std::string& source_path, std::string& error);
-    bool RemoveCharacter(const std::string& id);
+    bool SelectCharacter(std::string_view id);
+    bool ImportCharacter(std::string_view source_path, std::string& error);
+    bool RemoveCharacter(std::string_view id);
 
-    bool SaveMapping(const std::string& id, const CharacterBoneMap& mapping);
-    bool FindEntry(const std::string& id, CharacterEntry& out_entry) const;
+    bool SaveMapping(std::string_view id, const CharacterBoneMap& mapping);
+    bool FindEntry(std::string_view id, CharacterEntry& out_entry) const;
 
 private:
     std::vector<CharacterEntry> entries;

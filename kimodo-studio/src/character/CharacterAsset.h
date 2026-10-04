@@ -159,7 +159,7 @@ public:
         report = std::move(in_report);
     }
 
-    int FindBoneIndex(const std::string& bone_name) const;
+    [[nodiscard]] int FindBoneIndex(std::string_view bone_name) const noexcept;
 
     // CPU animated vertices buffer (for CPU fallback skinning / wireframe)
     const std::vector<Vector3>& GetAnimatedVertices() const

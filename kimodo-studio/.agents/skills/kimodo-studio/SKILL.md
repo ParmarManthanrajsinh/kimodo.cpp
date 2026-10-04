@@ -31,9 +31,14 @@ Kimodo Studio is a native, high-performance desktop workstation for AI character
 - **Export & Import (`src/export/`)**:
   - `BVHExporter.h`: Biovision Hierarchy text motion export.
   - `GLBExporter.h`: Binary glTF 2.0 animated skinned mesh / node hierarchy export.
+- **Setup & Onboarding Subsystem (`src/app/`, `src/ui/pages/`)**:
+  - `SetupManager.h/cpp`: Automated first-run wizard orchestrator and deterministic state machine (`Checking`, `NeedsLogin`, `Downloading`, `Verifying`, `Ready`, `Error`). Strict offline gating (`ContinueOffline` requires verified local neural weights).
+  - `PageSetup.h/cpp`: Onboarding UI, Hugging Face login & repo access check, 5-point component checklist card, and atomic download progress.
+- **Runtime & GPU Validation (`src/utils/`)**:
+  - `RuntimeValidator.h/cpp`: Real hardware validation via dynamic Vulkan 1.0 device queries (`vulkan-1.dll`) without Vulkan SDK; verifies native GGML DLLs (`ggml.dll`, `ggml-base.dll`, `ggml-cpu.dll`, `ggml-vulkan.dll`).
 - **Model Registry & HuggingFace (`src/models/`, `src/huggingface/`)**:
-  - `ModelManager.h`: Local/remote model discovery, checksums, download tasks.
-  - `HFAuthenticator.h`: Hugging Face Hub token validation via WinHTTP / curl.
+  - `ModelManager.h/cpp`: Complete 35-file GGML text bundle support (`tokenizer.gguf`, `embedding.gguf`, `final-norm.gguf`, 32 layer GGUFs) and SOMA RP v1.1 motion model. Atomic download via `.part` files, individual SHA-256 checksum validation, and strict bundle completeness verification.
+  - `HFAuthenticator.h`: Hugging Face Hub token validation via WinHTTP / curl with Windows Credential Manager storage and zero token memory exposure.
 
 ---
 
@@ -60,10 +65,18 @@ Fast multi-core compilation:
 & "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" build\windows-vs2022\kimodo_studio.vcxproj /p:Configuration=Release /m
 ```
 
+### Test & Verification Commands
+Comprehensive test suite and Setup Wizard simulation:
+```powershell
+.\build\windows-vs2022\Release\kimodo_studio.exe --selftest-all    # All 8 verification suites
+.\build\windows-vs2022\Release\kimodo_studio.exe --selftest-setup  # 10 Setup Wizard & bundle simulation tests
+```
+
 ### Headless Verification & Screenshots
 Run instant headless frame capture to verify UI rendering without launching a desktop window:
 ```powershell
-.\build\windows-vs2022\Release\kimodo_studio.exe --screenshot test_screen.png
+.\build\windows-vs2022\Release\kimodo_studio.exe --screenshot app_screen.png
+.\build\windows-vs2022\Release\kimodo_studio.exe --screenshot-setup setup_screen.png 1280 800
 ```
 
 ### Git & Source Cleanliness

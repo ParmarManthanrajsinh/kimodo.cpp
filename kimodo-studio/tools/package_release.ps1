@@ -134,7 +134,19 @@ $NotesContent = @(
     "## Installation & First Launch",
     "1. Extract ``$($Package.Name)`` to your desired directory.",
     "2. Launch ``kimodo_studio.exe``.",
-    "3. Open the **Models** tab to download model weights from Hugging Face or import local GGUF models."
+    "3. First-Run Setup Wizard launches automatically:",
+    "   - Authenticate with Hugging Face if access to gated model weights is required.",
+    "   - Click **Download Required Components** to automatically fetch and verify the SOMA RP motion model and complete 35-file text encoder bundle.",
+    "   - Setup validates GGML tensor runtime and Vulkan GPU acceleration.",
+    "4. Click **Start Creating Motion** to generate animations.",
+    "",
+    "> *Note: The Models page is an advanced interface for manual model inspection and local imports.*",
+    "",
+    "## Model Licensing & Attribution",
+    "- **SOMA RP v1.1 Motion Model**: Licensed under the NVIDIA Open Model License Agreement (Hugging Face ``LocalAI-io/Kimodo-SOMA-RP-v1.1-GGML``; access is validated for every required repository at setup time).",
+    "- **LLM2Vec Text Encoder Bundle (35 GGUF files)**: Licensed under the Meta Llama 3 Community License Agreement (Hugging Face ``LocalAI-io/Llama-3-Kimodo-GGML``; access is validated for every required repository at setup time).",
+    "- **CesiumMan Character Asset**: CC-BY 4.0 (Cesium GS, Inc.).",
+    "- No restricted model weights are bundled into the distribution archive; all weights are downloaded on-demand after user authentication."
 ) -join "`r`n"
 
 Set-Content -Path $ReleaseNotes -Value $NotesContent -Encoding utf8

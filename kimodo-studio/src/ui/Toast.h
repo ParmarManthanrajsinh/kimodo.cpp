@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace studio
@@ -26,7 +27,7 @@ struct Toast
 class Toasts
 {
 public:
-    void Push(const std::string& text, ToastKind kind = ToastKind::Info);
+    void Push(std::string_view text, ToastKind kind = ToastKind::Info);
     void Draw();
 
 private:

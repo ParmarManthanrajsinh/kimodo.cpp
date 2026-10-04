@@ -12,7 +12,7 @@ namespace studio
 namespace
 {
 
-std::string json_escape(const std::string& s)
+std::string json_escape(std::string_view s)
 {
     std::string out;
     for (char c : s)
@@ -114,8 +114,8 @@ void CharacterLibrary::LoadRegistry()
         }
 
         // Simple property extraction
-        auto get_prop = [&](const std::string& key) -> std::string {
-            std::string pat = "\"" + key + "\":\"";
+        auto get_prop = [&](std::string_view key) -> std::string {
+            std::string pat = "\"" + std::string(key) + "\":\"";
             size_t p = text.find(pat, pos);
             if (p != std::string::npos && p < text.find("}", pos))
             {
@@ -171,9 +171,9 @@ void CharacterLibrary::SaveRegistry()
     file << "]\n";
 }
 
-bool CharacterLibrary::SelectCharacter(const std::string& id)
+bool CharacterLibrary::SelectCharacter(std::string_view id)
 {
-    auto it = std::find_if(entries.begin(), entries.end(), [&id](const CharacterEntry& e) { return e.id == id; });
+    auto it = std::find_if(entries.begin(), entries.end(), [id](const CharacterEntry& e) { return e.id == id; });
     if (it == entries.end())
         return false;
 
@@ -181,23 +181,23 @@ bool CharacterLibrary::SelectCharacter(const std::string& id)
     std::string err;
     if (!CharacterLoader::LoadGLB(it->file_path, *asset, err))
     {
-        Logger::GetInstance().Error("Failed loading character " + id + ": " + err);
+        Logger::GetInstance().Error("Failed loading character " + std::string(id) + ": " + err);
         return false;
     }
 
-    active_id = id;
+    active_id = std::string(id);
     active_asset = std::move(asset);
-    Logger::GetInstance().Info("Selected character: " + it->name + " (" + id + ")");
+    Logger::GetInstance().Info("Selected character: " + it->name + " (" + std::string(id) + ")");
     return true;
 }
 
-bool CharacterLibrary::ImportCharacter(const std::string& source_path, std::string& error)
+bool CharacterLibrary::ImportCharacter(std::string_view source_path, std::string& error)
 {
     std::filesystem::path src(source_path);
     std::error_code ec;
     if (!std::filesystem::is_regular_file(src, ec) || ec)
     {
-        error = "File does not exist: " + source_path;
+        error = "File does not exist: " + std::string(source_path);
         return false;
     }
 
@@ -238,9 +238,9 @@ bool CharacterLibrary::ImportCharacter(const std::string& source_path, std::stri
     return true;
 }
 
-bool CharacterLibrary::RemoveCharacter(const std::string& id)
+bool CharacterLibrary::RemoveCharacter(std::string_view id)
 {
-    auto it = std::find_if(entries.begin(), entries.end(), [&id](const CharacterEntry& e) { return e.id == id; });
+    auto it = std::find_if(entries.begin(), entries.end(), [id](const CharacterEntry& e) { return e.id == id; });
     if (it == entries.end())
         return false;
 
@@ -258,18 +258,18 @@ bool CharacterLibrary::RemoveCharacter(const std::string& id)
     return true;
 }
 
-bool CharacterLibrary::SaveMapping(const std::string& id, const CharacterBoneMap& mapping)
+bool CharacterLibrary::SaveMapping(std::string_view id, const CharacterBoneMap& mapping)
 {
-    auto it = std::find_if(entries.begin(), entries.end(), [&id](const CharacterEntry& e) { return e.id == id; });
+    auto it = std::find_if(entries.begin(), entries.end(), [id](const CharacterEntry& e) { return e.id == id; });
     if (it == entries.end())
         return false;
     it->mapping = mapping;
     return true;
 }
 
-bool CharacterLibrary::FindEntry(const std::string& id, CharacterEntry& out_entry) const
+bool CharacterLibrary::FindEntry(std::string_view id, CharacterEntry& out_entry) const
 {
-    auto it = std::find_if(entries.begin(), entries.end(), [&id](const CharacterEntry& e) { return e.id == id; });
+    auto it = std::find_if(entries.begin(), entries.end(), [id](const CharacterEntry& e) { return e.id == id; });
     if (it == entries.end())
         return false;
     out_entry = *it;

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <array>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "animation/Animation.h"
 
@@ -44,8 +44,8 @@ struct ExportPreset
     std::string format = "GLB"; // "GLB" or "BVH"
 };
 
-const std::vector<ExportPreset>& export_presets();
-const ExportPreset* FindPreset(const std::string& id);
+[[nodiscard]] const std::vector<ExportPreset>& export_presets();
+[[nodiscard]] const ExportPreset* FindPreset(std::string_view id) noexcept;
 
 Animation PrepareExport(const Animation& in, float target_fps, float scale, const Mat3& basis, RootMotion root_motion,
                         std::string& report);

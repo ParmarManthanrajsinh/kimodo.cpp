@@ -151,9 +151,9 @@ const std::vector<ExportPreset>& export_presets()
     return presets;
 }
 
-const ExportPreset* FindPreset(const std::string& id)
+const ExportPreset* FindPreset(std::string_view id) noexcept
 {
-    for (const ExportPreset& p : export_presets())
+    for (const auto& p : export_presets())
     {
         if (p.id == id)
         {

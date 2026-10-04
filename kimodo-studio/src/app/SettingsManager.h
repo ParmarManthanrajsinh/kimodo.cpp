@@ -10,12 +10,12 @@ struct UserSettings
 {
     std::string theme = "Dark";
     int target_fps = 60;
-    int viewport_mode = 2; // 0 = Character, 1 = Skeleton, 2 = Both
+    int viewport_mode = 1; // 0 = Character, 1 = Skeleton, 2 = Both
     bool show_grid = true;
     bool show_axes = true;
     bool show_floor = true;
     bool show_skeleton = true;
-    bool show_character = true;
+    bool show_character = false;
     bool show_wireframe = false;
     bool show_bone_names = false;
 

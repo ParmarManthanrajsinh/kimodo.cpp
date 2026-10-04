@@ -1,4 +1,5 @@
 #include "ui/pages/PageGenerate.h"
+#include "app/SetupManager.h"
 #include "imgui.h"
 #include "kimodo/KimodoEngine.h"
 #include "models/ModelManager.h"
@@ -10,7 +11,7 @@
 namespace studio
 {
 
-void PageGenerate::Draw(AppState& state, KimodoEngine& engine, ModelManager& models, Toasts& toasts)
+void PageGenerate::Draw(AppState& state, KimodoEngine& engine, ModelManager& models, SetupManager& setup, Toasts& toasts)
 {
     ImGui::TextColored(UIStyle::accent, "%s Motion Generation", icons::kGenerate);
     ImGui::TextDisabled("Generate humanoid motion clips using the SOMA model");
@@ -18,23 +19,26 @@ void PageGenerate::Draw(AppState& state, KimodoEngine& engine, ModelManager& mod
     ImGui::Separator();
     ImGui::Spacing();
 
-    // Check active installed model
+    // Check active installed model & text bundle completeness
     ModelEntry active_model;
     bool has_model = models.find_copy(models.GetActiveId(), active_model) && active_model.installed;
+    bool has_text_bundle = models.IsBundleComplete("llm2vec-text-bundle");
+    bool is_setup_ready = setup.IsReady() && has_model && has_text_bundle;
 
-    if (!has_model)
+    if (!is_setup_ready)
     {
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.22f, 0.16f, 0.08f, 0.95f));
-        ImGui::BeginChild("##SetupIncompleteWarning", ImVec2(0, 120), true);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.20f, 0.14f, 0.08f, 0.95f));
+        ImGui::BeginChild("##SetupIncompleteWarning", ImVec2(0, 130), true);
         {
-            ImGui::TextColored(UIStyle::yellow, "%s Setup Incomplete", icons::kWarn);
-            ImGui::TextWrapped("Required AI model weights and components must be set up before generating motion.");
+            ImGui::TextColored(UIStyle::yellow, "%s AI model not installed", icons::kWarn);
+            ImGui::TextWrapped("Motion generation requires one additional component.");
             ImGui::Spacing();
             ImGui::PushStyleColor(ImGuiCol_Button, UIStyle::accent);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.05f, 0.05f, 0.08f, 1.0f));
-            if (ImGui::Button(ICON_FA_CHECK " Complete Setup", ImVec2(-1, 36)))
+            if (ImGui::Button(ICON_FA_DOWNLOAD "  Install Now", ImVec2(200, 38)))
             {
                 state.screen = Screen::Setup;
+                setup.StartFirstRun(models, state);
             }
             ImGui::PopStyleColor(2);
         }
@@ -117,14 +121,14 @@ void PageGenerate::Draw(AppState& state, KimodoEngine& engine, ModelManager& mod
     }
     else
     {
-        if (!has_model)
+        if (!is_setup_ready)
         {
             ImGui::BeginDisabled();
             ImGui::Button(ICON_FA_GENERATE "  Generate Animation (Setup Required)", ImVec2(-1, 44));
             ImGui::EndDisabled();
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
             {
-                ImGui::SetTooltip("Please click [Complete Setup] above to install required AI assets.");
+                ImGui::SetTooltip("Please click [Complete Setup Wizard] above to install required AI assets.");
             }
         }
         else
@@ -140,8 +144,18 @@ void PageGenerate::Draw(AppState& state, KimodoEngine& engine, ModelManager& mod
                 else
                 {
                     state.motion_path = active_model.local_path;
-                    engine.SetPaths(active_model.local_path,
-                                    AppPaths::ResolveTextBundle("llm2vec-text-bundle").string());
+                    // Use the verified bundle directory from ModelManager so the
+                    // backend receives the legacy directory, never tokenizer.gguf.
+                    ModelEntry text_entry;
+                    std::string text_path =
+                        AppPaths::ResolveTextBundle("llm2vec-text-bundle").string();
+                    if (models.find_copy("llm2vec-text-bundle", text_entry) &&
+                        text_entry.installed && !text_entry.local_path.empty())
+                    {
+                        text_path = text_entry.local_path;
+                    }
+                    state.text_bundle = text_path;
+                    engine.SetPaths(active_model.local_path, text_path);
                     GenerationParams params;
                     params.frames = static_cast<uint32_t>(state.frames);
                     params.steps = static_cast<uint32_t>(state.steps);

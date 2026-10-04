@@ -32,6 +32,17 @@ int KimodoAdapter::AbiVersion()
 
 bool KimodoAdapter::Load(const std::string& motion_gguf, const std::string& text_bundle, std::string& error)
 {
+    // The shipped backend expects the legacy text-bundle DIRECTORY
+    // (tokenizer.gguf + embedding.gguf + final-norm.gguf + layer-*.gguf).
+    // Passing tokenizer.gguf itself as the text model always fails downstream,
+    // so reject it here with a clear message instead of a cryptic load error.
+    if (text_bundle.size() >= 14 &&
+        text_bundle.compare(text_bundle.size() - 14, 14, "tokenizer.gguf") == 0)
+    {
+        error = "text_bundle must be the legacy bundle directory, not tokenizer.gguf: " + text_bundle;
+        last_error = error;
+        return false;
+    }
 #ifdef KIMODO_HAVE_BACKEND
     Unload();
     kimodo_runtime_options opts{};

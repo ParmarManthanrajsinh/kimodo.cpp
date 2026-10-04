@@ -30,7 +30,7 @@ std::string now_stamp()
     return ss.str();
 }
 
-std::string json_escape(const std::string& s)
+std::string json_escape(std::string_view s)
 {
     std::string o;
     for (char c : s)
@@ -45,35 +45,35 @@ std::string json_escape(const std::string& s)
 }
 
 // Minimal readers for files we wrote ourselves (flat keys only).
-bool find_string(const std::string& json, const std::string& key, std::string& out)
+bool find_string(std::string_view json, std::string_view key, std::string& out)
 {
-    const std::string pat = "\"" + key + "\":\"";
+    const std::string pat = "\"" + std::string(key) + "\":\"";
     const size_t p = json.find(pat);
-    if (p == std::string::npos)
+    if (p == std::string_view::npos)
     {
         return false;
     }
     const size_t s = p + pat.size();
     const size_t e = json.find('"', s);
-    if (e == std::string::npos)
+    if (e == std::string_view::npos)
     {
         return false;
     }
-    out = json.substr(s, e - s);
+    out = std::string(json.substr(s, e - s));
     return true;
 }
 
-bool find_number(const std::string& json, const std::string& key, double& out)
+bool find_number(std::string_view json, std::string_view key, double& out)
 {
-    const std::string pat = "\"" + key + "\":";
+    const std::string pat = "\"" + std::string(key) + "\":";
     const size_t p = json.find(pat);
-    if (p == std::string::npos)
+    if (p == std::string_view::npos)
     {
         return false;
     }
     try
     {
-        out = std::stod(json.substr(p + pat.size()));
+        out = std::stod(std::string(json.substr(p + pat.size())));
         return true;
     }
     catch (...)
@@ -213,7 +213,7 @@ bool read_u32(std::ifstream& bin, uint32_t& v)
 
 } // namespace
 
-bool AnimationLibrary::SaveAnimation(const std::string& prompt, const std::string& model, const Animation& anim,
+bool AnimationLibrary::SaveAnimation(std::string_view prompt, std::string_view model, const Animation& anim,
                                      LibraryEntry& out)
 {
     // Unique across restarts: timestamp + ms + random (no shared counter).
@@ -226,8 +226,8 @@ bool AnimationLibrary::SaveAnimation(const std::string& prompt, const std::strin
     idss << "anim-" << now_stamp() << "-" << std::setfill('0') << std::setw(3) << ms << "-" << std::setfill('0')
          << std::setw(4) << (rng() % 10000);
     out.id = idss.str();
-    out.prompt = prompt;
-    out.model = model;
+    out.prompt = std::string(prompt);
+    out.model = std::string(model);
     out.created_at = now_stamp();
     out.fps = anim.fps;
     out.frames = anim.frames;
@@ -392,20 +392,20 @@ bool AnimationLibrary::LoadAnimation(const LibraryEntry& entry, Animation& out) 
     return true;
 }
 
-bool AnimationLibrary::Rename(const std::string& id, const std::string& new_prompt)
+bool AnimationLibrary::Rename(std::string_view id, std::string_view new_prompt)
 {
     for (LibraryEntry& e : entries)
     {
         if (e.id == id)
         {
-            e.prompt = new_prompt;
+            e.prompt = std::string(new_prompt);
             return WriteMetadata(e.dir, e);
         }
     }
     return false;
 }
 
-bool AnimationLibrary::duplicate(const std::string& id)
+bool AnimationLibrary::duplicate(std::string_view id)
 {
     for (const LibraryEntry& e : entries)
     {
@@ -429,7 +429,7 @@ bool AnimationLibrary::has_thumb(const LibraryEntry& e)
     return std::filesystem::is_regular_file(e.dir / "thumb.png", ec);
 }
 
-bool AnimationLibrary::Remove(const std::string& id)
+bool AnimationLibrary::Remove(std::string_view id)
 {
     for (auto it = entries.begin(); it != entries.end(); ++it)
     {

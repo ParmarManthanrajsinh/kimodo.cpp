@@ -2,6 +2,7 @@
 
 #include <array>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -24,7 +25,7 @@ struct SkeletonProfile
     std::vector<std::array<float, 3>> offsets;
 };
 
-const std::vector<SkeletonProfile>& target_profiles();
-const SkeletonProfile* FindProfile(const std::string& id);
+[[nodiscard]] const std::vector<SkeletonProfile>& target_profiles();
+[[nodiscard]] const SkeletonProfile* FindProfile(std::string_view id) noexcept;
 
 } // namespace studio

@@ -89,7 +89,7 @@ platform headers in a dependency-safe order (e.g. `windows.h` before
 ## 5. Const Correctness
 
 - Read-only access takes `const&`: `const Animation& animation`,
-  `const std::string& file_path`.
+  `std::string_view file_path`.
 - Use `const auto&` in range-based loops.
 - Mark member functions `const` when they do not mutate state
   (`bool IsPlaying() const`, `float GetDuration() const`).

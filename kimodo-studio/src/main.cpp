@@ -71,6 +71,39 @@ int main(int argc, char** argv)
             std::printf("Setup screenshot captured to %s (%dx%d)\n", out_path, w, h);
             return 0;
         }
+        if (arg == "--screenshot-welcome")
+        {
+            const char* out_path = (argc >= 3) ? argv[2] : "welcome_screenshot.png";
+            int w = (argc >= 5) ? std::atoi(argv[3]) : 1280;
+            int h = (argc >= 5) ? std::atoi(argv[4]) : 800;
+            studio::Application app;
+            if (!app.Init(w, h))
+            {
+                return 1;
+            }
+            app.SetScreen(studio::Screen::Setup);
+            app.GetSetupManager().ReturnToSetup();
+            app.Run(15, out_path);
+            app.Shutdown();
+            std::printf("Welcome screenshot captured to %s (%dx%d)\n", out_path, w, h);
+            return 0;
+        }
+        if (arg == "--screenshot-settings")
+        {
+            const char* out_path = (argc >= 3) ? argv[2] : "settings_screenshot.png";
+            int w = (argc >= 5) ? std::atoi(argv[3]) : 1280;
+            int h = (argc >= 5) ? std::atoi(argv[4]) : 800;
+            studio::Application app;
+            if (!app.Init(w, h))
+            {
+                return 1;
+            }
+            app.SetScreen(studio::Screen::settings);
+            app.Run(15, out_path);
+            app.Shutdown();
+            std::printf("Settings screenshot captured to %s (%dx%d)\n", out_path, w, h);
+            return 0;
+        }
         if (arg == "--screenshot")
         {
             const char* out_path = (argc >= 3) ? argv[2] : "app_screenshot.png";

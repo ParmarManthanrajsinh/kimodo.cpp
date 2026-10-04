@@ -138,7 +138,18 @@ bool Application::Init(int width, int height)
         state.motion_path = active_model.local_path;
         Logger::GetInstance().Info("Active model: " + active_model.name + " (" + active_model.local_path + ")");
     }
-    engine.SetPaths(state.motion_path, bundle_path.string());
+    // Prefer the verified ModelManager bundle directory over a fresh resolve,
+    // so the engine always gets the exact validated path (never tokenizer.gguf).
+    ModelEntry text_entry;
+    std::string text_path = bundle_path.string();
+    if (models.find_copy("llm2vec-text-bundle", text_entry) && text_entry.installed &&
+        !text_entry.local_path.empty())
+    {
+        text_path = text_entry.local_path;
+    }
+    state.text_bundle = text_path;
+    Logger::GetInstance().Info("Text bundle path: " + text_path);
+    engine.SetPaths(state.motion_path, text_path);
 
     library.Init(AppPaths::DefaultAnimationsDir());
     characters.Init();
@@ -153,13 +164,22 @@ bool Application::Init(int width, int height)
 
     // Viewport defaults from settings
     viewport.Reset();
-    viewport.SetGrid(settings.show_grid);
-    viewport.SetAxes(settings.show_axes);
-    viewport.SetFloor(settings.show_floor);
-    viewport.SetSkeleton(settings.show_skeleton);
-    viewport.SetCharacter(settings.show_character);
-    viewport.SetWireframe(settings.show_wireframe);
-    viewport.SetBoneNames(settings.show_bone_names);
+    state.show_grid = settings.show_grid;
+    state.show_axes = settings.show_axes;
+    state.show_floor = settings.show_floor;
+    state.show_skeleton = settings.show_skeleton;
+    state.show_character = settings.show_character;
+    state.show_wireframe = settings.show_wireframe;
+    state.show_bone_names = settings.show_bone_names;
+    state.viewport_mode = static_cast<ViewportMode>(settings.viewport_mode);
+
+    viewport.SetGrid(state.show_grid);
+    viewport.SetAxes(state.show_axes);
+    viewport.SetFloor(state.show_floor);
+    viewport.SetSkeleton(state.show_skeleton);
+    viewport.SetCharacter(state.show_character);
+    viewport.SetWireframe(state.show_wireframe);
+    viewport.SetBoneNames(state.show_bone_names);
 
     if (characters.GetActiveAsset())
     {
@@ -196,41 +216,58 @@ bool Application::Init(int width, int height)
 
 void Application::PollEngine()
 {
-    // Keep engine paths synchronized with active installed model
+    // Keep engine paths synchronized with active installed model.
+    // The text path always comes from the verified ModelManager bundle
+    // directory, never from a bare resolve and never tokenizer.gguf.
     ModelEntry active_model;
+    ModelEntry text_entry;
+    std::string verified_text = AppPaths::ResolveTextBundle("llm2vec-text-bundle").string();
+    if (models.find_copy("llm2vec-text-bundle", text_entry) && text_entry.installed &&
+        !text_entry.local_path.empty())
+    {
+        verified_text = text_entry.local_path;
+    }
     if (models.find_copy(models.GetActiveId(), active_model) && active_model.installed)
     {
-        if (state.motion_path != active_model.local_path)
+        if (state.motion_path != active_model.local_path || state.text_bundle != verified_text)
         {
             state.motion_path = active_model.local_path;
-            engine.SetPaths(state.motion_path, AppPaths::ResolveTextBundle("llm2vec-text-bundle").string());
+            state.text_bundle = verified_text;
+            engine.SetPaths(state.motion_path, state.text_bundle);
         }
     }
     else if (!state.motion_path.empty())
     {
         state.motion_path.clear();
-        engine.SetPaths("", AppPaths::ResolveTextBundle("llm2vec-text-bundle").string());
+        state.text_bundle = verified_text;
+        engine.SetPaths("", state.text_bundle);
     }
 
     EngineStatus s = engine.GetStatus();
     if (s == EngineStatus::Finished && s != last_engine_status)
     {
         MotionResult result;
-        if (engine.LastResult(result))
+        if (engine.LastResult(result) && result.frames > 0 && result.joints > 0)
         {
             Animation anim;
             anim.FromMotionResult(result);
             player.Load(anim);
+            player.Play();
             Logger::GetInstance().Info("Viewport: animation loaded, " + std::to_string(anim.frames) + " frames");
             LibraryEntry saved;
             if (library.SaveAnimation(engine.GetLastPrompt(), "soma-rp-v1.1", anim, saved))
             {
-                toasts.Push("Animation saved to library", ToastKind::Success);
+                toasts.Push("Animation saved to library (" + std::to_string(anim.frames) + " frames)",
+                            ToastKind::Success);
             }
             else
             {
                 toasts.Push("Animation generated, library save failed", ToastKind::Warning);
             }
+        }
+        else
+        {
+            toasts.Push("Generated motion was empty or invalid", ToastKind::Error);
         }
     }
     if (s == EngineStatus::Error && s != last_engine_status)

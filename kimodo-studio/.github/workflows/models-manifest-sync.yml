@@ -1,0 +1,28 @@
+name: models-manifest-sync
+
+on:
+  push:
+    paths:
+      - 'config/models.json'
+      - 'scripts/sync_models_manifest.py'
+      - 'src/models/ModelManager.cpp'
+  pull_request:
+    paths:
+      - 'config/models.json'
+      - 'scripts/sync_models_manifest.py'
+      - 'src/models/ModelManager.cpp'
+  schedule:
+    - cron: '0 6 * * 1'  # weekly drift check against published MANIFEST.json
+
+jobs:
+  sync-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify models.json matches authoritative HF MANIFEST.json
+        # Fails on any path/size/sha256 drift. Registry values are never
+        # invented; fix by re-publishing the manifest, not by hand-editing hashes.
+        run: python scripts/sync_models_manifest.py

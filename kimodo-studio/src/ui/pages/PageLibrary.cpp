@@ -61,13 +61,12 @@ void PageLibrary::Draw(AppState& state, AnimationLibrary& library, AnimationPlay
     }
     ImGui::Spacing();
 
-    auto trim_prompt = [](const std::string& str) -> std::string {
-        std::string s = str;
-        while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ' || s.back() == '\t'))
+    auto trim_prompt = [](std::string_view str) -> std::string {
+        while (!str.empty() && (str.back() == '\n' || str.back() == '\r' || str.back() == ' ' || str.back() == '\t'))
         {
-            s.pop_back();
+            str.remove_suffix(1);
         }
-        return s;
+        return std::string(str);
     };
 
     // Render list of animation cards

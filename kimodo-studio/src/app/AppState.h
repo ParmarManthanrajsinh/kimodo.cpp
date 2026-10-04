@@ -47,7 +47,7 @@ struct AppState
     // Selection state
     std::string retarget_source;                    // Library ID selected for retargeting / character preview
     std::string active_character_id = "cesium-man"; // Character library ID
-    ViewportMode viewport_mode = ViewportMode::Both;
+    ViewportMode viewport_mode = ViewportMode::Skeleton;
 
     // Viewport display flags
     bool show_wireframe = false;
@@ -57,7 +57,7 @@ struct AppState
     bool show_axes = true;
     bool show_floor = true;
     bool show_skeleton = true;
-    bool show_character = true;
+    bool show_character = false;
 
     // Camera and Viewport
     int camera_projection = 0; // 0 = Perspective, 1 = Orthographic

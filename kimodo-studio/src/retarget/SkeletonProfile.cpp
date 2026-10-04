@@ -63,9 +63,9 @@ const std::vector<SkeletonProfile>& target_profiles()
     return profiles;
 }
 
-const SkeletonProfile* FindProfile(const std::string& id)
+const SkeletonProfile* FindProfile(std::string_view id) noexcept
 {
-    for (const SkeletonProfile& p : target_profiles())
+    for (const auto& p : target_profiles())
     {
         if (p.id == id)
         {

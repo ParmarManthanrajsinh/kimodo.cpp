@@ -11,9 +11,9 @@
 namespace studio
 {
 
-void Toasts::Push(const std::string& text, ToastKind kind)
+void Toasts::Push(std::string_view text, ToastKind kind)
 {
-    items.push_back({text, kind, GetTime() + 4.0});
+    items.push_back({std::string(text), kind, GetTime() + 4.0});
 }
 
 void Toasts::Draw()

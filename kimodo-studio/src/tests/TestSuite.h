@@ -15,6 +15,7 @@ public:
     static int RunBlenderRetargeting();
     static int RunResizeRegression();
     static int RunSetupWizardSimulation();
+    static int RunModelInstallVerify();
 };
 
 } // namespace studio

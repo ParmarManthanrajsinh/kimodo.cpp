@@ -183,7 +183,7 @@ private:
     bool draw_axes = true;
     bool draw_floor = true;
     bool draw_skeleton = true;
-    bool draw_character = true;
+    bool draw_character = false;
     bool draw_wireframe = false;
     bool draw_bone_names = false;
 

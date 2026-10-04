@@ -1,9 +1,9 @@
-﻿# Kimodo Studio Release (KimodoStudio-0.1.0-f6ad61f-windows-x64)
+﻿# Kimodo Studio Release (KimodoStudio-0.1.0-2c2ce39-windows-x64-20261002-012327)
 
 ## Package Info
-- **File**: `KimodoStudio-0.1.0-f6ad61f-windows-x64.zip`
-- **Size**: 18.12 MB
-- **SHA-256**: `80020DB17801BCF4AC68562D26F5B8E58A38F5E820E3E46EA188EAC0E8ADE851`
+- **File**: `KimodoStudio-0.1.0-2c2ce39-windows-x64-20261002-012327.zip`
+- **Size**: 18.2 MB
+- **SHA-256**: `8A769A1D930B9D3AEF782E4935CE446B80F0B61A8D7DA9C1CEAA0D5892C049EA`
 - **Platform**: Windows 10/11 x64
 
 ## System Requirements
@@ -12,6 +12,18 @@
 - Microsoft Visual C++ 2015-2022 Redistributable (x64)
 
 ## Installation & First Launch
-1. Extract `KimodoStudio-0.1.0-f6ad61f-windows-x64.zip` to your desired directory.
+1. Extract `KimodoStudio-0.1.0-2c2ce39-windows-x64-20261002-012327.zip` to your desired directory.
 2. Launch `kimodo_studio.exe`.
-3. Open the **Models** tab to download model weights from Hugging Face or import local GGUF models.
+3. First-Run Setup Wizard launches automatically:
+   - Authenticate with Hugging Face if access to gated model weights is required.
+   - Click **Download Required Components** to automatically fetch and verify the SOMA RP motion model and complete 35-file text encoder bundle.
+   - Setup validates GGML tensor runtime and Vulkan GPU acceleration.
+4. Click **Start Creating Motion** to generate animations.
+
+> *Note: The Models page is an advanced interface for manual model inspection and local imports.*
+
+## Model Licensing & Attribution
+- **SOMA RP v1.1 Motion Model**: Licensed under the NVIDIA Open Model License Agreement (Hugging Face `LocalAI-io/Kimodo-SOMA-RP-v1.1-GGML`; access is validated for every required repository at setup time).
+- **LLM2Vec Text Encoder Bundle (35 GGUF files)**: Licensed under the Meta Llama 3 Community License Agreement (Hugging Face `LocalAI-io/Llama-3-Kimodo-GGML`; access is validated for every required repository at setup time).
+- **CesiumMan Character Asset**: CC-BY 4.0 (Cesium GS, Inc.).
+- No restricted model weights are bundled into the distribution archive; all weights are downloaded on-demand after user authentication.

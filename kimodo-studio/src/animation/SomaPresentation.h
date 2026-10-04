@@ -2,6 +2,7 @@
 
 #include <array>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "animation/Animation.h"
 
@@ -14,7 +15,7 @@ struct SomaPresentationSpec
     static const std::vector<std::string>& joint_names();
     static const std::vector<int>& parents();
     static const std::vector<std::array<float, 3>>& default_offsets();
-    static int joint_index(const std::string& name);
+    [[nodiscard]] static int joint_index(std::string_view name) noexcept;
 };
 
 class SomaPresentation
@@ -37,7 +38,7 @@ public:
         std::vector<std::string> errors;
     };
 
-    static ValidationResult Validate(const Animation& anim);
+    [[nodiscard]] static ValidationResult Validate(const Animation& anim);
 };
 
 } // namespace studio

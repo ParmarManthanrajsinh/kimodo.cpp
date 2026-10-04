@@ -81,6 +81,7 @@ add_executable(kimodo_studio
     src/app/SetupManager.cpp
     src/app/SettingsManager.cpp
     src/utils/AppPaths.cpp
+    src/utils/RuntimeValidator.cpp
     src/utils/Logger.cpp
     src/utils/Hash.cpp
     src/utils/FileDialog.cpp
@@ -201,6 +202,9 @@ if(NOT KIMODO_STUDIO_GIT_HASH)
     set(KIMODO_STUDIO_GIT_HASH "unknown")
 endif()
 string(TIMESTAMP KIMODO_STUDIO_BUILD_DATE "%Y%m%d")
+# Package stamp includes time (second resolution) so two builds can never
+# share a filename: identical names previously shipped different bytes.
+string(TIMESTAMP KIMODO_STUDIO_PKG_STAMP "%Y%m%d-%H%M%S")
 target_compile_definitions(kimodo_studio PRIVATE
     KIMODO_STUDIO_VERSION="${KIMODO_STUDIO_VERSION}"
     KIMODO_STUDIO_GIT_HASH="${KIMODO_STUDIO_GIT_HASH}"
@@ -232,7 +236,7 @@ set(CPACK_PACKAGE_VERSION "${KIMODO_STUDIO_VERSION}")
 set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
 set(CPACK_COMPONENTS_ALL studio)
 set(CPACK_ARCHIVE_STUDIO_FILE_NAME
-    "KimodoStudio-${KIMODO_STUDIO_VERSION}-${KIMODO_STUDIO_GIT_HASH}-windows-x64")
+    "KimodoStudio-${KIMODO_STUDIO_VERSION}-${KIMODO_STUDIO_GIT_HASH}-windows-x64-${KIMODO_STUDIO_PKG_STAMP}")
 install(TARGETS kimodo_studio RUNTIME DESTINATION . COMPONENT studio)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/config" DESTINATION . COMPONENT studio)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fonts" DESTINATION . COMPONENT studio)

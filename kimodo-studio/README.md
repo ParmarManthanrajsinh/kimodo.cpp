@@ -94,8 +94,10 @@ Individual test flags:
 
 ---
 
-## Asset Licenses & Attribution
+## Asset & Model Licenses & Attribution
 
+- **SOMA RP v1.1 Motion Model**: Licensed under the [NVIDIA Open Model License Agreement](https://developer.download.nvidia.com/licenses/nvidia-open-model-license-agreement-june-2024.pdf). Access requires gated authorization on Hugging Face (`kimodo/soma-rp-v1.1`). Not royalty-free redistribution.
+- **LLM2Vec Text Encoder Bundle (35 GGUF files)**: Licensed under the [Meta Llama 3 Community License Agreement](https://llama.meta.com/llama3/license/). Access requires gated authorization on Hugging Face (`LocalAI-io/Llama-3-Kimodo-GGML`). Weights are downloaded on-demand after user authentication and are never bundled into the installer.
 - **Cesium Man**: `assets/characters/CesiumMan.glb` from Khronos glTF Sample Assets. Copyright © Cesium GS, Inc. Licensed under [Creative Commons Attribution 4.0 International (CC-BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
 - **Font Awesome Free**: `fonts/fa-solid-900.ttf` by Fonticons, Inc. (CC BY 4.0 / SIL OFL 1.1).
 - **Roboto**: `fonts/Roboto-Regular.ttf` by Christian Robertson (Apache 2.0).

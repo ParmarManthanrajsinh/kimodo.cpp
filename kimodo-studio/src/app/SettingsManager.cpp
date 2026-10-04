@@ -10,7 +10,7 @@ namespace studio
 namespace
 {
 
-std::string json_escape(const std::string& s)
+std::string json_escape(std::string_view s)
 {
     std::string out;
     for (char c : s)
@@ -24,29 +24,29 @@ std::string json_escape(const std::string& s)
     return out;
 }
 
-bool find_string(const std::string& json, const std::string& key, std::string& out)
+bool find_string(std::string_view json, std::string_view key, std::string& out)
 {
-    const std::string pat = "\"" + key + "\":\"";
+    const std::string pat = "\"" + std::string(key) + "\":\"";
     const size_t p = json.find(pat);
-    if (p == std::string::npos)
+    if (p == std::string_view::npos)
         return false;
     const size_t s = p + pat.size();
     const size_t e = json.find('"', s);
-    if (e == std::string::npos)
+    if (e == std::string_view::npos)
         return false;
-    out = json.substr(s, e - s);
+    out = std::string(json.substr(s, e - s));
     return true;
 }
 
-bool find_int(const std::string& json, const std::string& key, int& out)
+bool find_int(std::string_view json, std::string_view key, int& out)
 {
-    const std::string pat = "\"" + key + "\":";
+    const std::string pat = "\"" + std::string(key) + "\":";
     const size_t p = json.find(pat);
-    if (p == std::string::npos)
+    if (p == std::string_view::npos)
         return false;
     try
     {
-        out = std::stoi(json.substr(p + pat.size()));
+        out = std::stoi(std::string(json.substr(p + pat.size())));
         return true;
     }
     catch (...)
@@ -55,15 +55,15 @@ bool find_int(const std::string& json, const std::string& key, int& out)
     }
 }
 
-bool find_float(const std::string& json, const std::string& key, float& out)
+bool find_float(std::string_view json, std::string_view key, float& out)
 {
-    const std::string pat = "\"" + key + "\":";
+    const std::string pat = "\"" + std::string(key) + "\":";
     const size_t p = json.find(pat);
-    if (p == std::string::npos)
+    if (p == std::string_view::npos)
         return false;
     try
     {
-        out = std::stof(json.substr(p + pat.size()));
+        out = std::stof(std::string(json.substr(p + pat.size())));
         return true;
     }
     catch (...)
@@ -72,13 +72,13 @@ bool find_float(const std::string& json, const std::string& key, float& out)
     }
 }
 
-bool find_bool(const std::string& json, const std::string& key, bool& out)
+bool find_bool(std::string_view json, std::string_view key, bool& out)
 {
-    const std::string pat = "\"" + key + "\":";
+    const std::string pat = "\"" + std::string(key) + "\":";
     const size_t p = json.find(pat);
-    if (p == std::string::npos)
+    if (p == std::string_view::npos)
         return false;
-    const std::string rest = json.substr(p + pat.size());
+    const std::string_view rest = json.substr(p + pat.size());
     if (rest.rfind("true", 0) == 0)
     {
         out = true;

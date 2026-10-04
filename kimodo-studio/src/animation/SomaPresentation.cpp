@@ -1,6 +1,5 @@
 #include "animation/SomaPresentation.h"
 #include "animation/Skeleton.h"
-#include "raymath.h"
 
 #include <cmath>
 #include <map>
@@ -114,7 +113,7 @@ const std::vector<std::array<float, 3>>& SomaPresentationSpec::default_offsets()
     return get_presentation_offsets();
 }
 
-int SomaPresentationSpec::joint_index(const std::string& name)
+int SomaPresentationSpec::joint_index(std::string_view name) noexcept
 {
     const auto& names = get_presentation_names();
     for (size_t i = 0; i < names.size(); ++i)
@@ -270,7 +269,7 @@ SomaPresentation::ValidationResult SomaPresentation::Validate(const Animation& a
         int head_idx = -1, hips_idx = -1, foot_idx = -1;
         for (int j = 0; j < J; ++j)
         {
-            const std::string& n = anim.joint_names[j];
+            std::string_view n = anim.joint_names[j];
             if (n == "Head" || n == "head")
                 head_idx = j;
             if (n == "Hips" || n == "hips" || n == "pelvis")

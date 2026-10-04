@@ -68,7 +68,7 @@ void CharacterAsset::Unload()
     loaded = false;
 }
 
-int CharacterAsset::FindBoneIndex(const std::string& bone_name) const
+int CharacterAsset::FindBoneIndex(std::string_view bone_name) const noexcept
 {
     for (size_t i = 0; i < bones.size(); ++i)
     {

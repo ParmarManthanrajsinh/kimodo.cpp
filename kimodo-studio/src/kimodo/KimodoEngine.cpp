@@ -158,7 +158,7 @@ void KimodoEngine::Run(std::string prompt, GenerationParams params)
         sampling.store(true);
         return cancel_requested.load();
     };
-    if (!adapter.Generate(prompt, params, result, error, on_progress))
+    if (!adapter.Generate(prompt, params, local_result, error, on_progress))
     {
         std::lock_guard<std::mutex> lock(mutex);
         if (error == "generation cancelled" || cancel_requested.load())
@@ -178,9 +178,9 @@ void KimodoEngine::Run(std::string prompt, GenerationParams params)
     {
         std::lock_guard<std::mutex> lock(mutex);
         result = std::move(local_result);
-        has_result = true;
-        message = "Finished: " + std::to_string(local_result.frames) + " frames, " +
-                  std::to_string(local_result.joints) + " joints";
+        has_result = (result.frames > 0 && result.joints > 0);
+        message = "Finished: " + std::to_string(result.frames) + " frames, " +
+                  std::to_string(result.joints) + " joints";
     }
     status.store(EngineStatus::Finished);
     Logger::GetInstance().Info("Kimodo: generation finished");

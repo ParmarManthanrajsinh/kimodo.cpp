@@ -29,7 +29,7 @@ void write_f32(std::vector<char>& out, float v)
     write_u32(out, u);
 }
 
-std::string json_escape(const std::string& s)
+std::string json_escape(std::string_view s)
 {
     std::string o;
     for (char c : s)

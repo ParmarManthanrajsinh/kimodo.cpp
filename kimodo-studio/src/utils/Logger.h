@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <mutex>
-#include <string>
+#include <string_view>
 
 namespace studio
 {
@@ -20,37 +20,37 @@ enum class LogLevel
 class Logger
 {
 public:
-    static Logger& GetInstance();
+    [[nodiscard]] static Logger& GetInstance() noexcept;
 
     void Init(const std::filesystem::path& file);
-    void Log(LogLevel level, const std::string& msg);
+    void Log(LogLevel level, std::string_view msg);
 
-    void trace(const std::string& msg)
+    void trace(std::string_view msg)
     {
         Log(LogLevel::Trace, msg);
     }
-    void Debug(const std::string& msg)
+    void Debug(std::string_view msg)
     {
         Log(LogLevel::Debug, msg);
     }
-    void Info(const std::string& msg)
+    void Info(std::string_view msg)
     {
         Log(LogLevel::Info, msg);
     }
-    void Warning(const std::string& msg)
+    void Warning(std::string_view msg)
     {
         Log(LogLevel::Warning, msg);
     }
-    void Error(const std::string& msg)
+    void Error(std::string_view msg)
     {
         Log(LogLevel::Error, msg);
     }
 
-    static std::filesystem::path DefaultLogFile();
+    [[nodiscard]] static std::filesystem::path DefaultLogFile();
 
 private:
     Logger() = default;
-    static const char* LevelName(LogLevel level);
+    [[nodiscard]] static const char* LevelName(LogLevel level) noexcept;
 
     std::mutex mutex;
     std::ofstream stream;
