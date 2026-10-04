@@ -1,4 +1,5 @@
 #include "export/ExportPreset.h"
+#include "raymath.h"
 
 #include <algorithm>
 #include <cmath>
@@ -7,101 +8,55 @@
 namespace studio
 {
 
+namespace
+{
+
+inline Matrix ToRaylib(const Mat3& a) noexcept
+{
+    return Matrix{
+        a.m[0][0], a.m[1][0], a.m[2][0], 0.0f,
+        a.m[0][1], a.m[1][1], a.m[2][1], 0.0f,
+        a.m[0][2], a.m[1][2], a.m[2][2], 0.0f,
+        0.0f,      0.0f,      0.0f,      1.0f
+    };
+}
+
+inline Mat3 FromRaylib(const Matrix& m) noexcept
+{
+    return Mat3{{
+        {m.m0, m.m4, m.m8},
+        {m.m1, m.m5, m.m9},
+        {m.m2, m.m6, m.m10}
+    }};
+}
+
+} // namespace
+
 Mat3 Mat3Mul(const Mat3& a, const Mat3& b)
 {
-    Mat3 r{};
-    for (int i = 0; i < 3; ++i)
-    {
-        for (int j = 0; j < 3; ++j)
-        {
-            r.m[i][j] = a.m[i][0] * b.m[0][j] + a.m[i][1] * b.m[1][j] + a.m[i][2] * b.m[2][j];
-        }
-    }
-    return r;
+    return FromRaylib(MatrixMultiply(ToRaylib(a), ToRaylib(b)));
 }
 
 Mat3 Mat3Transpose(const Mat3& a)
 {
-    Mat3 r{};
-    for (int i = 0; i < 3; ++i)
-    {
-        for (int j = 0; j < 3; ++j)
-        {
-            r.m[i][j] = a.m[j][i];
-        }
-    }
-    return r;
+    return FromRaylib(MatrixTranspose(ToRaylib(a)));
 }
 
 Quat QuatNormalize(Quat q)
 {
-    const float n = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
-    if (n > 1e-9f)
-    {
-        q.x /= n;
-        q.y /= n;
-        q.z /= n;
-        q.w /= n;
-    }
-    return q;
+    const Quaternion rq = QuaternionNormalize(Quaternion{q.x, q.y, q.z, q.w});
+    return Quat{rq.x, rq.y, rq.z, rq.w};
 }
 
 Mat3 Mat3FromQuat(Quat q)
 {
-    q = QuatNormalize(q);
-    const float xx = q.x * q.x, yy = q.y * q.y, zz = q.z * q.z;
-    const float xy = q.x * q.y, xz = q.x * q.z, yz = q.y * q.z;
-    const float wx = q.w * q.x, wy = q.w * q.y, wz = q.w * q.z;
-    Mat3 r{};
-    r.m[0][0] = 1 - 2 * (yy + zz);
-    r.m[0][1] = 2 * (xy - wz);
-    r.m[0][2] = 2 * (xz + wy);
-    r.m[1][0] = 2 * (xy + wz);
-    r.m[1][1] = 1 - 2 * (xx + zz);
-    r.m[1][2] = 2 * (yz - wx);
-    r.m[2][0] = 2 * (xz - wy);
-    r.m[2][1] = 2 * (yz + wx);
-    r.m[2][2] = 1 - 2 * (xx + yy);
-    return r;
+    return FromRaylib(QuaternionToMatrix(Quaternion{q.x, q.y, q.z, q.w}));
 }
 
 Quat QuatFromMat3(const Mat3& m)
 {
-    const float t = m.m[0][0] + m.m[1][1] + m.m[2][2];
-    Quat q{0, 0, 0, 1};
-    if (t > 0)
-    {
-        const float s = 2 * std::sqrt(t + 1);
-        q.w = 0.25f * s;
-        q.x = (m.m[2][1] - m.m[1][2]) / s;
-        q.y = (m.m[0][2] - m.m[2][0]) / s;
-        q.z = (m.m[1][0] - m.m[0][1]) / s;
-    }
-    else if (m.m[0][0] > m.m[1][1] && m.m[0][0] > m.m[2][2])
-    {
-        const float s = 2 * std::sqrt(1 + m.m[0][0] - m.m[1][1] - m.m[2][2]);
-        q.w = (m.m[2][1] - m.m[1][2]) / s;
-        q.x = 0.25f * s;
-        q.y = (m.m[0][1] + m.m[1][0]) / s;
-        q.z = (m.m[0][2] + m.m[2][0]) / s;
-    }
-    else if (m.m[1][1] > m.m[2][2])
-    {
-        const float s = 2 * std::sqrt(1 + m.m[1][1] - m.m[0][0] - m.m[2][2]);
-        q.w = (m.m[0][2] - m.m[2][0]) / s;
-        q.x = (m.m[0][1] + m.m[1][0]) / s;
-        q.y = 0.25f * s;
-        q.z = (m.m[1][2] + m.m[2][1]) / s;
-    }
-    else
-    {
-        const float s = 2 * std::sqrt(1 + m.m[2][2] - m.m[0][0] - m.m[1][1]);
-        q.w = (m.m[1][0] - m.m[0][1]) / s;
-        q.x = (m.m[0][2] + m.m[2][0]) / s;
-        q.y = (m.m[1][2] + m.m[2][1]) / s;
-        q.z = 0.25f * s;
-    }
-    return QuatNormalize(q);
+    const Quaternion rq = QuaternionFromMatrix(ToRaylib(m));
+    return Quat{rq.x, rq.y, rq.z, rq.w};
 }
 
 const std::vector<ExportPreset>& export_presets()

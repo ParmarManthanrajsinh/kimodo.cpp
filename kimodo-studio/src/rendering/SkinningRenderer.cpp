@@ -6,25 +6,6 @@
 namespace studio
 {
 
-SkinningRenderer::~SkinningRenderer()
-{
-    Shutdown();
-}
-
-bool SkinningRenderer::Init()
-{
-    initialized = true;
-    return true;
-}
-
-void SkinningRenderer::Shutdown()
-{
-    if (initialized)
-    {
-        initialized = false;
-    }
-}
-
 void SkinningRenderer::DrawCharacter(CharacterAsset& character, const std::vector<Matrix>& skin_matrices,
                                      bool wireframe)
 {

@@ -337,8 +337,6 @@ void PageCharacters::Draw(AppState& state, CharacterLibrary& chars, Viewport& vi
             ImGui::Spacing();
             ImGui::Checkbox("Show Skeleton", &state.show_skeleton);
             ImGui::Spacing();
-            ImGui::Checkbox("Show Joint Names", &state.show_joint_names);
-            ImGui::Spacing();
             ImGui::Checkbox("Show Bone Names", &state.show_bone_names);
             ImGui::Spacing();
             ImGui::Checkbox("Wireframe", &state.show_wireframe);

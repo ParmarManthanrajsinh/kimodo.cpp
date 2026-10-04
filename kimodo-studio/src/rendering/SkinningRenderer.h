@@ -11,18 +11,11 @@ class SkinningRenderer
 {
 public:
     SkinningRenderer() = default;
-    ~SkinningRenderer();
-
-    bool Init();
-    void Shutdown();
+    bool Init() noexcept { return true; }
+    void Shutdown() noexcept {}
 
     // Render character mesh with given skin matrices
     void DrawCharacter(CharacterAsset& character, const std::vector<Matrix>& skin_matrices, bool wireframe);
-
-private:
-    bool initialized = false;
-    Shader skinShader{};
-    int BoneMatricesLoc = -1;
 };
 
 } // namespace studio

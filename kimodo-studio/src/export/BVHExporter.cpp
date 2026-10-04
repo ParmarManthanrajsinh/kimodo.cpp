@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <sstream>
 
@@ -60,20 +61,10 @@ namespace
 std::string Ftoa(float v)
 {
     if (!std::isfinite(v))
-        return "0.0";
-    std::ostringstream ss;
-    ss.precision(6);
-    ss << std::fixed << v;
-    std::string str = ss.str();
-    // Trim trailing zeros after decimal point
-    if (str.find('.') != std::string::npos)
     {
-        while (str.back() == '0')
-            str.pop_back();
-        if (str.back() == '.')
-            str.push_back('0');
+        return "0.0";
     }
-    return str;
+    return std::format("{:.6g}", v);
 }
 
 } // namespace

@@ -1,9 +1,8 @@
 #include "utils/Logger.h"
+#include "utils/AppPaths.h"
 
 #include <chrono>
-#include <cstdio>
-#include <cstdlib>
-#include <ctime>
+#include <format>
 #include <iostream>
 
 namespace studio
@@ -17,27 +16,7 @@ Logger& Logger::GetInstance() noexcept
 
 std::filesystem::path Logger::DefaultLogFile()
 {
-    std::filesystem::path base;
-#if defined(_WIN32)
-    if (const char* appdata = std::getenv("LOCALAPPDATA"))
-    {
-        base = std::filesystem::path(appdata) / "KimodoStudio" / "logs";
-    }
-    else
-    {
-        base = std::filesystem::path("logs");
-    }
-#else
-    if (const char* home = std::getenv("HOME"))
-    {
-        base = std::filesystem::path(home) / ".kimodo-studio" / "logs";
-    }
-    else
-    {
-        base = std::filesystem::path("logs");
-    }
-#endif
-    return base / "kimodo-studio.log";
+    return AppPaths::AppDataDir() / "logs" / "kimodo-studio.log";
 }
 
 void Logger::Init(const std::filesystem::path& file)
@@ -73,17 +52,8 @@ namespace
 std::string LocalTimestamp()
 {
     const auto now = std::chrono::system_clock::now();
-    const std::time_t t = std::chrono::system_clock::to_time_t(now);
-    std::tm tm{};
-#if defined(_WIN32)
-    localtime_s(&tm, &t);
-#else
-    localtime_r(&t, &tm);
-#endif
-    char buf[20];
-    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1,
-                  tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-    return buf;
+    const auto local = std::chrono::current_zone()->to_local(now);
+    return std::format("{:%Y-%m-%d %H:%M:%S}", std::chrono::floor<std::chrono::seconds>(local));
 }
 
 } // namespace

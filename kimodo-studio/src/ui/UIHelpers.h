@@ -36,8 +36,8 @@ inline void DrawPanelHeader(const char* title, const char* badge = nullptr, cons
 
 /// Draw a property row: [Label] .............. [Controls]
 /// Automatically aligns label baseline with control frame padding.
-inline void DrawPropertyRow(const char* label, const std::function<void(float avail_width)>& draw_controls,
-                            float label_width = 72.0f)
+template <typename Fn>
+inline void DrawPropertyRow(const char* label, Fn&& draw_controls, float label_width = 72.0f)
 {
     ImGui::AlignTextToFramePadding();
     ImGui::TextDisabled("%s", label);

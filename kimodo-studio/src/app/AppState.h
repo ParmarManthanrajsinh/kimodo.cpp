@@ -16,7 +16,6 @@ enum class Screen
     Retarget,
     Export,
     settings,
-    Inspector,
     Setup
 };
 
@@ -52,7 +51,6 @@ struct AppState
     // Viewport display flags
     bool show_wireframe = false;
     bool show_bone_names = false;
-    bool show_joint_names = false;
     bool show_grid = true;
     bool show_axes = true;
     bool show_floor = true;

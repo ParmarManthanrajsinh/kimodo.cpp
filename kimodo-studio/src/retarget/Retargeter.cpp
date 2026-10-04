@@ -36,12 +36,7 @@ std::string build_report(const SkeletonProfile& target, const BoneMap& map, int 
 
 BoneMap Retargeter::AutoMap(const SkeletonProfile& profile)
 {
-    BoneMap map;
-    for (const auto& [tgt, src] : profile.default_map)
-    {
-        map[tgt] = src;
-    }
-    return map;
+    return {profile.default_map.begin(), profile.default_map.end()};
 }
 
 std::vector<std::string> Retargeter::unmapped(const SkeletonProfile& profile, const BoneMap& map)

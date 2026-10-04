@@ -12,7 +12,6 @@ const std::vector<SkeletonProfile>& target_profiles()
         SkeletonProfile blender;
         blender.id = "blender-generic";
         blender.name = "Blender (generic)";
-        blender.mode = RetargetMode::GenericLocal;
         blender.joints = {"Hips",        "Spine1",       "Spine2",    "Chest",       "Neck1",       "Neck2",
                           "Head",        "LeftShoulder", "LeftArm",   "LeftForeArm", "LeftHand",    "RightShoulder",
                           "RightArm",    "RightForeArm", "RightHand", "LeftLeg",     "LeftShin",    "LeftFoot",
@@ -28,7 +27,6 @@ const std::vector<SkeletonProfile>& target_profiles()
         SkeletonProfile generic;
         generic.id = "generic-humanoid";
         generic.name = "Generic Humanoid";
-        generic.mode = RetargetMode::GenericLocal;
         generic.joints = {"Hips",         "Spine",     "Spine1",      "Spine2",      "Neck",          "Head",
                           "LeftShoulder", "LeftArm",   "LeftForeArm", "LeftHand",    "RightShoulder", "RightArm",
                           "RightForeArm", "RightHand", "LeftUpLeg",   "LeftLeg",     "LeftFoot",      "LeftToeBase",

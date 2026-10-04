@@ -1,12 +1,8 @@
 #pragma once
 
-#include <atomic>
 #include <cstdint>
 #include <functional>
-#include <mutex>
 #include <string>
-#include <thread>
-#include <vector>
 
 namespace studio
 {
