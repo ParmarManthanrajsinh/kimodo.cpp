@@ -1,9 +1,9 @@
-﻿# Kimodo Studio Release (KimodoStudio-0.1.0-2c2ce39-windows-x64-20261002-012327)
+﻿# Kimodo Studio Release (KimodoStudio-0.1.0-03421d0-windows-x64-20261005-001658)
 
 ## Package Info
-- **File**: `KimodoStudio-0.1.0-2c2ce39-windows-x64-20261002-012327.zip`
-- **Size**: 18.2 MB
-- **SHA-256**: `8A769A1D930B9D3AEF782E4935CE446B80F0B61A8D7DA9C1CEAA0D5892C049EA`
+- **File**: `KimodoStudio-0.1.0-03421d0-windows-x64-20261005-001658.zip`
+- **Size**: 18.31 MB
+- **SHA-256**: `AAEBDE24CFD37081EFEDF0C680F9C6F3633085CB33913B4E60ECBF430660DC1C`
 - **Platform**: Windows 10/11 x64
 
 ## System Requirements
@@ -12,7 +12,7 @@
 - Microsoft Visual C++ 2015-2022 Redistributable (x64)
 
 ## Installation & First Launch
-1. Extract `KimodoStudio-0.1.0-2c2ce39-windows-x64-20261002-012327.zip` to your desired directory.
+1. Extract `KimodoStudio-0.1.0-03421d0-windows-x64-20261005-001658.zip` to your desired directory.
 2. Launch `kimodo_studio.exe`.
 3. First-Run Setup Wizard launches automatically:
    - Authenticate with Hugging Face if access to gated model weights is required.
